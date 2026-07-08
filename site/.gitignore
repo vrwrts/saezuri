@@ -1,0 +1,12 @@
+# Astro / build
+dist/
+.astro/
+node_modules/
+
+# Cloudflare / wrangler local state (if ever used)
+.wrangler/
+
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example

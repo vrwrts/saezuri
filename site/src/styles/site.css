@@ -1,0 +1,301 @@
+/* Landing page styles. Colours, shadows and fonts come entirely from the shared
+   design tokens (@shared/theme.css) so the site and the app read as one product. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 18px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: var(--ink);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+.wrap {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 12px;
+}
+
+/* ---- Theme toggle (matches the app) ---- */
+.topbar {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  z-index: 10;
+}
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--paper-2);
+  box-shadow: var(--raised);
+  color: var(--ink-2);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+.theme-toggle:hover {
+  color: var(--ink);
+}
+
+/* ---- Hero ---- */
+.hero {
+  text-align: center;
+  padding: 92px 0 8px;
+}
+.hero .eyebrow {
+  margin: 0 0 10px;
+  font-style: italic;
+  color: var(--ink-2);
+  letter-spacing: 0.06em;
+  font-size: clamp(13px, 1.4vw, 17px);
+}
+.hero h1 {
+  margin: 0;
+  font-weight: 700;
+  font-size: clamp(44px, 8vw, 78px);
+  letter-spacing: 0.01em;
+  line-height: 1.02;
+}
+.hero .tagline {
+  margin: 16px auto 0;
+  max-width: 22ch;
+  font-size: clamp(19px, 2.6vw, 26px);
+  color: var(--ink-2);
+}
+.hero .sub {
+  margin: 18px auto 0;
+  max-width: 54ch;
+  color: var(--ink-soft);
+}
+
+.cta-row {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 30px;
+}
+.btn {
+  display: inline-block;
+  padding: 11px 22px;
+  border-radius: 999px;
+  font-size: 15px;
+  text-decoration: none;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--edge);
+}
+.btn-primary:hover {
+  opacity: 0.9;
+}
+.btn-ghost {
+  background: var(--paper-2);
+  color: var(--ink);
+  box-shadow: var(--raised);
+}
+.btn-ghost:hover {
+  color: var(--ink);
+}
+
+/* ---- Hero product shot (theme-swapped) ---- */
+.shot {
+  max-width: 720px;
+  margin: 52px auto 8px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--paper);
+  box-shadow: var(--edge-lg);
+}
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.shot .dark {
+  display: none;
+}
+:root[data-theme='dark'] .shot .light {
+  display: none;
+}
+:root[data-theme='dark'] .shot .dark {
+  display: block;
+}
+.shot-caption {
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin: 14px 0 0;
+}
+
+/* ---- Sections ---- */
+.section {
+  padding: 56px 0;
+  border-top: 1px solid var(--hairline);
+}
+.section h2 {
+  margin: 0 0 10px;
+  font-size: clamp(24px, 3.4vw, 34px);
+  letter-spacing: 0.01em;
+}
+.section .lede {
+  margin: 0 0 32px;
+  max-width: 60ch;
+  color: var(--ink-soft);
+}
+
+/* ---- Features ---- */
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 26px 32px;
+}
+.feature h3 {
+  margin: 0 0 5px;
+  font-size: 18px;
+  font-weight: 700;
+}
+.feature p {
+  margin: 0;
+  font-size: 15.5px;
+  color: var(--ink-soft);
+}
+.feature .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  margin: 0 0 10px;
+  box-shadow: var(--edge);
+}
+
+/* ---- Install / code ---- */
+.step {
+  margin: 0 0 6px;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.code {
+  position: relative;
+  margin: 10px 0 26px;
+  padding: 15px 18px;
+  border-radius: 12px;
+  background: var(--paper-2);
+  box-shadow: var(--recess);
+  overflow-x: auto;
+}
+.code pre {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink);
+  white-space: pre;
+}
+.copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--pill);
+  box-shadow: var(--raised);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.copy-btn:hover {
+  color: var(--ink);
+}
+
+.envtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  margin-top: 8px;
+}
+.envtable th,
+.envtable td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+}
+.envtable th {
+  color: var(--ink-2);
+  font-weight: 700;
+}
+.envtable code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* ---- Footer ---- */
+.footer {
+  padding: 48px 0 72px;
+  border-top: 1px solid var(--hairline);
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.footer a {
+  color: var(--ink-2);
+}
+.footer .mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding-top: 72px;
+  }
+  .section {
+    padding: 44px 0;
+  }
+}

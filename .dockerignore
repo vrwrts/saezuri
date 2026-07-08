@@ -8,6 +8,7 @@ reference
 .github
 fixtures
 pipeline
+site
 *.md
 
 # Borrowed placeholder illustrations — never shipped. Our fallback is the one exception.

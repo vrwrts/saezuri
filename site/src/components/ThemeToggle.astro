@@ -1,0 +1,22 @@
+<div class="topbar">
+  <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark theme">☾</button>
+</div>
+
+<script is:inline>
+  (() => {
+    const btn = document.getElementById('theme-toggle')
+    if (!btn) return
+    const glyph = () => {
+      btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀' : '☾'
+    }
+    glyph()
+    btn.addEventListener('click', () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'
+      document.documentElement.setAttribute('data-theme', next)
+      try {
+        localStorage.setItem('saezuri:theme', next)
+      } catch (e) {}
+      glyph()
+    })
+  })()
+</script>

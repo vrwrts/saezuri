@@ -1,0 +1,37 @@
+---
+const repo = 'https://github.com/vrwrts/saezuri'
+---
+
+<header class="hero wrap">
+  <p class="eyebrow">recently heard</p>
+  <h1>Saezuri</h1>
+  <p class="tagline">A living collage of the birds you&rsquo;re hearing.</p>
+  <p class="sub">
+    A self-hosted display for your BirdNET-Go instance. It watches recent detections and
+    arranges the species you&rsquo;re hearing into a woodblock-style collage &mdash; each bird
+    sized by how often it calls.
+  </p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="#install">Get started</a>
+    <a class="btn btn-ghost" href={repo}>View on GitHub</a>
+  </div>
+
+  <figure class="shot">
+    <img
+      class="light"
+      src="/hero-light.webp"
+      width="1400"
+      height="1288"
+      alt="Saezuri showing a collage of recently detected birds in the light theme"
+      fetchpriority="high"
+    />
+    <img
+      class="dark"
+      src="/hero-dark.webp"
+      width="1400"
+      height="1288"
+      alt="Saezuri showing a collage of recently detected birds in the dark theme"
+    />
+  </figure>
+  <p class="shot-caption">The last 24 hours, one bird per species — larger means heard more often.</p>
+</header>

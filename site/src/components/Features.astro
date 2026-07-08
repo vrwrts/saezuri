@@ -1,0 +1,52 @@
+---
+const features = [
+  {
+    title: 'Sized by what you hear',
+    body: "Each species grows with its detection count in the chosen window, so the regulars you hear most anchor the plate.",
+  },
+  {
+    title: 'Silhouette collage',
+    body: 'Birds nest by their actual outline, not bounding boxes — they cluster tightly and organically without ever overlapping.',
+  },
+  {
+    title: 'Live and hands-off',
+    body: "Polls every 30 seconds and re-packs as new birds arrive. Pauses when the tab isn't visible; refreshes the moment it is.",
+  },
+  {
+    title: 'Time windows',
+    body: 'Flip between the last hour, 12 hours, 24 hours, 7 days, or all-time to see who has been around.',
+  },
+  {
+    title: 'Light & dark',
+    body: 'A warm-paper day theme and a charcoal night theme, following your display — easy on a wall screen at any hour.',
+  },
+  {
+    title: 'Self-hosted & read-only',
+    body: 'The browser only ever talks to its own origin; nginx proxies to your instance. No auth on a LAN, optional token for private setups.',
+  },
+  {
+    title: 'Runs anywhere',
+    body: 'One small multi-arch container (amd64 + arm64), happy on a Raspberry Pi and over plain HTTP.',
+  },
+]
+---
+
+<section class="section wrap" id="features">
+  <p class="kicker">What it does</p>
+  <h2>A calm, glanceable view of your local birdlife</h2>
+  <p class="lede">
+    Point it at BirdNET-Go and leave it on a screen. Everything runs on your own network —
+    no account, no cloud, no writes.
+  </p>
+  <div class="features">
+    {
+      features.map((f) => (
+        <div class="feature">
+          <span class="dot"></span>
+          <h3>{f.title}</h3>
+          <p>{f.body}</p>
+        </div>
+      ))
+    }
+  </div>
+</section>

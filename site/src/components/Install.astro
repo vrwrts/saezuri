@@ -1,0 +1,65 @@
+<section class="section wrap" id="install">
+  <p class="kicker">Install</p>
+  <h2>Up in one command</h2>
+  <p class="lede">
+    You&rsquo;ll need a running
+    <a href="https://github.com/tphakala/birdnet-go">BirdNET-Go</a> instance on your network.
+    Point Saezuri at it with a single environment variable.
+  </p>
+
+  <p class="step">Run the container (use your instance&rsquo;s address):</p>
+  <div class="code">
+    <button class="copy-btn" type="button" aria-label="Copy command">copy</button>
+    <pre>docker run -d -p 8080:80 \
+  -e BIRDNETGO_URL=http://192.168.1.10:8080 \
+  ghcr.io/vrwrts/saezuri:latest</pre>
+  </div>
+
+  <p class="step">&hellip;or with Docker Compose:</p>
+  <div class="code">
+    <button class="copy-btn" type="button" aria-label="Copy compose file">copy</button>
+    <pre>services:
+  saezuri:
+    image: ghcr.io/vrwrts/saezuri:latest
+    ports: ["8080:80"]
+    environment:
+      BIRDNETGO_URL: http://192.168.1.10:8080
+    restart: unless-stopped</pre>
+  </div>
+
+  <p class="step">Then open <code>http://localhost:8080</code>. Two settings:</p>
+  <table class="envtable">
+    <thead>
+      <tr><th>Variable</th><th>Required</th><th>Description</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>BIRDNETGO_URL</code></td>
+        <td>yes</td>
+        <td>Base URL of your BirdNET-Go instance, e.g. <code>http://192.168.1.10:8080</code>.</td>
+      </tr>
+      <tr>
+        <td><code>BIRDNETGO_TOKEN</code></td>
+        <td>no</td>
+        <td>Token for a private (PrivateMode) instance. Injected by nginx — never sent to the browser.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<script is:inline>
+  document.querySelectorAll('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const pre = btn.parentElement && btn.parentElement.querySelector('pre')
+      if (!pre) return
+      try {
+        await navigator.clipboard.writeText(pre.textContent.trim())
+        const prev = btn.textContent
+        btn.textContent = 'copied'
+        setTimeout(() => {
+          btn.textContent = prev
+        }, 1200)
+      } catch (e) {}
+    })
+  })
+</script>

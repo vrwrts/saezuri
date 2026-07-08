@@ -1,0 +1,47 @@
+---
+import '@shared/theme.css'
+import '../styles/site.css'
+
+interface Props {
+  title?: string
+  description?: string
+}
+
+const {
+  title = "Saezuri — a living collage of the birds you're hearing",
+  description = 'A self-hosted web display that turns your BirdNET-Go detections into a woodblock-style bird collage. Read-only, runs on your LAN, light & dark.',
+} = Astro.props
+
+const ogImage = new URL('/hero-light.webp', Astro.site)
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script is:inline>
+      // Pre-paint theme, identical to the app: saved choice, else OS preference.
+      (() => {
+        try {
+          let t = localStorage.getItem('saezuri:theme')
+          if (t !== 'light' && t !== 'dark') {
+            t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          }
+          document.documentElement.setAttribute('data-theme', t)
+        } catch (e) {}
+      })()
+    </script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

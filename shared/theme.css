@@ -1,0 +1,60 @@
+/* ===========================================================================
+   Saezuri design tokens — the single source of truth for the palette, shadow
+   recipes, and system font stacks. Shared by the app (src/index.css) and the
+   landing site (site/). Reproduced (NOT copied) from the AvianVisitors palette.
+   The kachō-e look is carried by the illustration PNGs; the CSS is just flat
+   warm-paper fills and a few layered box-shadow recipes that stand in for flat
+   borders. No textures, no bundled fonts.
+   =========================================================================== */
+:root {
+  color-scheme: light;
+  --paper: #fcfcfb; /* near-white, faint warm undertone */
+  --paper-2: #f3f2ee; /* recessed track */
+  --paper-3: #e8e6df; /* placeholder fill */
+  --ink: #1a1612;
+  --ink-2: #4a3f31;
+  --ink-soft: #908576;
+  --accent: #4a3f31;
+  --hairline: rgba(26, 22, 18, 0.14);
+  --pill: #fcfcfb;
+  --live: #c44a3b; /* muted vermilion — live/recording dot */
+  --ok: #2d5d3a;
+  /* Depth recipes — replace flat 1px borders. */
+  --edge: inset 0 0 0 1px rgba(255, 255, 255, 0.55), 0 0 0 1px rgba(26, 22, 18, 0.04);
+  --edge-lg: inset 0 0 0 1px rgba(255, 255, 255, 0.6), 0 0 0 1px rgba(26, 22, 18, 0.06),
+    0 8px 28px rgba(26, 22, 18, 0.06);
+  --recess: inset 0 1px 2px rgba(26, 22, 18, 0.06), inset 0 0 0 1px rgba(26, 22, 18, 0.04);
+  --raised: inset 0 0 0 1px rgba(255, 255, 255, 0.8), 0 0 0 1px rgba(26, 22, 18, 0.05),
+    0 1px 2px rgba(26, 22, 18, 0.07);
+  --tile-shadow: drop-shadow(0 2px 6px rgba(26, 22, 18, 0.1));
+
+  /* System font stacks (no bundled fonts). */
+  --font-serif: ui-serif, 'Iowan Old Style', 'Apple Garamond', Georgia, serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+/* Charcoal dark theme. A switcher writes data-theme on <html>; an inline
+   pre-paint script applies the saved choice before first paint. Everything is
+   variable-driven, so ink<->paper inverts cleanly and transparent-PNG cutouts
+   sit directly on the charcoal. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --paper: #17181c;
+  --paper-2: #212329;
+  --paper-3: #2c2f36;
+  --ink: #ece8e1;
+  --ink-2: #b7afa2;
+  --ink-soft: #837c70;
+  --accent: #d8d2c6;
+  --hairline: rgba(236, 232, 225, 0.2);
+  --pill: #3a3e48;
+  --live: #d9705f;
+  --ok: #6faf7f;
+  --edge: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.4);
+  --edge-lg: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 10px 30px rgba(0, 0, 0, 0.5);
+  --recess: inset 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --raised: inset 0 0 0 1px rgba(255, 255, 255, 0.07), 0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 1px 2px rgba(0, 0, 0, 0.5);
+  --tile-shadow: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.5));
+}

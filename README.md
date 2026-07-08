@@ -57,6 +57,12 @@ cp .env.example .env                # set BIRDNETGO_URL (and BIRDNETGO_TOKEN if 
 docker compose up --build
 ```
 
+## Landing page
+
+A static one-pager (Astro) lives in [`site/`](site/) and shares the app's design tokens
+([`shared/theme.css`](shared/theme.css)). It is a separate project, kept out of the Docker
+image, and deploys to Cloudflare Pages — see [`site/README.md`](site/README.md).
+
 ## Continuous integration & publishing
 
 - **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs Biome (lint +
