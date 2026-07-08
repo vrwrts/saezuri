@@ -1,0 +1,22 @@
+# Keep the build context small and, importantly, keep borrowed CC-BY-NC-SA
+# placeholder art out of the image. Only our own fallback silhouette ships.
+node_modules
+dist
+.venv
+reference
+.git
+.github
+fixtures
+pipeline
+*.md
+
+# Borrowed placeholder illustrations — never shipped. Our fallback is the one exception.
+public/assets/illustrations/*
+!public/assets/illustrations/_fallback.png
+
+# Generated locally; the app ships a built-in fallback manifest instead.
+public/layout-manifest.json
+
+# Local env (real hosts/tokens)
+.env
+.env.*

@@ -1,0 +1,49 @@
+# Saezuri nginx config template. Rendered at container start by
+# nginx/entrypoint.sh: only ${BIRDNETGO_URL} is substituted, so nginx runtime
+# variables ($host, $uri, ...) survive. The browser only ever talks to this
+# origin — every BirdNET-Go call is proxied through /api/ below.
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+    gzip_min_length 1024;
+
+    # Hashed build assets + cutouts: cache hard.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # The layout manifest is optional; when it isn't shipped, return a clean 404
+    # so the app falls back to its built-in manifest (not the SPA index.html).
+    location = /layout-manifest.json {
+        try_files $uri =404;
+    }
+
+    # Reverse-proxy the BirdNET-Go API. ${BIRDNETGO_URL} is a literal after
+    # rendering, so no resolver is needed. The path prefix is preserved:
+    # /api/v2/... -> ${BIRDNETGO_URL}/api/v2/...
+    location /api/ {
+        proxy_pass ${BIRDNETGO_URL}/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # SSE-friendly (BirdNET-Go's /detections/stream): no buffering, keep-alive.
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_read_timeout 1h;
+        # Optional Authorization header for PrivateMode instances (empty otherwise).
+        include /etc/nginx/conf.d/saezuri_auth.inc;
+    }
+
+    # SPA fallback for client-side routes.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

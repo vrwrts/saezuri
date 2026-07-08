@@ -1,0 +1,35 @@
+# Reference clones — study only, never commit (CLAUDE.md).
+reference/
+
+# LLM-specific stuff
+.claude
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Local env (real hosts/tokens live here, never committed)
+.env
+.env.local
+.env.*.local
+
+# Borrowed placeholder illustrations — local dev only. These are AvianVisitors
+# CC-BY-NC-SA art used as dev placeholders; do not commit or ship them. Our own
+# generic fallback silhouette is the one exception and IS committed.
+/public/assets/illustrations/*
+!/public/assets/illustrations/_fallback.png
+
+# Layout manifest is a build artifact derived from whatever art is present
+# locally (pipeline/build_masks.py). The app ships a built-in fallback manifest.
+/public/layout-manifest.json
+
+# Python venv for the pipeline tooling.
+.venv/
+
+# Editor / OS
+.DS_Store
+*.log
+.vite/
