@@ -19,8 +19,6 @@ export interface LoadOptions {
   pageSize?: number
   /** Safety cap on pages fetched for a bounded window. */
   maxPages?: number
-  excludeFalsePositives?: boolean
-  minConfidence?: number
   /** Species cap for the ALL-time window. */
   summaryLimit?: number
 }
@@ -91,10 +89,6 @@ export async function loadSpecies(
     }
   }
 
-  const species = aggregateDetections(rows, {
-    sinceMs: window.sinceMs,
-    excludeFalsePositives: options.excludeFalsePositives,
-    minConfidence: options.minConfidence,
-  })
+  const species = aggregateDetections(rows, { sinceMs: window.sinceMs })
   return { species, truncated: !covered }
 }

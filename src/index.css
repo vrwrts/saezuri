@@ -4,22 +4,6 @@
    so the app and the landing site (site/) stay in visual lockstep. */
 @import '../shared/theme.css';
 
-/* Expose the tokens as Tailwind theme values so utilities like `bg-paper`
-   and `text-ink` resolve to the CSS variables above. */
-@theme inline {
-  --color-paper: var(--paper);
-  --color-paper-2: var(--paper-2);
-  --color-paper-3: var(--paper-3);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-ink-soft: var(--ink-soft);
-  --color-accent: var(--accent);
-  --color-live: var(--live);
-  --color-ok: var(--ok);
-  --font-serif: ui-serif, 'Iowan Old Style', 'Apple Garamond', Georgia, serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
-}
-
 html,
 body {
   margin: 0;

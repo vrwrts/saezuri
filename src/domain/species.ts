@@ -12,8 +12,6 @@ export interface Species {
   n: number
   /** Most recent detection instant (epoch ms), for tie-breaks / tooltip. */
   lastSeenMs?: number
-  /** Highest confidence seen in the window, 0.0–1.0. */
-  maxConfidence?: number
 }
 
 export interface AggregateOptions {
@@ -65,12 +63,10 @@ export function aggregateDetections(
         com: d.commonName,
         n: 1,
         lastSeenMs: instant,
-        maxConfidence: d.confidence,
       })
       continue
     }
     existing.n += 1
-    if (d.confidence > (existing.maxConfidence ?? 0)) existing.maxConfidence = d.confidence
     // Adopt the label from the most recent detection.
     if (instant > (existing.lastSeenMs ?? -Infinity)) {
       existing.lastSeenMs = instant
@@ -91,7 +87,6 @@ export function speciesFromSummary(rows: readonly SpeciesSummary[]): Species[] {
       com: r.common_name,
       n: r.count,
       lastSeenMs: Number.isNaN(lastSeenMs) ? undefined : lastSeenMs,
-      maxConfidence: r.max_confidence,
     }
   })
   return sortSpecies(mapped)

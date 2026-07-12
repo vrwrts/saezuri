@@ -23,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render(): ReactNode {
     if (this.state.error) {
       return (
-        <p className="mono" style={{ padding: '24px', color: 'var(--ink-soft)' }} data-error>
+        <p className="mono" style={{ padding: '24px', color: 'var(--ink-soft)' }}>
           Something went wrong rendering the collage: {this.state.error.message}
         </p>
       )

@@ -6,7 +6,7 @@ import { type DecodedMask, isParked, maskPack, type PlaceableTile } from './pack
 // tracks detection count only, matching the look.
 
 /** Grid-cell gap dilated around every silhouette (eased on narrow screens). */
-export const COLLAGE_PAD = 3
+const COLLAGE_PAD = 3
 
 /** Count-dependent knobs. Density steps down as the plate gets busier. */
 export function tuning(nSpecies: number) {
@@ -53,7 +53,6 @@ export interface Viewport {
 interface PackTile extends PlaceableTile {
   score: number
   area: number
-  ar: number
   src: LayoutInput
 }
 
@@ -89,7 +88,6 @@ export function computeLayout(inputs: readonly LayoutInput[], vp: Viewport): Lai
     x: 0,
     y: 0,
     mask: inp.mask,
-    ar: inp.ar,
     score: Math.max(1, inp.n || 1) ** T.countExp,
     area: 0,
     src: inp,
@@ -111,8 +109,8 @@ export function computeLayout(inputs: readonly LayoutInput[], vp: Viewport): Lai
 
   // Step 3: width/height from area + aspect.
   for (const t of tiles) {
-    t.fullW = Math.sqrt(t.area * t.ar)
-    t.fullH = t.fullW / t.ar
+    t.fullW = Math.sqrt(t.area * t.src.ar)
+    t.fullH = t.fullW / t.src.ar
   }
 
   const narrow = W <= 700

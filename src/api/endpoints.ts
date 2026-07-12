@@ -66,10 +66,3 @@ export function getSpeciesSummary(
     signal,
   )
 }
-
-/** Construct the same-origin proxy URL for a species image. BirdNET-Go serves
- *  bytes here (404 when it has no image), so render a fallback on <img> error.
- *  Saezuri's collage uses local illustrations first; this is a later fallback. */
-export function speciesImageUrl(scientificName: string): string {
-  return `/api/v2/media/image/${encodeURIComponent(scientificName)}`
-}

@@ -1,4 +1,4 @@
-import { WINDOW_LABELS, WINDOW_PRESETS, type WindowPreset } from '../domain/window.ts'
+import { WINDOW_PRESETS, type WindowPreset } from '../domain/window.ts'
 
 interface Props {
   value: WindowPreset
@@ -21,7 +21,7 @@ export function WindowPicker({ value, onChange }: Props) {
             className={`window-option${active ? ' is-active' : ''}`}
             onClick={() => onChange(preset)}
           >
-            {WINDOW_LABELS[preset]}
+            {preset}
           </button>
         )
       })}

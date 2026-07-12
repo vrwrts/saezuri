@@ -4,7 +4,7 @@ import type { Species } from '../domain/species.ts'
 import { resolveWindow, type WindowPreset } from '../domain/window.ts'
 
 /** Matches AvianVisitors' collage poll cadence. */
-export const DEFAULT_POLL_MS = 30_000
+const DEFAULT_POLL_MS = 30_000
 
 export interface RecentSpecies {
   species: Species[]

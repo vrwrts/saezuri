@@ -50,7 +50,7 @@ export function Collage({ species, manifest, animate = true, emptyState }: Props
   const tiles = useMemo(() => {
     const pose = poseRef.current
     const present = new Set(species.map((s) => s.sci))
-    for (const key of [...pose.keys()]) if (!present.has(key)) pose.delete(key)
+    for (const key of pose.keys()) if (!present.has(key)) pose.delete(key)
 
     const inputs: LayoutInput[] = species.map((s) => {
       let prefersFlight = pose.get(s.sci)

@@ -12,14 +12,6 @@ export type WindowPreset = '1H' | '12H' | '24H' | '7D' | 'ALL'
 
 export const WINDOW_PRESETS: readonly WindowPreset[] = ['1H', '12H', '24H', '7D', 'ALL']
 
-export const WINDOW_LABELS: Record<WindowPreset, string> = {
-  '1H': '1H',
-  '12H': '12H',
-  '24H': '24H',
-  '7D': '7D',
-  ALL: 'ALL',
-}
-
 const HOURS: Record<Exclude<WindowPreset, 'ALL'>, number> = {
   '1H': 1,
   '12H': 12,

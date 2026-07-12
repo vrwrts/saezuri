@@ -35,9 +35,7 @@ export function BirdTile({ tile, animate, delayMs, fallbackUrl }: Props) {
         loading="lazy"
         decoding="async"
         draggable={false}
-        onError={() => {
-          if (!errored) setErrored(true)
-        }}
+        onError={() => setErrored(true)}
       />
     </button>
   )

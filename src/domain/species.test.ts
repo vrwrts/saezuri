@@ -81,12 +81,11 @@ describe('aggregateDetections', () => {
     expect(out.find((s) => s.sci === 'Corvus corax')).toBeUndefined()
   })
 
-  it('keeps the most-recent common name and the max confidence', () => {
+  it('keeps the most-recent common name', () => {
     const merula = aggregateDetections(rows, { sinceMs: since }).find(
       (s) => s.sci === 'Turdus merula',
     )
     expect(merula?.com).toBe('Blackbird') // from the newer id 1
-    expect(merula?.maxConfidence).toBe(0.9)
   })
 
   it('sorts by count descending', () => {
@@ -117,7 +116,6 @@ describe('speciesFromSummary', () => {
       sci: 'Turdus merula',
       com: 'Blackbird',
       n: 42,
-      maxConfidence: 0.99,
     })
     expect(out[0].lastSeenMs).toBe(Date.parse('2026-07-08T11:00:00Z'))
     expect(out[1].lastSeenMs).toBeUndefined()

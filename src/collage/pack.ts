@@ -7,13 +7,13 @@ import { createPrng } from '../lib/prng.ts'
 // — fully unit-testable.
 
 /** Viewport px per occupancy-grid cell. Smaller = tighter packing, slower. */
-export const GRID_STRIDE = 4
+const GRID_STRIDE = 4
 
 /** x-coordinate assigned to a tile that could not be placed. */
-export const PARKED = -99999
+const PARKED = -99999
 
 /** A tile whose x is below this is considered off-screen / unplaced. */
-export const PARKED_THRESHOLD = -1000
+const PARKED_THRESHOLD = -1000
 
 export function isParked(t: { x: number }): boolean {
   return t.x < PARKED_THRESHOLD
@@ -91,7 +91,6 @@ export function maskPack<T extends PlaceableTile>(
   xBias: number,
   yBias: number,
   pad: number,
-  seed = 0x9e3779b9,
 ): T[] {
   const GW = Math.ceil(W / GRID_STRIDE) + 2
   const GH = Math.ceil(H / GRID_STRIDE) + 2
@@ -152,7 +151,7 @@ export function maskPack<T extends PlaceableTile>(
   // Largest first so the cluster grows around the anchor.
   tiles.sort((a, b) => b.fullW * b.fullH - a.fullW * a.fullH)
   const placed: T[] = []
-  const rand = createPrng(seed)
+  const rand = createPrng()
 
   for (let i = 0; i < tiles.length; i++) {
     const t = tiles[i]
