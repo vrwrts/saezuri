@@ -1,0 +1,26 @@
+name: Docker build
+
+# Validates that the runtime image still builds on pull requests. Release images
+# are built and pushed by release.yml; this workflow never pushes.
+on:
+  pull_request:
+    paths-ignore:
+      - 'site/**'
+      - 'pipeline/**'
+      - 'fixtures/**'
+      - '**.md'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
