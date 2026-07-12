@@ -20,3 +20,16 @@ cp /path/to/avianvisitors/avian/assets/illustrations/*.png public/assets/illustr
 Regenerating a proper European species set via `pipeline/` is a later task. Because the
 placeholders are western-U.S. species, a European BirdNET-Go instance will match few of
 them — unmatched species render the fallback silhouette (by design for v1).
+
+## `nest.webp`
+
+Empty-state illustration, shown where the collage would be when no birds were heard in
+the window. Like the cutouts above it is a **borrowed AvianVisitors placeholder**
+(CC-BY-NC-SA), so it is **gitignored and never shipped**. When absent, the empty state
+falls back to the committed `_fallback.png` silhouette. To populate it locally:
+
+```sh
+cp /path/to/avianvisitors/avian/frontend/nest.webp public/assets/nest.webp
+```
+
+A Saezuri-original nest illustration is a later task, alongside the cutout regeneration.

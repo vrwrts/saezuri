@@ -22,6 +22,10 @@ dist-ssr/
 /public/assets/illustrations/*
 !/public/assets/illustrations/_fallback.png
 
+# Empty-state nest illustration, likewise a borrowed AvianVisitors CC-BY-NC-SA
+# placeholder. The empty state falls back to _fallback.png when it is absent.
+/public/assets/nest.webp
+
 # Layout manifest is a build artifact derived from whatever art is present
 # locally (pipeline/build_masks.py). The app ships a built-in fallback manifest.
 /public/layout-manifest.json

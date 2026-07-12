@@ -195,19 +195,36 @@ body {
   color: var(--live);
 }
 
-.empty-state {
+/* No-birds state: an empty-nest illustration sits where the collage would be,
+   with the status line beneath it. Fills the collage box so it centers just
+   like a collage. Ported from AvianVisitors. */
+.empty-nest {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 28px;
 }
-.empty-bird {
-  width: 120px;
+.empty-nest .nest-img {
+  width: 78%;
+  max-width: 470px;
   height: auto;
-  opacity: 0.18;
+}
+/* Bloom the nest in on mount, reusing the tile keyframe (gtile-in): the nest
+   fades + scales, the status line trails it. */
+.empty-nest.entering .nest-img {
+  animation: gtile-in 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.empty-nest.entering .empty {
+  animation: gtile-in 520ms cubic-bezier(0.2, 0.7, 0.2, 1) 130ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .empty-nest.entering .nest-img,
+  .empty-nest.entering .empty {
+    animation: none;
+  }
 }
 .empty {
   margin: 0;
