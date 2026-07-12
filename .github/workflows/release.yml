@@ -1,0 +1,79 @@
+name: Release
+
+# Continuous, semver release from main. On every push that touches app code,
+# semantic-release inspects the Conventional Commits since the last tag and, if
+# there is a releasable change (feat/fix/perf/breaking), creates the git tag
+# vX.Y.Z and a GitHub Release with auto-generated notes. The image build is
+# chained into the same run (publish-image job) rather than relying on the tag
+# event, because a tag pushed by GITHUB_TOKEN does not trigger other workflows.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'site/**'      # the landing site deploys itself via Cloudflare; never releases the app
+      - 'pipeline/**'  # dev-only illustration tooling, not shipped in the image
+      - 'fixtures/**'
+      - '.github/**'
+      - '**.md'
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # create the tag + GitHub Release
+      issues: write          # semantic-release comments on released issues/PRs
+      pull-requests: write
+    outputs:
+      published: ${{ steps.semantic.outputs.new_release_published }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
+      major: ${{ steps.semantic.outputs.new_release_major }}
+      minor: ${{ steps.semantic.outputs.new_release_minor }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # semantic-release needs full history + tags
+      - uses: cycjimmy/semantic-release-action@v4
+        id: semantic
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-image:
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4          # triggering SHA == the released, tagged commit
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Derive tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=${{ needs.release.outputs.version }}
+            type=raw,value=${{ needs.release.outputs.major }}.${{ needs.release.outputs.minor }}
+            type=raw,value=latest
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

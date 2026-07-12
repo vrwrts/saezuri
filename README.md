@@ -63,16 +63,26 @@ A static one-pager (Astro) lives in [`site/`](site/) and shares the app's design
 ([`shared/theme.css`](shared/theme.css)). It is a separate project, kept out of the Docker
 image, and deploys to Cloudflare Pages — see [`site/README.md`](site/README.md).
 
-## Continuous integration & publishing
+## Continuous integration & releases
 
 - **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs Biome (lint +
   format), type-check, tests, and a production build on every push to `main` and every
   pull request.
-- **Publish** ([`.github/workflows/publish.yml`](.github/workflows/publish.yml)) builds a
-  multi-arch image (`linux/amd64` + `linux/arm64`) and pushes to
-  `ghcr.io/vrwrts/saezuri`: `latest` + `sha-<short>` from `main`, and semver tags from
-  git tags (`vX.Y.Z`). Pull requests build only, no push.
-- **One-time setup:** after the first publish, set the `saezuri` package to **public** in
+- **Docker build** ([`.github/workflows/docker.yml`](.github/workflows/docker.yml))
+  builds the runtime image on pull requests to prove the Dockerfile still works. It never
+  pushes.
+- **Release** ([`.github/workflows/release.yml`](.github/workflows/release.yml)) is
+  continuous and semver-based: on every push to `main` that touches app code,
+  [semantic-release](https://semantic-release.gitbook.io/) reads the
+  [Conventional Commits](https://www.conventionalcommits.org/) since the last release and,
+  if there is a releasable change (`feat`/`fix`/`perf`/breaking), it tags `vX.Y.Z` and
+  publishes a **GitHub Release with auto-generated notes**. The same run then builds the
+  multi-arch image (`linux/amd64` + `linux/arm64`) and pushes it to `ghcr.io/vrwrts/saezuri`
+  as `:X.Y.Z`, `:X.Y`, and `:latest`. No manual tagging.
+- **Site vs app:** changes under `site/` (and `pipeline/`, docs) never cut an app release —
+  the landing site deploys itself to Cloudflare. Commit site and tooling work with
+  non-releasing types (`chore:`, `docs:`).
+- **One-time setup:** after the first release, set the `saezuri` package to **public** in
   the org's GHCR package settings so anonymous `docker pull` works, and link it to the repo.
 
 ## Credits and licensing
