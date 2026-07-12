@@ -33,7 +33,7 @@ export default function App() {
         <ThemeToggle />
       </div>
 
-      <Header eyebrow="recently heard" title="Saezuri" />
+      <Header eyebrow="around here" title="recently heard" />
 
       <div className="controls">
         <WindowPicker value={windowPreset} onChange={setWindowPreset} />
@@ -56,6 +56,7 @@ export default function App() {
           truncated={!USE_MOCK && live.truncated}
           error={!USE_MOCK ? live.error : null}
         />
+        <span className="wordmark">Saezuri · さえずり</span>
       </footer>
     </div>
   )

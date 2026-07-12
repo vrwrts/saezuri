@@ -74,19 +74,72 @@ a {
   text-align: center;
   padding: 92px 0 8px;
 }
-.hero .eyebrow {
-  margin: 0 0 10px;
-  font-style: italic;
-  color: var(--ink-2);
-  letter-spacing: 0.06em;
-  font-size: clamp(13px, 1.4vw, 17px);
-}
 .hero h1 {
   margin: 0;
   font-weight: 700;
   font-size: clamp(44px, 8vw, 78px);
   letter-spacing: 0.01em;
   line-height: 1.02;
+}
+
+/* Title reveal: the romaji wordmark blur-crossfades to the kana さえずり (which
+   means "birdsong"), with a small gloss, on hover or keyboard focus. */
+.wordmark {
+  outline: none;
+  cursor: default;
+}
+.wm-stack {
+  display: inline-grid;
+}
+.wm-stack > span {
+  grid-area: 1 / 1;
+  transition:
+    opacity 450ms ease,
+    filter 450ms ease;
+}
+.wm-kana {
+  opacity: 0;
+  filter: blur(6px);
+  font-family: 'Hiragino Mincho ProN', 'Yu Mincho', var(--font-serif);
+}
+.wordmark:hover .wm-romaji,
+.wordmark:focus-within .wm-romaji {
+  opacity: 0;
+  filter: blur(6px);
+}
+.wordmark:hover .wm-kana,
+.wordmark:focus-within .wm-kana {
+  opacity: 1;
+  filter: blur(0);
+}
+.wm-gloss {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(15px, 2vw, 20px);
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+  opacity: 0;
+  transition: opacity 450ms ease;
+}
+.wordmark:hover .wm-gloss,
+.wordmark:focus-within .wm-gloss {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wm-stack > span,
+  .wm-gloss {
+    transition: none;
+  }
+  .wm-kana,
+  .wordmark:hover .wm-romaji,
+  .wordmark:focus-within .wm-romaji,
+  .wordmark:hover .wm-kana,
+  .wordmark:focus-within .wm-kana {
+    filter: none;
+  }
 }
 .hero .tagline {
   margin: 16px auto 0;

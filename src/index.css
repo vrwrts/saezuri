@@ -43,7 +43,8 @@ body {
   margin: 0;
   font-weight: 700;
   font-size: clamp(26px, 3.4vw, 44px);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--ink);
 }
 .view {
@@ -193,6 +194,17 @@ body {
 }
 .status-warn {
   color: var(--live);
+}
+/* Quiet product signature in the footer — the app's home for the Japanese name.
+   Opts out of the status line's uppercasing so it reads "Saezuri", not "SAEZURI". */
+.wordmark {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-serif);
+  text-transform: none;
+  letter-spacing: 0.04em;
+  font-size: 12px;
+  color: var(--ink-soft);
 }
 
 /* No-birds state: an empty-nest illustration sits where the collage would be,
