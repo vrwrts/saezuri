@@ -18,7 +18,7 @@ const USE_MOCK = import.meta.env.VITE_MOCK === '1'
 
 export default function App() {
   const [windowPreset, setWindowPreset] = useState<WindowPreset>('24H')
-  const { manifest } = useLayoutManifest()
+  const manifest = useLayoutManifest()
   const live = useRecentSpecies(windowPreset)
   const species: Species[] = USE_MOCK ? mockSpecies(manifest) : live.species
 

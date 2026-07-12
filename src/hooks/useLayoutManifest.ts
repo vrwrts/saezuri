@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import type { LayoutManifest } from '../domain/manifest.ts'
 
 // Fetches the layout manifest once at boot. The full manifest (all illustrated
@@ -24,43 +24,25 @@ export const DEFAULT_MANIFEST: LayoutManifest = {
   fallbackKey: '_fallback',
 }
 
-export interface UseLayoutManifest {
-  manifest: LayoutManifest
-  loading: boolean
-  /** True when the built-in fallback is in use (real manifest unavailable). */
-  usingFallback: boolean
+async function fetchManifest(url: string): Promise<LayoutManifest> {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`manifest ${res.status}`)
+  const data = (await res.json()) as LayoutManifest
+  if (!data.masks || !data.fallbackKey || !(data.fallbackKey in data.masks)) {
+    throw new Error('malformed manifest')
+  }
+  return data
 }
 
-export function useLayoutManifest(): UseLayoutManifest {
-  const [manifest, setManifest] = useState<LayoutManifest>(DEFAULT_MANIFEST)
-  const [loading, setLoading] = useState(true)
-  const [usingFallback, setUsingFallback] = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-    const controller = new AbortController()
-    ;(async () => {
-      try {
-        const res = await fetch(MANIFEST_URL, { signal: controller.signal })
-        if (!res.ok) throw new Error(`manifest ${res.status}`)
-        const data = (await res.json()) as LayoutManifest
-        if (cancelled) return
-        if (!data.masks || !data.fallbackKey || !(data.fallbackKey in data.masks)) {
-          throw new Error('malformed manifest')
-        }
-        setManifest(data)
-        setUsingFallback(false)
-      } catch {
-        if (!cancelled) setUsingFallback(true) // keep DEFAULT_MANIFEST
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-      controller.abort()
-    }
-  }, [])
-
-  return { manifest, loading, usingFallback }
+/** Fetches the layout manifest once at boot. When it is absent or malformed —
+ *  a fresh checkout, or a build shipping no borrowed art — SWR keeps the
+ *  built-in single-silhouette fallback so every species still packs. It is a
+ *  static asset, so we don't revalidate on focus or reconnect. */
+export function useLayoutManifest(): LayoutManifest {
+  const { data } = useSWR(MANIFEST_URL, fetchManifest, {
+    fallbackData: DEFAULT_MANIFEST,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  })
+  return data
 }

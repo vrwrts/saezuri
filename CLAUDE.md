@@ -17,8 +17,10 @@ Saezuri just visualizes recent detections.
 - Production: multi-stage Docker build, served by nginx. nginx serves the static
   bundle and reverse-proxies `/api/` to a BirdNET-Go base URL from the `BIRDNETGO_URL`
   env var, resolved at container start.
-- Prefer boring, widely-used dependencies over clever ones. Every dependency added is
-  something a reviewer has to trust, so keep the tree small.
+- Prefer boring, widely-used dependencies over clever ones, and don't reinvent the
+  wheel: reach for a small, well-trusted library when it removes real complexity (e.g.
+  SWR for data fetching). Every dependency is still something a reviewer must trust, so
+  add only what earns its place and keep the tree lean.
 ## Architecture invariants
  
 - The browser only ever talks to Saezuri's own origin. All BirdNET-Go calls go
