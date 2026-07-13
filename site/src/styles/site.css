@@ -72,10 +72,15 @@ a {
 /* ---- Hero ---- */
 .hero {
   text-align: center;
-  padding: 92px 0 8px;
+  /* Vertical only — horizontal gutter comes from the .wrap container.
+     (Using the `padding` shorthand here would reset .wrap's side padding to 0.) */
+  padding-block: 92px 8px;
 }
 .hero h1 {
-  margin: 0;
+  /* fit-content + auto margins: centered, but only as wide as the wordmark,
+     so the hover/focus reveal is triggered by the text itself, not the whole row. */
+  width: fit-content;
+  margin: 0 auto;
   font-weight: 700;
   font-size: clamp(44px, 8vw, 78px);
   letter-spacing: 0.01em;
@@ -223,7 +228,7 @@ a {
 
 /* ---- Sections ---- */
 .section {
-  padding: 56px 0;
+  padding-block: 56px;
   border-top: 1px solid var(--hairline);
 }
 .section h2 {
@@ -305,6 +310,12 @@ a {
   color: var(--ink);
 }
 
+/* Scroll container so a wide table can never push the page wider than the
+   viewport (which would break the mobile gutters). */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .envtable {
   width: 100%;
   border-collapse: collapse;
@@ -325,11 +336,12 @@ a {
 .envtable code {
   font-family: var(--font-mono);
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 /* ---- Footer ---- */
 .footer {
-  padding: 48px 0 72px;
+  padding-block: 48px 72px;
   border-top: 1px solid var(--hairline);
   color: var(--ink-soft);
   font-size: 14px;
@@ -349,6 +361,6 @@ a {
     padding-top: 72px;
   }
   .section {
-    padding: 44px 0;
+    padding-block: 44px;
   }
 }
