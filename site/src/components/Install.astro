@@ -28,23 +28,25 @@
   </div>
 
   <p class="step">Then open <code>http://localhost:8080</code>. Two settings:</p>
-  <table class="envtable">
-    <thead>
-      <tr><th>Variable</th><th>Required</th><th>Description</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>BIRDNETGO_URL</code></td>
-        <td>yes</td>
-        <td>Base URL of your BirdNET-Go instance, e.g. <code>http://192.168.1.10:8080</code>.</td>
-      </tr>
-      <tr>
-        <td><code>BIRDNETGO_TOKEN</code></td>
-        <td>no</td>
-        <td>Token for a private (PrivateMode) instance. Injected by nginx — never sent to the browser.</td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="table-scroll">
+    <table class="envtable">
+      <thead>
+        <tr><th>Variable</th><th>Required</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>BIRDNETGO_URL</code></td>
+          <td>yes</td>
+          <td>Base URL of your BirdNET-Go instance, e.g. <code>http://192.168.1.10:8080</code>.</td>
+        </tr>
+        <tr>
+          <td><code>BIRDNETGO_TOKEN</code></td>
+          <td>no</td>
+          <td>Token for a private (PrivateMode) instance. Injected by nginx — never sent to the browser.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <script is:inline>

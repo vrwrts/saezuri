@@ -72,21 +72,79 @@ a {
 /* ---- Hero ---- */
 .hero {
   text-align: center;
-  padding: 92px 0 8px;
-}
-.hero .eyebrow {
-  margin: 0 0 10px;
-  font-style: italic;
-  color: var(--ink-2);
-  letter-spacing: 0.06em;
-  font-size: clamp(13px, 1.4vw, 17px);
+  /* Vertical only — horizontal gutter comes from the .wrap container.
+     (Using the `padding` shorthand here would reset .wrap's side padding to 0.) */
+  padding-block: 92px 8px;
 }
 .hero h1 {
-  margin: 0;
+  /* fit-content + auto margins: centered, but only as wide as the wordmark,
+     so the hover/focus reveal is triggered by the text itself, not the whole row. */
+  width: fit-content;
+  margin: 0 auto;
   font-weight: 700;
   font-size: clamp(44px, 8vw, 78px);
   letter-spacing: 0.01em;
   line-height: 1.02;
+}
+
+/* Title reveal: the romaji wordmark blur-crossfades to the kana さえずり (which
+   means "birdsong"), with a small gloss, on hover or keyboard focus. */
+.wordmark {
+  outline: none;
+  cursor: default;
+}
+.wm-stack {
+  display: inline-grid;
+}
+.wm-stack > span {
+  grid-area: 1 / 1;
+  transition:
+    opacity 450ms ease,
+    filter 450ms ease;
+}
+.wm-kana {
+  opacity: 0;
+  filter: blur(6px);
+  font-family: 'Hiragino Mincho ProN', 'Yu Mincho', var(--font-serif);
+}
+.wordmark:hover .wm-romaji,
+.wordmark:focus-within .wm-romaji {
+  opacity: 0;
+  filter: blur(6px);
+}
+.wordmark:hover .wm-kana,
+.wordmark:focus-within .wm-kana {
+  opacity: 1;
+  filter: blur(0);
+}
+.wm-gloss {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(15px, 2vw, 20px);
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+  opacity: 0;
+  transition: opacity 450ms ease;
+}
+.wordmark:hover .wm-gloss,
+.wordmark:focus-within .wm-gloss {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wm-stack > span,
+  .wm-gloss {
+    transition: none;
+  }
+  .wm-kana,
+  .wordmark:hover .wm-romaji,
+  .wordmark:focus-within .wm-romaji,
+  .wordmark:hover .wm-kana,
+  .wordmark:focus-within .wm-kana {
+    filter: none;
+  }
 }
 .hero .tagline {
   margin: 16px auto 0;
@@ -170,7 +228,7 @@ a {
 
 /* ---- Sections ---- */
 .section {
-  padding: 56px 0;
+  padding-block: 56px;
   border-top: 1px solid var(--hairline);
 }
 .section h2 {
@@ -252,6 +310,12 @@ a {
   color: var(--ink);
 }
 
+/* Scroll container so a wide table can never push the page wider than the
+   viewport (which would break the mobile gutters). */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .envtable {
   width: 100%;
   border-collapse: collapse;
@@ -272,11 +336,12 @@ a {
 .envtable code {
   font-family: var(--font-mono);
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 /* ---- Footer ---- */
 .footer {
-  padding: 48px 0 72px;
+  padding-block: 48px 72px;
   border-top: 1px solid var(--hairline);
   color: var(--ink-soft);
   font-size: 14px;
@@ -296,6 +361,6 @@ a {
     padding-top: 72px;
   }
   .section {
-    padding: 44px 0;
+    padding-block: 44px;
   }
 }
