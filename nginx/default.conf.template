@@ -31,7 +31,13 @@ server {
     location /api/ {
         proxy_pass ${BIRDNETGO_URL}/api/;
         proxy_http_version 1.1;
-        proxy_set_header Host $host;
+        # Forward the upstream's own host, not the browser's. nginx defaults the
+        # Host header to $proxy_host (the host from proxy_pass), which is what the
+        # dev Vite proxy does via changeOrigin. This matters when BIRDNETGO_URL is
+        # a hostname behind a reverse proxy / Cloudflare that routes by Host: a
+        # `Host $host` here would send the browser's host and the upstream 502s.
+        # For an https upstream, also send SNI (off by default) for the same reason.
+        proxy_ssl_server_name on;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         # SSE-friendly (BirdNET-Go's /detections/stream): no buffering, keep-alive.
