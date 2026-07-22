@@ -24,12 +24,11 @@ them — unmatched species render the fallback silhouette (by design for v1).
 ## `nest.webp`
 
 Empty-state illustration, shown where the collage would be when no birds were heard in
-the window. Like the cutouts above it is a **borrowed AvianVisitors placeholder**
-(CC-BY-NC-SA), so it is **gitignored and never shipped**. When absent, the empty state
-falls back to the committed `_fallback.png` silhouette. To populate it locally:
-
-```sh
-cp /path/to/avianvisitors/avian/frontend/nest.webp public/assets/nest.webp
-```
+the window. It is a **borrowed AvianVisitors illustration** (CC-BY-NC-SA) and, unlike the
+cutout placeholders above, it **is committed and shipped** so the empty state works in built
+images. It carries the CC-BY-NC-SA-4.0 license and is attributed in the top-level
+[`README.md`](../../README.md) and [`LICENSE`](../../LICENSE); the repository as a whole is
+therefore non-commercial. If the file is ever missing, the empty state falls back to the
+committed `_fallback.png` silhouette.
 
 A Saezuri-original nest illustration is a later task, alongside the cutout regeneration.
