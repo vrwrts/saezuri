@@ -5,8 +5,31 @@ services:
     ports:
       - "8080:80"
     environment:
-      # Required: base URL of your BirdNET-Go instance.
+      # Required: base URL of your BirdNET-Go instance, reachable from inside this
+      # container. A LAN IP is simplest; a hostname (incl. one behind a reverse
+      # proxy / Cloudflare) works too — its host is forwarded upstream as Host+SNI.
       BIRDNETGO_URL: ${BIRDNETGO_URL:?set BIRDNETGO_URL in .env}
       # Optional: token for a PrivateMode instance (injected by nginx).
       BIRDNETGO_TOKEN: ${BIRDNETGO_TOKEN:-}
     restart: unless-stopped
+
+    # --- If BirdNET-Go also runs in Docker on this host (recommended) ---
+    # Share its network and set BIRDNETGO_URL to the service name + INTERNAL port
+    # (the right side of BirdNET-Go's `ports:`, usually 8080), e.g.
+    # BIRDNETGO_URL=http://birdnet-go:8080. Traffic stays on the Docker network —
+    # no DNS, no LAN IP that changes, no round-trip out to Cloudflare. Find the
+    # network name with:
+    #   docker inspect <birdnet-go-container> --format '{{json .NetworkSettings.Networks}}'
+    # networks: [birdnet]
+    #
+    # --- Or keep a hostname but pin it to the LAN IP ---
+    # So the container resolves it locally instead of over the internet:
+    # extra_hosts:
+    #   - "birdnet.apps.example.lan:192.168.1.10"
+
+# Uncomment together with `networks: [birdnet]` above to join BirdNET-Go's
+# existing Docker network (created by its own compose project):
+# networks:
+#   birdnet:
+#     external: true
+#     name: birdnet-go_default   # the network BirdNET-Go's compose created

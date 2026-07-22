@@ -26,6 +26,14 @@ One required setting, one optional (see [`.env.example`](.env.example)):
 | `BIRDNETGO_URL`   | yes      | Base URL of your BirdNET-Go instance, e.g. `http://192.168.1.10:8080`.  |
 | `BIRDNETGO_TOKEN` | no       | Auth token for a `PrivateMode` instance; nginx injects it, never the browser. |
 
+`BIRDNETGO_URL` must be reachable **from inside the container**, and its host is forwarded
+upstream as the `Host` header (and SNI, for `https`). A LAN IP is simplest; a hostname works
+too, including one behind a reverse proxy or Cloudflare Tunnel that routes by Host. When
+BirdNET-Go also runs in Docker on the same host, the cleanest option is to put Saezuri on its
+Docker network and point `BIRDNETGO_URL` at the service name + internal port (e.g.
+`http://birdnet-go:8080`) so traffic stays on the local network — see
+[`docker-compose.yml`](docker-compose.yml).
+
 ## Run the published image
 
 ```bash
