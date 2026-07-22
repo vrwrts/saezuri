@@ -22,7 +22,8 @@ THE SOFTWARE.
 ---
 
 NOTE: This license applies only to the original code in this repository.
-The contents of the `pipeline/` directory are licensed separately under
-CC-BY-NC-SA-4.0. See pipeline/LICENSE for details. Because this repository
-bundles and redistributes that material, the repository as a whole is
-subject to the non-commercial restriction of that license.
+The contents of the `pipeline/` directory and the bundled illustration asset
+`public/assets/nest.webp` are licensed separately under CC-BY-NC-SA-4.0. See
+pipeline/LICENSE for the license text and README.md for attribution. Because
+this repository bundles and redistributes that material, the repository as a
+whole is subject to the non-commercial restriction of that license.

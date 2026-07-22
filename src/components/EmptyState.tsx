@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { imagePath } from '../domain/asset.ts'
 
 /** Empty-nest illustration, served from public/. A borrowed AvianVisitors
- *  CC-BY-NC-SA dev placeholder that is gitignored and not shipped. */
+ *  CC-BY-NC-SA asset that is committed and shipped (see LICENSE / README). */
 const NEST_SRC = '/assets/nest.webp'
 
 interface Props {
-  /** Silhouette shown if the nest illustration is missing (e.g. a fresh clone
-   *  or production build, where the placeholder isn't present). */
+  /** Silhouette shown only if the nest illustration ever fails to load — a
+   *  defensive fallback; the nest itself ships with the app. */
   fallbackKey: string
 }
 

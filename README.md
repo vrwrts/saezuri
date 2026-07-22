@@ -99,6 +99,8 @@ backend-agnostic illustration tooling (see [`pipeline/`](pipeline/)).
 - Detections come from **[BirdNET-Go](https://github.com/tphakala/birdnet-go)** by Tomi Phakala.
 
 The reused illustration assets and pipeline carry the **CC-BY-NC-SA-4.0** license inherited
-from BirdNET-Pi — **non-commercial use only**. Purely local, personal use does not trigger
+from BirdNET-Pi — **non-commercial use only**. This includes the empty-state nest
+illustration (`public/assets/nest.webp`), which is bundled and shipped under that license,
+attributed to AvianVisitors / BirdNET-Pi. Purely local, personal use does not trigger
 distribution terms, but publishing images or a derived repository does; confirm the
 obligations before doing so. Attribution headers on ported files are preserved.
