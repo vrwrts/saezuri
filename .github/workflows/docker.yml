@@ -6,9 +6,9 @@ on:
   pull_request:
     paths-ignore:
       - 'site/**'
-      - 'pipeline/**'
       - 'fixtures/**'
       - '**.md'
+      # pipeline/ is bundled into the image now, so PRs touching it must revalidate the build.
 
 jobs:
   build:

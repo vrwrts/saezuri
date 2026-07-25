@@ -31,8 +31,9 @@ dist-ssr/
 # locally (pipeline/build_masks.py). The app ships a built-in fallback manifest.
 /public/layout-manifest.json
 
-# Python venv for the pipeline tooling.
+# Python venv + caches for the pipeline tooling.
 .venv/
+__pycache__/
 
 # Editor / OS
 .DS_Store

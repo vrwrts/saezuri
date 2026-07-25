@@ -1,5 +1,7 @@
 # Keep the build context small and, importantly, keep borrowed CC-BY-NC-SA
 # placeholder art out of the image. Only our own fallback silhouette ships.
+# NOTE: pipeline/ is intentionally NOT ignored — the runtime image bundles the
+# generation scripts and their reference art for the on-demand worker.
 node_modules
 dist
 .venv
@@ -7,7 +9,6 @@ reference
 .git
 .github
 fixtures
-pipeline
 site
 *.md
 

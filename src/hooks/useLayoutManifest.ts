@@ -9,6 +9,12 @@ import type { LayoutManifest } from '../domain/manifest.ts'
 
 const MANIFEST_URL = '/layout-manifest.json'
 
+// Poll the manifest on the same cadence as the species data (useRecentSpecies),
+// so illustrations the optional in-container worker generates on the fly replace
+// the fallback silhouette live, without a manual page reload. The file is served
+// with normal HTTP caching, so an unchanged manifest costs only a cheap 304.
+const MANIFEST_POLL_MS = 30_000
+
 /** Fallback-only manifest, baked from pipeline output. The mask is the exact
  *  silhouette of public/assets/illustrations/_fallback.png so packing is
  *  faithful even with no manifest file present. */
@@ -34,15 +40,15 @@ async function fetchManifest(url: string): Promise<LayoutManifest> {
   return data
 }
 
-/** Fetches the layout manifest once at boot. When it is absent or malformed —
- *  a fresh checkout, or a build shipping no borrowed art — SWR keeps the
- *  built-in single-silhouette fallback so every species still packs. It is a
- *  static asset, so we don't revalidate on focus or reconnect. */
+/** Fetches the layout manifest and re-polls it (see MANIFEST_POLL_MS). When it
+ *  is absent or malformed — a fresh checkout, or a build shipping no borrowed
+ *  art — SWR keeps the built-in single-silhouette fallback so every species
+ *  still packs. Polling (plus revalidate-on-focus/reconnect, SWR's defaults)
+ *  lets art the worker generates on the fly surface without a reload. */
 export function useLayoutManifest(): LayoutManifest {
   const { data } = useSWR(MANIFEST_URL, fetchManifest, {
     fallbackData: DEFAULT_MANIFEST,
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
+    refreshInterval: MANIFEST_POLL_MS,
   })
   return data
 }

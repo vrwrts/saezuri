@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { SWRConfig } from 'swr'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -18,7 +18,16 @@ const REAL_MANIFEST: LayoutManifest = {
 
 function wrapper({ children }: { children: ReactNode }) {
   return (
-    <SWRConfig value={{ provider: () => new Map(), shouldRetryOnError: false }}>
+    // focusThrottleInterval/dedupingInterval: 0 let the revalidation test trigger
+    // a re-fetch immediately after mount instead of being throttled or deduped.
+    <SWRConfig
+      value={{
+        provider: () => new Map(),
+        shouldRetryOnError: false,
+        focusThrottleInterval: 0,
+        dedupingInterval: 0,
+      }}
+    >
       {children}
     </SWRConfig>
   )
@@ -45,5 +54,28 @@ describe('useLayoutManifest', () => {
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
     expect(result.current).toEqual(DEFAULT_MANIFEST)
     expect(Object.keys(result.current.masks)).toEqual(['_fallback'])
+  })
+
+  it('picks up newly generated art on revalidation', async () => {
+    // First load has only the fallback; the worker adds a species before the
+    // next revalidation, so a re-fetch must surface it (no page reload).
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => DEFAULT_MANIFEST })
+      .mockResolvedValue({ ok: true, json: async () => REAL_MANIFEST })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result } = renderHook(() => useLayoutManifest(), { wrapper })
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect('Turdus merula' in result.current.masks).toBe(false)
+
+    // A focus event triggers SWR's revalidation (enabled now that the manifest
+    // is polled rather than fetched once).
+    act(() => {
+      window.dispatchEvent(new Event('focus'))
+    })
+
+    await waitFor(() => expect('Turdus merula' in result.current.masks).toBe(true))
   })
 })

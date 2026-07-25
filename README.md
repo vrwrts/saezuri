@@ -19,12 +19,14 @@ grows the birds you hear most.
 
 ## Configuration
 
-One required setting, one optional (see [`.env.example`](.env.example)):
+One required setting; the rest are optional (see [`.env.example`](.env.example)):
 
-| Variable          | Required | Description                                                             |
-| ----------------- | -------- | ----------------------------------------------------------------------- |
-| `BIRDNETGO_URL`   | yes      | Base URL of your BirdNET-Go instance, e.g. `http://192.168.1.10:8080`.  |
-| `BIRDNETGO_TOKEN` | no       | Auth token for a `PrivateMode` instance; nginx injects it, never the browser. |
+| Variable            | Required | Description                                                             |
+| ------------------- | -------- | ----------------------------------------------------------------------- |
+| `BIRDNETGO_URL`     | yes      | Base URL of your BirdNET-Go instance, e.g. `http://192.168.1.10:8080`.  |
+| `BIRDNETGO_TOKEN`   | no       | Auth token for a `PrivateMode` instance; nginx injects it, never the browser. |
+| `GEMINI_API_KEY`    | no       | Google AI (Gemini) key. Set it to generate illustrations on demand (see below); unset stays display-only. |
+| `GENERATE_INTERVAL` | no       | How often the generator checks for newly detected species. `30m`/`1h`/`600s`; default `30m`. |
 
 `BIRDNETGO_URL` must be reachable **from inside the container**, and its host is forwarded
 upstream as the `Host` header (and SNI, for `https`). A LAN IP is simplest; a hostname works
@@ -43,6 +45,40 @@ docker run -d -p 8080:80 -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
 
 Then open <http://localhost:8080>. Images are published multi-arch (amd64 + arm64), so
 they run on a Raspberry Pi as well as an x86 host.
+
+## On-demand illustrations
+
+Out of the box Saezuri renders every bird as the same generic silhouette — it ships no
+species art. To fill the collage with real kachō-e cutouts **without running the
+[`pipeline/`](pipeline/) by hand**, set `GEMINI_API_KEY`:
+
+```bash
+docker run -d -p 8080:80 \
+  -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
+  -e GEMINI_API_KEY=<your-google-ai-key> \
+  -v saezuri-illustrations:/usr/share/nginx/html/assets/illustrations \
+  ghcr.io/vrwrts/saezuri:latest
+```
+
+A worker then runs beside nginx: every `GENERATE_INTERVAL` it asks your instance which
+species have actually been detected, generates a perched + flight cutout for any that are
+missing (reusing the same pipeline scripts, so the result is identical to a manual run),
+and refreshes the layout manifest the frontend polls. Silhouettes turn into real birds on
+their own over the first hours/days.
+
+Things to know:
+
+- **It uses the paid Gemini image API with _your_ key** — you pay for what it generates.
+  Only detected species are generated (typically dozens), not a whole region.
+- **Persist the art** with the named volume above so container upgrades don't re-spend
+  those API calls. The manifest is rebuilt from the volume at startup.
+- **The image is large.** Bundling the generator (Python + the BiRefNet matting model)
+  makes every image heavy, even when you don't enable generation. A leaner generator-less
+  variant may come later; for now `GEMINI_API_KEY` unset simply means the worker never
+  runs.
+- **Licensing.** Generating art locally for your own display is personal use. The style
+  derives from the CC-BY-NC-SA lineage (see below) — confirm the obligations before
+  publishing generated images.
 
 ## Develop
 
@@ -87,9 +123,10 @@ image, and deploys to Cloudflare Pages — see [`site/README.md`](site/README.md
   publishes a **GitHub Release with auto-generated notes**. The same run then builds the
   multi-arch image (`linux/amd64` + `linux/arm64`) and pushes it to `ghcr.io/vrwrts/saezuri`
   as `:X.Y.Z`, `:X.Y`, and `:latest`. No manual tagging.
-- **Site vs app:** changes under `site/` (and `pipeline/`, docs) never cut an app release —
-  the landing site deploys itself to Cloudflare. Commit site and tooling work with
-  non-releasing types (`chore:`, `docs:`).
+- **Site vs app:** changes under `site/` and docs never cut an app release — the landing
+  site deploys itself to Cloudflare. `pipeline/` now ships in the image (the on-demand
+  illustration worker), so a `feat:`/`fix:` there releases like any other app code; use
+  non-releasing types (`chore:`, `docs:`) for tooling-only tweaks.
 - **One-time setup:** after the first release, set the `saezuri` package to **public** in
   the org's GHCR package settings so anonymous `docker pull` works, and link it to the repo.
 
