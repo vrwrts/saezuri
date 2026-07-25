@@ -224,21 +224,18 @@ def cycle(
 ) -> None:
     species = fetch_detected_species(base_url, token)
     missing = missing_species(species, assets_dir)
-    if max_per_cycle > 0:
-        capped = missing[:max_per_cycle]
-        if len(capped) < len(missing):
-            print(
-                f"saezuri-worker: {len(species)} detected, {len(missing)} missing "
-                f"art; generating {len(capped)} this cycle (--max-per-cycle)"
-            )
-        missing = capped
-    else:
-        print(f"saezuri-worker: {len(species)} detected, {len(missing)} missing art")
+    print(f"saezuri-worker: {len(species)} species detected, {len(missing)} missing art")
     if not missing:
         return
+    if max_per_cycle > 0 and len(missing) > max_per_cycle:
+        print(f"saezuri-worker: capping to {max_per_cycle} this cycle (--max-per-cycle)")
+        missing = missing[:max_per_cycle]
     generate(missing, assets_dir, refs_dir, gemini_key)
+    # Count how many now have a perched cutout (what the frontend keys art on),
+    # so each cycle ends with a clear success tally next to pregen's [ok] lines.
+    generated = sum(1 for _, _, slug in missing if (assets_dir / f"{slug}.png").exists())
     rebuild_manifest(assets_dir)
-    print(f"saezuri-worker: rebuilt manifest after generating up to {len(missing)} species")
+    print(f"saezuri-worker: generated {generated}/{len(missing)} species this cycle; manifest rebuilt")
 
 
 def main() -> int:

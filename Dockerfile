@@ -30,6 +30,12 @@ COPY pipeline/requirements.txt /opt/saezuri/pipeline/requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages \
         -r /opt/saezuri/pipeline/requirements.txt
 
+# Stream the worker's / pregen's stdout straight to `docker logs` rather than
+# letting it sit in a block buffer during long generation runs — that buffering
+# is why successful `[ok]` lines (stdout) weren't showing while failures
+# (stderr, line-buffered) were.
+ENV PYTHONUNBUFFERED=1
+
 # Bake the BiRefNet matting model into the image so the first generation needs
 # no download and works offline. rembg resolves models under U2NET_HOME.
 ENV U2NET_HOME=/opt/saezuri/models
