@@ -3,6 +3,7 @@ import { imagePath, resolveArt, rollFlight } from '../domain/asset.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
 import type { Species } from '../domain/species.ts'
 import { BirdTile } from './BirdTile.tsx'
+import { HoverChip } from './HoverChip.tsx'
 import { computeLayout, type LayoutInput, type Viewport } from './layout.ts'
 import { decodeMaskCached } from './pack.ts'
 
@@ -20,6 +21,10 @@ const RESIZE_DEBOUNCE_MS = 120
 export function Collage({ species, manifest, animate = true, emptyState }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [vp, setVp] = useState<Viewport>({ width: 0, height: 0 })
+  // Scientific name of the bird under the pointer. Kept as a bare id so the chip
+  // reads the live count off the current tiles — it stays fresh across polls and
+  // clears itself when the bird leaves the window.
+  const [hoveredSci, setHoveredSci] = useState<string | null>(null)
   // sci -> prefersFlight, persisted across polls so a bird keeps its pose until
   // it leaves the window (then it re-rolls on return), matching AvianVisitors.
   const poseRef = useRef<Map<string, boolean>>(new Map())
@@ -81,24 +86,32 @@ export function Collage({ species, manifest, animate = true, emptyState }: Props
   const cx = vp.width / 2
   const cy = vp.height / 2
 
+  const visible = tiles.filter((t) => !t.parked)
+  // Read the hovered bird off the current tiles, so a stale id (bird left the
+  // window) simply yields nothing and the chip disappears.
+  const hovered = hoveredSci ? visible.find((t) => t.sci === hoveredSci) : undefined
+
   return (
     <div className="gcollage" ref={containerRef}>
       {species.length === 0
         ? emptyState
-        : tiles
-            .filter((t) => !t.parked)
-            .map((t) => {
-              const dist = Math.hypot(t.x + t.w / 2 - cx, t.y + t.h / 2 - cy)
-              return (
-                <BirdTile
-                  key={t.sci}
-                  tile={t}
-                  animate={animate}
-                  delayMs={Math.min(600, dist * 0.6)}
-                  fallbackUrl={fallbackUrl}
-                />
-              )
-            })}
+        : visible.map((t) => {
+            const dist = Math.hypot(t.x + t.w / 2 - cx, t.y + t.h / 2 - cy)
+            return (
+              <BirdTile
+                key={t.sci}
+                tile={t}
+                animate={animate}
+                delayMs={Math.min(600, dist * 0.6)}
+                fallbackUrl={fallbackUrl}
+                onEnter={() => setHoveredSci(t.sci)}
+                // Only clear if this tile is still the hovered one, so moving
+                // straight from one bird to the next never blanks the chip.
+                onLeave={() => setHoveredSci((cur) => (cur === t.sci ? null : cur))}
+              />
+            )
+          })}
+      {hovered && <HoverChip com={hovered.com} n={hovered.n} />}
     </div>
   )
 }

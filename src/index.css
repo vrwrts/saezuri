@@ -114,6 +114,50 @@ body {
   }
 }
 
+/* Hover chip: names the bird under the pointer, anchored bottom-center over the
+   collage (right above the footer count). Shape and tokens mirror the time
+   picker's active pill; a larger drop shadow lets it float over the plate.
+   pointer-events:none so it never steals hover from the bird beneath it. */
+.hover-chip {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--pill);
+  box-shadow: var(--edge-lg);
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: clamp(14px, 1.4vw, 18px);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: chip-in 140ms ease both;
+}
+.hover-chip strong {
+  font-weight: 700;
+}
+.hover-chip .hover-chip-calls {
+  color: var(--ink-soft);
+  font-style: italic;
+}
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hover-chip {
+    animation: none;
+  }
+}
+
 /* ============ Chrome ============ */
 .mono {
   font-family: var(--font-mono);

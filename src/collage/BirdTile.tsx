@@ -8,10 +8,14 @@ interface Props {
   delayMs: number
   /** Generic silhouette to show if the tile's image fails to load. */
   fallbackUrl: string
+  /** Pointer entered this tile (drives the hover chip). */
+  onEnter?: () => void
+  /** Pointer left this tile. */
+  onLeave?: () => void
 }
 
 /** One absolutely-positioned bird in the collage. */
-export function BirdTile({ tile, animate, delayMs, fallbackUrl }: Props) {
+export function BirdTile({ tile, animate, delayMs, fallbackUrl, onEnter, onLeave }: Props) {
   const [errored, setErrored] = useState(false)
   const src = errored ? fallbackUrl : tile.imageUrl
 
@@ -28,6 +32,8 @@ export function BirdTile({ tile, animate, delayMs, fallbackUrl }: Props) {
       }}
       title={tile.com}
       aria-label={tile.com}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
     >
       <img
         src={src}
