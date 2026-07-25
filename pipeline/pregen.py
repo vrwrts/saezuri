@@ -492,18 +492,27 @@ def gen_one(
                 resp = json.loads(r.read())
             break
         except urllib.error.HTTPError as e:
+            # Read the body once for a human-readable reason (quota id, message,
+            # retry delay) - Gemini puts the useful detail there, not in the
+            # status line.
+            detail = _http_error_detail(e)
             if e.code in (429, 500, 502, 503, 504) and attempt < 3:
                 ra = e.headers.get("Retry-After")
                 try:
                     retry_after = float(ra) if ra else backoff
                 except (TypeError, ValueError):
                     retry_after = backoff  # HTTP-date format, fall back
+                print(f"    [retry] {com} {POSES[pose]}: HTTP {e.code} {detail} "
+                      f"- waiting {retry_after:.0f}s (attempt {attempt + 1}/4)",
+                      file=sys.stderr)
                 time.sleep(retry_after)
                 backoff *= 2
                 continue
-            raise
-        except urllib.error.URLError:
+            raise RuntimeError(f"HTTP {e.code}: {detail}")
+        except urllib.error.URLError as e:
             if attempt < 3:
+                print(f"    [retry] {com} {POSES[pose]}: {e.reason} - waiting "
+                      f"{backoff:.0f}s (attempt {attempt + 1}/4)", file=sys.stderr)
                 time.sleep(backoff)
                 backoff *= 2
                 continue
@@ -529,6 +538,35 @@ def _mime_for(p: Path) -> str:
     if ext == ".webp":
         return "image/webp"
     return "application/octet-stream"
+
+
+def _http_error_detail(e: urllib.error.HTTPError) -> str:
+    """Best-effort concise reason from a Gemini error body: the API message
+    (first line) plus any quota ids and retry delay - e.g. the free-tier
+    `limit: 0` case shows up as `GenerateRequestsPerDayPerProjectPerModel-
+    FreeTier`, which points straight at billing rather than pacing. Falls back
+    to the HTTP reason when the body isn't the JSON shape we expect. Reads the
+    body, so call at most once per exception."""
+    try:
+        body = e.read().decode("utf-8", "replace")
+    except Exception:
+        return e.reason or str(e.code)
+    try:
+        err = json.loads(body)["error"]
+    except (ValueError, KeyError, TypeError):
+        snippet = " ".join(body.split())[:200]
+        return snippet or e.reason or str(e.code)
+    parts = [(err.get("message") or "").split("\n", 1)[0].strip()]
+    tags: list[str] = []
+    for d in err.get("details", []):
+        kind = d.get("@type", "")
+        if kind.endswith("QuotaFailure"):
+            tags += [v["quotaId"] for v in d.get("violations", []) if v.get("quotaId")]
+        elif kind.endswith("RetryInfo") and d.get("retryDelay"):
+            tags.append(f"retry {d['retryDelay']}")
+    if tags:
+        parts.append(f"[{'; '.join(tags)}]")
+    return " ".join(p for p in parts if p) or e.reason or str(e.code)
 
 
 def main() -> int:
