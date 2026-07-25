@@ -186,8 +186,9 @@ def generate(
     gemini_key: str,
 ) -> None:
     """Render + cut out the missing species. pregen renders both poses on the
-    cream ground; cutout removes it (BiRefNet) in place. Both skip files that
-    already exist / are already transparent, so this is idempotent."""
+    cream ground; cutout removes it (BiRefNet) in place. Cutout is run per species
+    (not one batch call) so a single failure can't leave the rest of a bulk cycle
+    uncut, and every failure is logged."""
     args = [str(PREGEN), "--out", str(assets_dir), "--refs", str(refs_dir)]
     if STYLES_DIR.is_dir():
         args += ["--styles", str(STYLES_DIR)]
@@ -203,15 +204,29 @@ def generate(
     env = {**os.environ, "GEMINI_API_KEY": gemini_key}
     _run(args, env=env)
 
-    # Cut out whichever pose files actually landed (a pose can fail).
-    slugs = [
-        f"{slug}{suf}"
-        for _, _, slug in missing
-        for suf in POSE_SUFFIXES
-        if (assets_dir / f"{slug}{suf}.png").exists()
-    ]
-    if slugs:
-        _run([str(CUTOUT), "--dir", str(assets_dir), *slugs])
+    # Cut each species out on its own. A single batch cutout call meant one
+    # failure (a bad render, or the matting model running out of memory partway)
+    # could abort the run and leave the rest of a bulk cycle uncut — the cream
+    # ground never removed — with nothing logged. Re-running one species by hand
+    # worked; the bulk did not. Per-species runs isolate that and surface exactly
+    # which species failed. cutout skips already-transparent files, so re-cut work
+    # stays cheap.
+    failed: list[str] = []
+    for _sci, com, slug in missing:
+        poses = [
+            f"{slug}{suf}"
+            for suf in POSE_SUFFIXES
+            if (assets_dir / f"{slug}{suf}.png").exists()
+        ]
+        if not poses:
+            continue
+        if _run([str(CUTOUT), "--dir", str(assets_dir), *poses]) != 0:
+            failed.append(slug)
+            print(f"saezuri-worker: cutout FAILED for {com} ({slug}); cream ground "
+                  f"left uncut (delete {slug}.png to regenerate)", file=sys.stderr)
+    if failed:
+        print(f"saezuri-worker: cutout failed for {len(failed)}/{len(missing)} "
+              f"species this cycle: {', '.join(failed)}", file=sys.stderr)
 
 
 def cycle(
