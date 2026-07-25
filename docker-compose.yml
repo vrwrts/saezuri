@@ -15,6 +15,8 @@ services:
       # display-only (generic silhouettes), no worker, no runtime cost.
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GENERATE_INTERVAL: ${GENERATE_INTERVAL:-30m}
+      # Throttle between image-API calls (unset => pregen's 6s free-tier default).
+      GENERATE_SLEEP: ${GENERATE_SLEEP:-}
     # Persist generated illustrations across upgrades so the Gemini calls aren't
     # re-spent. The layout manifest is rebuilt from them at startup. Harmless to
     # keep even if you don't generate art (it just holds the fallback silhouette).

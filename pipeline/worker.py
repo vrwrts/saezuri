@@ -22,6 +22,8 @@ Env:
     BIRDNETGO_TOKEN   optional; bearer token for a PrivateMode instance.
     GENERATE_INTERVAL poll cadence between cycles ("30m", "1h", "600s", or plain
                       seconds). Default 30m; floored at 60s.
+    GENERATE_SLEEP    seconds between image-API calls (passed to pregen --sleep).
+                      Unset => pregen's default 6s, to stay under the free tier.
 
 Usage (dev, against a real instance):
     GEMINI_API_KEY=... BIRDNETGO_URL=http://host:8080 \\
@@ -189,6 +191,12 @@ def generate(
     args = [str(PREGEN), "--out", str(assets_dir), "--refs", str(refs_dir)]
     if STYLES_DIR.is_dir():
         args += ["--styles", str(STYLES_DIR)]
+    # Throttle image-API calls to stay within the Gemini free-tier rate limit.
+    # Unset => pregen's own default (6s between calls), i.e. identical to a manual
+    # pipeline run; raise it if your tier is tighter.
+    sleep = os.environ.get("GENERATE_SLEEP", "").strip()
+    if sleep:
+        args += ["--sleep", sleep]
     for sci, com, _ in missing:
         args += ["--species", f"{sci}|{com}"]
     args += ["--poses", "1", "2"]

@@ -27,6 +27,7 @@ One required setting; the rest are optional (see [`.env.example`](.env.example))
 | `BIRDNETGO_TOKEN`   | no       | Auth token for a `PrivateMode` instance; nginx injects it, never the browser. |
 | `GEMINI_API_KEY`    | no       | Google AI (Gemini) key. Set it to generate illustrations on demand (see below); unset stays display-only. |
 | `GENERATE_INTERVAL` | no       | How often the generator checks for newly detected species. `30m`/`1h`/`600s`; default `30m`. |
+| `GENERATE_SLEEP`    | no       | Seconds between image-API calls, to stay under the Gemini free tier. Default `6` (matches the pipeline). |
 
 `BIRDNETGO_URL` must be reachable **from inside the container**, and its host is forwarded
 upstream as the `Host` header (and SNI, for `https`). A LAN IP is simplest; a hostname works
@@ -69,7 +70,9 @@ their own over the first hours/days.
 Things to know:
 
 - **It uses the paid Gemini image API with _your_ key** — you pay for what it generates.
-  Only detected species are generated (typically dozens), not a whole region.
+  Only detected species are generated (typically dozens), not a whole region. There is no
+  count cap; generation is paced by `GENERATE_SLEEP` (default 6s) to stay under the free
+  tier, and it drains over successive cycles.
 - **Persist the art** with the named volume above so container upgrades don't re-spend
   those API calls. The manifest is rebuilt from the volume at startup.
 - **The image is large.** Bundling the generator (Python + the BiRefNet matting model)
