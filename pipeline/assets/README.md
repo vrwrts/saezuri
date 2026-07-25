@@ -7,8 +7,9 @@ are bundled into the runtime image so generation works out of the box. They are
 
 `pregen.py` degrades gracefully when any of these are missing — it just produces
 lower-fidelity output (less consistent kachō-e style, more lookalike drift for a
-few genera). So the worker runs fine before this directory is populated; filling
-it in is a quality improvement.
+few genera). So the worker runs fine without them; they are a quality boost.
+
+Provenance and licensing for every file here are in [`ATTRIBUTION.md`](ATTRIBUTION.md).
 
 ## Layout (paths the worker points at)
 
@@ -26,8 +27,8 @@ it in is a quality improvement.
   | `06-goose-flying-in-moonlight-Koson.jpg` | Goose in moonlight — Ohara Koson |
   | `07-swallows-in-flight-Koson.jpg`  | Swallows in flight — Ohara Koson    |
   | `08-crane-in-small-water-Koson.jpg`| Crane in shallow water — Ohara Koson|
-  | `09-cockatoo-Yoshida.jpg`          | Cockatoo — Hiroshi Yoshida          |
-  | `10-mandarin-ducks-Yoshida.jpg`    | Mandarin ducks — Hiroshi Yoshida    |
+  | `09-cockatoo-Koson.jpg`            | Two cockatoos — Ohara Koson         |
+  | `10-mandarin-ducks-Koson.jpg`      | Mandarin ducks — Ohara Koson        |
 
 - `anti/` → the worker copies these into the reference cache so `pregen.py` finds
   them alongside the Wikipedia photos it fetches. Contrastive "do NOT copy this
@@ -38,17 +39,16 @@ it in is a quality improvement.
   | `_anti_bluejay.jpg`     | A Blue Jay (Cyanocitta cristata) photo    |
   | `_anti_barnswallow.jpg` | A Barn Swallow (Hirundo rustica) photo    |
 
-## Sourcing & licensing checkpoint (before committing these files)
+## Sourcing & licensing
 
-This is deliberately left as a checkpoint, per CLAUDE.md's attribution/licensing
-rules — bundling these into a published image is distribution, so their license
-must be confirmed first.
+All files are from Wikimedia Commons, vetted and recorded in
+[`ATTRIBUTION.md`](ATTRIBUTION.md):
 
-- **Prints (styles/):** source from Wikimedia Commons. Ohara Koson (d. 1945) and
-  Hiroshi Yoshida (d. 1950) works are public domain in the US and in life+70
-  jurisdictions; confirm each specific file's Commons license page says so before
-  bundling.
-- **Anti-ref photos (anti/):** source a clearly CC-BY/CC0/PD-licensed photo of
-  each species (Wikimedia Commons or Wikipedia). Record attribution.
-- Keep a note of each file's source URL + license here or alongside the commit,
-  so the provenance is auditable.
+- **Prints (`styles/`):** ten Ohara Koson (1877–1945) woodblock prints, all
+  **public domain**. (The cockatoo and mandarin-duck slots use Koson prints
+  rather than Yoshida — same PD status, single-artist attribution.)
+- **Anti-ref photos (`anti/`):** one Blue Jay and one Barn Swallow photo, each
+  **CC BY-SA**, bundled unmodified with attribution per the license.
+
+To swap any file, keep the same filename (it's the key `pregen.py`/`STYLE_REFS`
+looks up) and update `ATTRIBUTION.md`.

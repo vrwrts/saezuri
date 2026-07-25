@@ -112,8 +112,8 @@ STYLE_REFS = {
     "large_flight":           "06-goose-flying-in-moonlight-Koson.jpg",
     "small_flight":           "07-swallows-in-flight-Koson.jpg",
     "wader":                  "08-crane-in-small-water-Koson.jpg",
-    "pale_perched":           "09-cockatoo-Yoshida.jpg",
-    "waterfowl_perched":      "10-mandarin-ducks-Yoshida.jpg",
+    "pale_perched":           "09-cockatoo-Koson.jpg",
+    "waterfowl_perched":      "10-mandarin-ducks-Koson.jpg",
 }
 
 # Genus → perched style category. The first match wins. Fallback is
