@@ -78,6 +78,11 @@ body {
   border: 0;
   background: none;
   cursor: default;
+  /* Boxes overlap because the packer nests by silhouette; a plain :hover would
+     light up whichever transparent corner paints on top. The collage container
+     hit-tests the cursor against each mask and toggles .is-hover, so the tiles
+     themselves must not intercept the pointer. */
+  pointer-events: none;
 }
 .gtile img {
   display: block;
@@ -87,13 +92,16 @@ body {
   filter: var(--tile-shadow);
   user-select: none;
   -webkit-user-drag: none;
-  transition: transform 160ms ease;
+  transition:
+    transform 160ms ease,
+    filter 160ms ease;
 }
-.gtile:hover {
+.gtile.is-hover {
   z-index: 3;
 }
-.gtile:hover img {
+.gtile.is-hover img {
   transform: scale(1.04);
+  filter: var(--tile-shadow-hover);
 }
 .gtile.entering {
   animation: gtile-in 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;

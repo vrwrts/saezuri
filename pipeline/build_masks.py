@@ -19,6 +19,8 @@ frontend needs a tiny 1-bit mask per illustration:
                   packed MSB-first row-major, base64. A bit is 1 where the
                   cutout is opaque (alpha > 127). This is exactly what the
                   frontend's mask decoder expects.
+    ver[slug]   = short content hash; the frontend appends it as `?v=<hash>` so a
+                  regenerated same-named image is fetched fresh past the cache.
 
 Usage:
     python3 pipeline/build_masks.py \
@@ -29,6 +31,7 @@ Usage:
 from __future__ import annotations
 import argparse
 import base64
+import hashlib
 import json
 import re
 import sys
@@ -62,14 +65,22 @@ def build_entry(path: "Path"):
     return dims_entry, mask_entry
 
 
+def content_hash(path: Path) -> str:
+    """Short content hash of a PNG. The frontend appends it as `?v=<hash>` so a
+    regenerated image (same filename) becomes a new URL and is fetched fresh past
+    the immutable cache, while an unchanged image keeps its URL and stays cached."""
+    return hashlib.sha1(path.read_bytes()).hexdigest()[:8]
+
+
 def build_tables(illus_dir: Path):
-    """Return (dims, masks) dicts keyed by slug, in sorted order."""
-    dims, masks = {}, {}
+    """Return (dims, masks, ver) dicts keyed by slug, in sorted order."""
+    dims, masks, ver = {}, {}, {}
     pngs = sorted(p for p in illus_dir.glob("*.png")
                   if re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", p.stem))
     for p in pngs:
         dims[p.stem], masks[p.stem] = build_entry(p)
-    return dims, masks
+        ver[p.stem] = content_hash(p)
+    return dims, masks, ver
 
 
 def main() -> int:
@@ -86,7 +97,7 @@ def main() -> int:
                     help="Manifest output path (default: public/layout-manifest.json)")
     args = ap.parse_args()
 
-    dims, masks = build_tables(args.illustrations)
+    dims, masks, ver = build_tables(args.illustrations)
     perched = sum(1 for k in dims if not k.endswith("-2"))
     flight = sum(1 for k in dims if k.endswith("-2"))
     print(f"built {len(dims)} masks ({perched} perched + {flight} flight) "
@@ -96,6 +107,7 @@ def main() -> int:
     # are skipped by build_tables, so it never collides with a real slug).
     if args.fallback.exists():
         dims[FALLBACK_KEY], masks[FALLBACK_KEY] = build_entry(args.fallback)
+        ver[FALLBACK_KEY] = content_hash(args.fallback)
         print(f"added fallback silhouette from {args.fallback}")
     else:
         print(f"warning: no fallback at {args.fallback}; "
@@ -105,7 +117,7 @@ def main() -> int:
         print("error: no cutouts found", file=sys.stderr)
         return 1
 
-    manifest = {"dims": dims, "masks": masks, "fallbackKey": FALLBACK_KEY}
+    manifest = {"dims": dims, "masks": masks, "ver": ver, "fallbackKey": FALLBACK_KEY}
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(manifest, separators=(",", ":")))
     print(f"wrote {args.out} ({len(dims)} entries)")

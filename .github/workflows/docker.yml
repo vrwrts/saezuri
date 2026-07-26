@@ -1,17 +1,23 @@
 name: Docker build
 
-# Validates that the runtime image still builds on pull requests. Release images
-# are built and pushed by release.yml; this workflow never pushes.
+# Validates that the runtime image still builds — for FORK pull requests only.
+# Same-repo branches are already built (and pushed) by preview.yml on their push
+# event, so running here too would build the heavy image twice per PR sync. Fork
+# PRs don't trigger preview.yml (their push is in the fork) and can't push to our
+# GHCR anyway, so they still need this build-only check. Release images are built
+# and pushed by release.yml; this workflow never pushes.
 on:
   pull_request:
     paths-ignore:
       - 'site/**'
-      - 'pipeline/**'
       - 'fixtures/**'
       - '**.md'
+      # pipeline/ is bundled into the image now, so PRs touching it must revalidate the build.
 
 jobs:
   build:
+    # Only fork PRs: same-repo branches are covered by preview.yml.
+    if: github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

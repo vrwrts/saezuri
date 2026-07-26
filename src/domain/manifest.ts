@@ -16,6 +16,10 @@ export interface LayoutManifest {
   dims: Record<string, [number, number]>
   /** slug -> silhouette mask. */
   masks: Record<string, MaskRecord>
+  /** slug -> short content hash, appended to the image URL as `?v=` so a
+   *  regenerated image (same filename) is fetched fresh past the immutable
+   *  cache. Optional: older manifests / the built-in fallback omit it. */
+  ver?: Record<string, string>
   /** A key present in both `dims` and `masks`, used for unmatched species. */
   fallbackKey: string
 }

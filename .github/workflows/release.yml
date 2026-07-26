@@ -11,10 +11,11 @@ on:
     branches: [main]
     paths-ignore:
       - 'site/**'      # the landing site deploys itself via Cloudflare; never releases the app
-      - 'pipeline/**'  # dev-only illustration tooling, not shipped in the image
       - 'fixtures/**'
       - '.github/**'
       - '**.md'
+      # pipeline/ IS shipped now (the on-demand illustration worker runs in the
+      # image), so changes there can cut a release like any other app code.
 
 concurrency:
   group: release
