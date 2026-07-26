@@ -82,7 +82,7 @@ export function Collage({ species, manifest, animate = true, emptyState }: Props
     return computeLayout(inputs, vp)
   }, [species, manifest, vp])
 
-  const fallbackUrl = imagePath(manifest.fallbackKey)
+  const fallbackUrl = imagePath(manifest.fallbackKey, manifest.ver?.[manifest.fallbackKey])
   const cx = vp.width / 2
   const cy = vp.height / 2
 

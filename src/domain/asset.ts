@@ -24,8 +24,11 @@ export interface SpeciesArt {
   pose: 1 | 2
 }
 
-export function imagePath(key: string): string {
-  return `${ILLUSTRATIONS_BASE}/${key}.png`
+export function imagePath(key: string, ver?: string): string {
+  const url = `${ILLUSTRATIONS_BASE}/${key}.png`
+  // `?v=<hash>` busts the immutable cache when a same-named image is regenerated;
+  // an unchanged image keeps its URL and stays cached.
+  return ver ? `${url}?v=${ver}` : url
 }
 
 /** True when the species has its own illustration in the manifest. */
@@ -47,12 +50,17 @@ export function resolveArt(
 
   if (!(base in manifest.masks)) {
     const key = manifest.fallbackKey
-    return { key, imageUrl: imagePath(key), illustrated: false, pose: 1 }
+    return { key, imageUrl: imagePath(key, manifest.ver?.[key]), illustrated: false, pose: 1 }
   }
 
   const flightKey = `${base}-2`
   if (prefersFlight && flightKey in manifest.masks) {
-    return { key: flightKey, imageUrl: imagePath(flightKey), illustrated: true, pose: 2 }
+    return {
+      key: flightKey,
+      imageUrl: imagePath(flightKey, manifest.ver?.[flightKey]),
+      illustrated: true,
+      pose: 2,
+    }
   }
-  return { key: base, imageUrl: imagePath(base), illustrated: true, pose: 1 }
+  return { key: base, imageUrl: imagePath(base, manifest.ver?.[base]), illustrated: true, pose: 1 }
 }

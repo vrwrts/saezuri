@@ -50,6 +50,17 @@ describe('resolveArt', () => {
       pose: 1,
     })
   })
+
+  it('appends the content-hash version to the URL when the manifest carries one', () => {
+    const versioned: LayoutManifest = { ...manifest, ver: { 'turdus-merula': 'abc12345' } }
+    // The keyed image gets `?v=`; a species without a `ver` entry stays unversioned.
+    expect(resolveArt(versioned, 'Turdus merula', false).imageUrl).toBe(
+      '/assets/illustrations/turdus-merula.png?v=abc12345',
+    )
+    expect(resolveArt(versioned, 'Parus major', false).imageUrl).toBe(
+      '/assets/illustrations/parus-major.png',
+    )
+  })
 })
 
 describe('hasArt', () => {
