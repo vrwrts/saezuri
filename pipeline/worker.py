@@ -186,9 +186,11 @@ def generate(
     gemini_key: str,
 ) -> None:
     """Render + cut out the missing species. pregen renders both poses on the
-    cream ground; cutout removes it (BiRefNet) in place. Cutout is run per species
-    (not one batch call) so a single failure can't leave the rest of a bulk cycle
-    uncut, and every failure is logged."""
+    cream ground; cutout removes it (BiRefNet). Cutout is run one pose per process:
+    the matting model is heavy, and a second inference in the same process gets
+    OOM-killed on a small host (the logs showed a perched pose cutting fine and the
+    flight pose in the same call then failing). Any failure is logged with its exit
+    code."""
     args = [str(PREGEN), "--out", str(assets_dir), "--refs", str(refs_dir)]
     if STYLES_DIR.is_dir():
         args += ["--styles", str(STYLES_DIR)]
@@ -204,29 +206,30 @@ def generate(
     env = {**os.environ, "GEMINI_API_KEY": gemini_key}
     _run(args, env=env)
 
-    # Cut each species out on its own. A single batch cutout call meant one
-    # failure (a bad render, or the matting model running out of memory partway)
-    # could abort the run and leave the rest of a bulk cycle uncut — the cream
-    # ground never removed — with nothing logged. Re-running one species by hand
-    # worked; the bulk did not. Per-species runs isolate that and surface exactly
-    # which species failed. cutout skips already-transparent files, so re-cut work
-    # stays cheap.
+    # Cut each pose in its OWN cutout process. A batch (or even both poses of one
+    # species) shares a single process, and the logs showed the second inference
+    # in that process being killed — the perched pose cut fine, then the flight
+    # pose in the same call failed with no [cut] line. A fresh process per pose
+    # matches the confirmed-working "one image at a time" behaviour and lets the OS
+    # reclaim the matting model's memory between images. cutout skips already-cut
+    # files, so re-runs stay cheap. The exit code is logged so an OOM kill
+    # (137 / negative) is distinguishable from a bad render (1) or cutout error (2).
+    pose_files = [
+        f"{slug}{suf}"
+        for _, _, slug in missing
+        for suf in POSE_SUFFIXES
+        if (assets_dir / f"{slug}{suf}.png").exists()
+    ]
     failed: list[str] = []
-    for _sci, com, slug in missing:
-        poses = [
-            f"{slug}{suf}"
-            for suf in POSE_SUFFIXES
-            if (assets_dir / f"{slug}{suf}.png").exists()
-        ]
-        if not poses:
-            continue
-        if _run([str(CUTOUT), "--dir", str(assets_dir), *poses]) != 0:
-            failed.append(slug)
-            print(f"saezuri-worker: cutout FAILED for {com} ({slug}); cream ground "
-                  f"left uncut (delete {slug}.png to regenerate)", file=sys.stderr)
+    for pose in pose_files:
+        rc = _run([str(CUTOUT), "--dir", str(assets_dir), pose])
+        if rc != 0:
+            failed.append(pose)
+            print(f"saezuri-worker: cutout FAILED for {pose}.png (exit {rc}); "
+                  f"cream ground left uncut", file=sys.stderr)
     if failed:
-        print(f"saezuri-worker: cutout failed for {len(failed)}/{len(missing)} "
-              f"species this cycle: {', '.join(failed)}", file=sys.stderr)
+        print(f"saezuri-worker: cutout failed for {len(failed)}/{len(pose_files)} "
+              f"pose(s) this cycle: {', '.join(failed)}", file=sys.stderr)
 
 
 def cycle(
