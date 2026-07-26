@@ -8,21 +8,20 @@ interface Props {
   delayMs: number
   /** Generic silhouette to show if the tile's image fails to load. */
   fallbackUrl: string
-  /** Pointer entered this tile (drives the hover chip). */
-  onEnter?: () => void
-  /** Pointer left this tile. */
-  onLeave?: () => void
+  /** Cursor is over this bird's silhouette — hit-tested by the collage container,
+   *  not by this tile (it's pointer-events:none). Drives the scale + chip. */
+  hovered?: boolean
 }
 
 /** One absolutely-positioned bird in the collage. */
-export function BirdTile({ tile, animate, delayMs, fallbackUrl, onEnter, onLeave }: Props) {
+export function BirdTile({ tile, animate, delayMs, fallbackUrl, hovered }: Props) {
   const [errored, setErrored] = useState(false)
   const src = errored ? fallbackUrl : tile.imageUrl
 
   return (
     <button
       type="button"
-      className={`gtile${animate ? ' entering' : ''}`}
+      className={`gtile${animate ? ' entering' : ''}${hovered ? ' is-hover' : ''}`}
       style={{
         left: `${tile.x}px`,
         top: `${tile.y}px`,
@@ -30,10 +29,7 @@ export function BirdTile({ tile, animate, delayMs, fallbackUrl, onEnter, onLeave
         height: `${tile.h}px`,
         animationDelay: animate ? `${delayMs}ms` : undefined,
       }}
-      title={tile.com}
       aria-label={tile.com}
-      onMouseEnter={onEnter}
-      onMouseLeave={onLeave}
     >
       <img
         src={src}

@@ -76,6 +76,25 @@ export function decodeMaskCached(key: string, rec: MaskRecord): DecodedMask {
   return decoded
 }
 
+// The sparse `cells` list is ideal for the packer (cost scales with silhouette
+// area) but the wrong shape for a point test. Build a dense lookup grid lazily,
+// keyed on the mask's identity — decodeMaskCached keeps that object stable for
+// the session, so each silhouette's grid is built at most once. This is the
+// direct equivalent of AvianVisitors' lazily-built `_set` in maskHitTest.
+const hitGridCache = new WeakMap<DecodedMask, Uint8Array>()
+
+/** True if mask cell (mx,my) is opaque. Out-of-range is a miss. */
+export function maskOpaqueAt(mask: DecodedMask, mx: number, my: number): boolean {
+  if (mx < 0 || my < 0 || mx >= mask.w || my >= mask.h) return false
+  let grid = hitGridCache.get(mask)
+  if (!grid) {
+    grid = new Uint8Array(mask.w * mask.h)
+    for (const [x, y] of mask.cells) grid[y * mask.w + x] = 1
+    hitGridCache.set(mask, grid)
+  }
+  return grid[my * mask.w + mx] === 1
+}
+
 /**
  * Assign each tile an (x, y) top-left in viewport coords. Places the largest
  * tile at center, then spirals outward in elliptical rings (stretched by

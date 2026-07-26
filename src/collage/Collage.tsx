@@ -1,9 +1,17 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { imagePath, resolveArt, rollFlight } from '../domain/asset.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
 import type { Species } from '../domain/species.ts'
 import { BirdTile } from './BirdTile.tsx'
 import { HoverChip } from './HoverChip.tsx'
+import { hitTest } from './hitTest.ts'
 import { computeLayout, type LayoutInput, type Viewport } from './layout.ts'
 import { decodeMaskCached } from './pack.ts'
 
@@ -91,8 +99,27 @@ export function Collage({ species, manifest, animate = true, emptyState }: Props
   // window) simply yields nothing and the chip disappears.
   const hovered = hoveredSci ? visible.find((t) => t.sci === hoveredSci) : undefined
 
+  // Silhouette hover, arbitrated at the container: the tiles are pointer-events:
+  // none (see index.css), so the boxes never intercept — we hit-test the cursor
+  // against each bird's mask and light up only the shape actually under it. The
+  // handler closes over the current `visible` each render.
+  const onMove = (e: ReactMouseEvent<HTMLDivElement>) => {
+    const el = containerRef.current
+    if (!el) return
+    const b = el.getBoundingClientRect()
+    const hit = hitTest(e.clientX - b.left, e.clientY - b.top, visible)
+    const next = hit ? hit.sci : null
+    setHoveredSci((cur) => (cur === next ? cur : next))
+  }
+
   return (
-    <div className="gcollage" ref={containerRef}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: read-only display; these handlers only track the pointer to highlight a silhouette (decorative, no click/keyboard equivalent). Accessible names live on the child bird buttons.
+    <div
+      className="gcollage"
+      ref={containerRef}
+      onMouseMove={onMove}
+      onMouseLeave={() => setHoveredSci(null)}
+    >
       {species.length === 0
         ? emptyState
         : visible.map((t) => {
@@ -104,10 +131,7 @@ export function Collage({ species, manifest, animate = true, emptyState }: Props
                 animate={animate}
                 delayMs={Math.min(600, dist * 0.6)}
                 fallbackUrl={fallbackUrl}
-                onEnter={() => setHoveredSci(t.sci)}
-                // Only clear if this tile is still the hovered one, so moving
-                // straight from one bird to the next never blanks the chip.
-                onLeave={() => setHoveredSci((cur) => (cur === t.sci ? null : cur))}
+                hovered={t.sci === hoveredSci}
               />
             )
           })}
