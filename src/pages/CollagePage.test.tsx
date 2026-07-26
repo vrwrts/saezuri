@@ -30,7 +30,7 @@ function activeTab() {
 
 describe('CollagePage routing', () => {
   it('activates the window named by the URL', () => {
-    renderAt('/7d')
+    renderAt('/collage/7d')
     expect(activeTab()).toHaveTextContent('7D')
   })
 
@@ -39,13 +39,18 @@ describe('CollagePage routing', () => {
     expect(activeTab()).toHaveTextContent('24H')
   })
 
-  it('redirects an unknown path to the default window', () => {
+  it('redirects an off-base path to the default window', () => {
     renderAt('/nonsense')
     expect(activeTab()).toHaveTextContent('24H')
   })
 
+  it('redirects an unknown window under the base to the default', () => {
+    renderAt('/collage/nonsense')
+    expect(activeTab()).toHaveTextContent('24H')
+  })
+
   it('navigates to a new URL when a window tab is clicked', () => {
-    renderAt('/24h')
+    renderAt('/collage/24h')
     fireEvent.click(screen.getByRole('tab', { name: '1H' }))
     expect(activeTab()).toHaveTextContent('1H')
   })

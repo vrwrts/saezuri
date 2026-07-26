@@ -9,29 +9,31 @@ import { WindowPicker } from '../components/WindowPicker.tsx'
 import { mockSpecies } from '../dev/mock.ts'
 import { hasArt } from '../domain/asset.ts'
 import type { Species } from '../domain/species.ts'
-import { pathToPreset, presetToPath, type WindowPreset } from '../domain/window.ts'
+import { pathToPreset, presetToSegment, type WindowPreset } from '../domain/window.ts'
 import { useLayoutManifest } from '../hooks/useLayoutManifest.ts'
 import { useRecentSpecies } from '../hooks/useRecentSpecies.ts'
+import { collagePath } from '../routes.ts'
 
 // When VITE_MOCK=1, species come from the local manifest instead of a live
 // BirdNET-Go, so the collage can be demoed without a backend.
 const USE_MOCK = import.meta.env.VITE_MOCK === '1'
 
-/** The collage for a single time window, addressed by URL (`/1h`, `/24h`, …).
- *  The window preset lives entirely in the path — this component derives it from
- *  the `:window` route param and navigates to change it, so a window is
- *  shareable, bookmarkable, and survives reload. */
+/** The collage for a single time window, addressed by URL (`/collage/1h`,
+ *  `/collage/24h`, …). The window preset lives entirely in the path — this
+ *  component derives it from the `:window` route param and navigates to change
+ *  it, so a window is shareable, bookmarkable, and survives reload. */
 export default function CollagePage() {
   const { window: windowParam } = useParams()
   const preset = pathToPreset(windowParam ?? '')
 
   // Unknown window in the URL: send it to the default rather than rendering
-  // nothing. The route table also catches `/` and non-window paths, but this
-  // guards a segment that looked like one but isn't (e.g. `/2h`).
-  if (!preset) return <Navigate to={presetToPath('24H')} replace />
-  // Canonicalize casing so the address bar matches the picker (`/1H` -> `/1h`).
-  if (windowParam !== preset.toLowerCase()) {
-    return <Navigate to={presetToPath(preset)} replace />
+  // nothing. The route table also catches `/` and non-collage paths, but this
+  // guards a segment that looked like a window but isn't (e.g. `/collage/2h`).
+  if (!preset) return <Navigate to={collagePath('24H')} replace />
+  // Canonicalize casing so the address bar matches the picker (`/collage/1H` ->
+  // `/collage/1h`).
+  if (windowParam !== presetToSegment(preset)) {
+    return <Navigate to={collagePath(preset)} replace />
   }
 
   return <CollageView preset={preset} />
@@ -57,7 +59,7 @@ function CollageView({ preset }: { preset: WindowPreset }) {
       <Header eyebrow="around here" title="recently heard" />
 
       <div className="controls">
-        <WindowPicker value={preset} onChange={(p) => navigate(presetToPath(p))} />
+        <WindowPicker value={preset} onChange={(p) => navigate(collagePath(p))} />
       </div>
 
       <main className="view">

@@ -1,16 +1,17 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { presetToPath } from './domain/window.ts'
 import CollagePage from './pages/CollagePage.tsx'
+import { COLLAGE_ROUTE, collagePath } from './routes.ts'
 
-// Each time window is its own URL (`/1h`, `/12h`, `/24h`, `/7d`, `/all`). The
-// `:window` route renders the collage for that window; anything else — the bare
-// root or an unknown path — redirects to the default window. nginx and the Vite
-// dev server both fall back to index.html, so these deep links resolve directly.
+// Each time window is its own URL under the collage base (`/collage/1h`,
+// `/collage/24h`, …). The `:window` route renders the collage for that window;
+// anything else — including the bare root — redirects to the default window.
+// nginx and the Vite dev server both fall back to index.html, so these deep
+// links resolve directly.
 export default function App() {
   return (
     <Routes>
-      <Route path="/:window" element={<CollagePage />} />
-      <Route path="*" element={<Navigate to={presetToPath('24H')} replace />} />
+      <Route path={COLLAGE_ROUTE} element={<CollagePage />} />
+      <Route path="*" element={<Navigate to={collagePath('24H')} replace />} />
     </Routes>
   )
 }
