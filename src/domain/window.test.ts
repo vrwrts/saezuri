@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveWindow, WINDOW_PRESETS, ymd } from './window.ts'
+import { pathToPreset, presetToSegment, resolveWindow, WINDOW_PRESETS, ymd } from './window.ts'
 
 describe('resolveWindow', () => {
   const now = Date.parse('2026-07-08T12:00:00Z')
@@ -25,6 +25,34 @@ describe('resolveWindow', () => {
 
   it('covers every preset', () => {
     for (const p of WINDOW_PRESETS) expect(resolveWindow(p, now)).toBeTruthy()
+  })
+})
+
+describe('preset <-> segment', () => {
+  it('maps each preset to a lowercase segment', () => {
+    expect(presetToSegment('1H')).toBe('1h')
+    expect(presetToSegment('12H')).toBe('12h')
+    expect(presetToSegment('24H')).toBe('24h')
+    expect(presetToSegment('7D')).toBe('7d')
+    expect(presetToSegment('ALL')).toBe('all')
+  })
+
+  it('round-trips every preset through its segment', () => {
+    for (const p of WINDOW_PRESETS) {
+      expect(pathToPreset(presetToSegment(p))).toBe(p)
+    }
+  })
+
+  it('parses case-insensitively and tolerates surrounding slashes', () => {
+    expect(pathToPreset('1H')).toBe('1H')
+    expect(pathToPreset('/7d/')).toBe('7D')
+    expect(pathToPreset('ALL')).toBe('ALL')
+  })
+
+  it('returns null for anything that is not a known window', () => {
+    expect(pathToPreset('')).toBeNull()
+    expect(pathToPreset('2h')).toBeNull()
+    expect(pathToPreset('garbage')).toBeNull()
   })
 })
 

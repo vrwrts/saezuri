@@ -20,13 +20,17 @@ interface Props {
   manifest: LayoutManifest
   /** Bloom tiles in on mount (disable for screenshots). */
   animate?: boolean
+  /** Namespaces the tile keys so a change remounts every tile — used to replay
+   *  the entrance bloom when the whole set turns over (e.g. switching windows),
+   *  while a same-key poll still re-blooms only newly-arrived birds. */
+  blossomKey?: string
   /** Rendered when there are no birds in the window. */
   emptyState?: ReactNode
 }
 
 const RESIZE_DEBOUNCE_MS = 120
 
-export function Collage({ species, manifest, animate = true, emptyState }: Props) {
+export function Collage({ species, manifest, animate = true, blossomKey = '', emptyState }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [vp, setVp] = useState<Viewport>({ width: 0, height: 0 })
   // Scientific name of the bird under the pointer. Kept as a bare id so the chip
@@ -126,7 +130,7 @@ export function Collage({ species, manifest, animate = true, emptyState }: Props
             const dist = Math.hypot(t.x + t.w / 2 - cx, t.y + t.h / 2 - cy)
             return (
               <BirdTile
-                key={t.sci}
+                key={`${blossomKey}:${t.sci}`}
                 tile={t}
                 animate={animate}
                 delayMs={Math.min(600, dist * 0.6)}

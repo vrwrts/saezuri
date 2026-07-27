@@ -12,6 +12,19 @@ export type WindowPreset = '1H' | '12H' | '24H' | '7D' | 'ALL'
 
 export const WINDOW_PRESETS: readonly WindowPreset[] = ['1H', '12H', '24H', '7D', 'ALL']
 
+/** Canonical URL segment for a preset: `'1H' -> '1h'`, `'ALL' -> 'all'`. The
+ *  route layer composes this under a base path (see src/routes.ts). */
+export function presetToSegment(preset: WindowPreset): string {
+  return preset.toLowerCase()
+}
+
+/** Parse a URL path segment back to a preset, case-insensitively and tolerant of
+ *  surrounding slashes. Returns null for anything that isn't a known window. */
+export function pathToPreset(segment: string): WindowPreset | null {
+  const seg = segment.replace(/^\/+|\/+$/g, '').toLowerCase()
+  return WINDOW_PRESETS.find((p) => p.toLowerCase() === seg) ?? null
+}
+
 const HOURS: Record<Exclude<WindowPreset, 'ALL'>, number> = {
   '1H': 1,
   '12H': 12,

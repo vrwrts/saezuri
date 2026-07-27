@@ -1,0 +1,57 @@
+// @vitest-environment jsdom
+import { fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { describe, expect, it, vi } from 'vitest'
+import App from '../App.tsx'
+
+// The window preset now lives in the URL; these tests exercise the URL <-> window
+// wiring in isolation. The data hooks are stubbed so nothing fetches, and Collage
+// is stubbed because it uses ResizeObserver (absent in jsdom) and is irrelevant
+// to routing — the active tab reflects the resolved window.
+vi.mock('../hooks/useRecentSpecies.ts', () => ({
+  useRecentSpecies: () => ({ species: [], truncated: false, error: null }),
+}))
+vi.mock('../hooks/useLayoutManifest.ts', () => ({
+  useLayoutManifest: () => ({ dims: {}, masks: {}, fallbackKey: '_fallback' }),
+}))
+vi.mock('../collage/Collage.tsx', () => ({ Collage: () => null }))
+
+function renderAt(path: string) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <App />
+    </MemoryRouter>,
+  )
+}
+
+function activeTab() {
+  return screen.getAllByRole('tab').find((t) => t.getAttribute('aria-selected') === 'true')
+}
+
+describe('CollagePage routing', () => {
+  it('activates the window named by the URL', () => {
+    renderAt('/collage/7d')
+    expect(activeTab()).toHaveTextContent('7D')
+  })
+
+  it('redirects the bare root to the default window', () => {
+    renderAt('/')
+    expect(activeTab()).toHaveTextContent('24H')
+  })
+
+  it('redirects an off-base path to the default window', () => {
+    renderAt('/nonsense')
+    expect(activeTab()).toHaveTextContent('24H')
+  })
+
+  it('redirects an unknown window under the base to the default', () => {
+    renderAt('/collage/nonsense')
+    expect(activeTab()).toHaveTextContent('24H')
+  })
+
+  it('navigates to a new URL when a window tab is clicked', () => {
+    renderAt('/collage/24h')
+    fireEvent.click(screen.getByRole('tab', { name: '1H' }))
+    expect(activeTab()).toHaveTextContent('1H')
+  })
+})
