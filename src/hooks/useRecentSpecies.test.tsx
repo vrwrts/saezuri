@@ -40,6 +40,16 @@ describe('useRecentSpecies', () => {
     expect(result.current.error).toBeNull()
   })
 
+  it('reports loading on the first fetch, then clears it', async () => {
+    mockLoad.mockResolvedValue({ species: [], truncated: false })
+
+    const { result } = renderHook(() => useRecentSpecies('24H'), { wrapper })
+
+    // No cached data yet: the first fetch is in flight.
+    expect(result.current.loading).toBe(true)
+    await waitFor(() => expect(result.current.loading).toBe(false))
+  })
+
   it('exposes the error and keeps species empty on failure', async () => {
     mockLoad.mockRejectedValue(new Error('offline'))
 

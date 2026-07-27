@@ -297,3 +297,61 @@ body {
   text-transform: uppercase;
   color: var(--ink-soft);
 }
+
+/* First-load indicator: a small centered caption with a subtle shimmer — a soft
+   band of stronger ink sweeps across the muted text. Fills the collage box and
+   centers exactly like .empty-nest, so switching between loading / empty /
+   collage never shifts the center. Shown only on a window's first fetch (see
+   useRecentSpecies `loading`). The caption stays lowercase — no text-transform,
+   unlike .empty. */
+.collage-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.loading-caption {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  /* Mostly muted base with a narrow band of stronger ink at the center;
+     background-clip:text paints it onto the glyphs and the sweep animates
+     background-position. A narrow band reads as a hint of darkness wiping
+     across a handful of letters (not the whole line shifting color). Stops are
+     theme tokens, so it darkens in light and lightens in dark; the edges match
+     (--ink-soft), so a one-period slide loops seamlessly. */
+  background: linear-gradient(
+    90deg,
+    var(--ink-soft) 0%,
+    var(--ink-soft) 43%,
+    var(--ink-2) 50%,
+    var(--ink-soft) 57%,
+    var(--ink-soft) 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  /* Start with the band already on the text (no initial delay); ease-in-out
+     gives it a quick wipe through the middle. */
+  animation: caption-shimmer 1.7s ease-in-out infinite;
+}
+@keyframes caption-shimmer {
+  0% {
+    background-position: 100% center;
+  }
+  100% {
+    background-position: -100% center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-caption {
+    animation: none;
+    background: none;
+    color: var(--ink-soft);
+    -webkit-text-fill-color: var(--ink-soft);
+  }
+}
