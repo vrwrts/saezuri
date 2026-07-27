@@ -11,9 +11,15 @@ import { mockSpecies } from '../dev/mock.ts'
 import { hasArt } from '../domain/asset.ts'
 import type { Species } from '../domain/species.ts'
 import { pathToPreset, presetToSegment, type WindowPreset } from '../domain/window.ts'
+import { useDelayedFlag } from '../hooks/useDelayedFlag.ts'
 import { useLayoutManifest } from '../hooks/useLayoutManifest.ts'
 import { useRecentSpecies } from '../hooks/useRecentSpecies.ts'
 import { collagePath } from '../routes.ts'
+
+// A fast window switch resolves in well under a second; showing the loading
+// indicator immediately makes it flash jarringly. Hold it back so only a
+// genuinely slow load ever surfaces it.
+const LOADING_INDICATOR_DELAY_MS = 1000
 
 // When VITE_MOCK=1, species come from the local manifest instead of a live
 // BirdNET-Go, so the collage can be demoed without a backend.
@@ -51,6 +57,11 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   // mode synthesizes species synchronously, so it never has a loading phase.
   const loading = USE_MOCK ? false : live.loading
 
+  // Suppress the indicator for the first second of loading — a quick load shows
+  // nothing rather than a jarring flash. `loading` still gates the collage, so
+  // the view stays blank until either the data arrives or the delay elapses.
+  const showLoadingIndicator = useDelayedFlag(loading, LOADING_INDICATOR_DELAY_MS)
+
   const notIllustrated = useMemo(
     () => species.filter((s) => !hasArt(manifest, s.sci)).length,
     [species, manifest],
@@ -70,7 +81,7 @@ function CollageView({ preset }: { preset: WindowPreset }) {
 
       <main className="view">
         {loading ? (
-          <CollageLoading />
+          showLoadingIndicator && <CollageLoading />
         ) : (
           <ErrorBoundary>
             <Collage
