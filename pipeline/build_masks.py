@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """AvianVisitors - rebuild the collage silhouette masks from the cutouts.
 
-Step 3 of the illustration pipeline (after pregen.py and cutout.py).
+Step 3 of the illustration pipeline (after pregen.py and matte.py).
 
   --- Ported into Saezuri (pipeline/) with attribution preserved. The only
   change from the AvianVisitors original is the OUTPUT: instead of rewriting

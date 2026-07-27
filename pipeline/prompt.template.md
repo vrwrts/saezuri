@@ -22,9 +22,9 @@ Generate a {pose} {com_name} ({sci_name}) in the style of an Edo-period Japanese
 
 Confident sumi-e ink linework with soft watercolor washes. Earthy, restrained palette: burnt umber, ochre, indigo, vermillion, muted greens. The body should look like flat painted paper - not a textured surface, not shaded volume. If the species has subtle plumage variation (streaking, mottling, fine barring), ABSTRACT it into 2-3 broad zones rather than rendering it literally. Eye, beak, and feet drawn with crisp ink - these are the only places where confident dark line is appropriate.
 
-The bird sits on a CONSISTENT WARM CREAM tonal background - like aged Japanese mulberry paper, a soft warm buff cream color. The cream ground fills the entire frame as the background and is identical across every print for visual consistency. This is the only background element: NO branch, NO twig, NO perch, NO leaves, NO foliage, NO substrate, NO scenery, NO sky, NO moon, NO water - only the bird floating against the cream paper ground. The perch is purely implied by toe posture - it is NEVER rendered. NO border or frame, NO text or signature.
+The bird floats against a COMPLETELY UNIFORM, FLAT, SATURATED MAGENTA background - pure chroma-key magenta, hex #FF00FF (maximum red and blue, zero green). The magenta fills the entire frame edge to edge as one solid flat color: no gradient, no texture, no shading, no vignette. This magenta is a chroma-key backing ONLY - it must NOT appear anywhere on the bird and must NOT tint the bird's colors, outlines, or edges; keep the plumage in its natural earthy kachō-e palette (burnt umber, ochre, indigo, vermillion, muted greens, cream, black). This is the only background element: NO branch, NO twig, NO perch, NO leaves, NO foliage, NO substrate, NO scenery, NO sky, NO moon, NO water - only the bird floating against the flat magenta. The perch is purely implied by toe posture - it is NEVER rendered. NO border or frame, NO text or signature.
 
-Composition: the bird occupies one-third to one-half of the frame. Leave generous negative space (just the cream ground) around it. The image should feel sparse and confident, not packed with detail.
+Composition: the bird occupies one-third to one-half of the frame. Leave generous negative space (just the flat magenta ground) around it. The image should feel sparse and confident, not packed with detail.
 
 The ENTIRE bird must fit within the image frame: head, both wings (fully extended for flight pose), full tail, both legs, both feet, beak. Do NOT crop the wings, tail, legs, or any body part at the edge of the frame. Leave generous padding on all sides.
 
@@ -57,4 +57,4 @@ Treat IMAGE 1 for anatomy and color information ONLY. Treat IMAGE 3 for style ON
 
 ### Output
 
-Render at high resolution on a fully transparent background. Cut the bird out cleanly. No shadow, no paper texture, no caption.
+Render at high resolution. Place the bird on the flat, uniform, saturated magenta (#FF00FF) ground described above. No shadow, no reflection, no paper texture, no caption.
