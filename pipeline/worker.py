@@ -12,7 +12,7 @@ When GEMINI_API_KEY is unset the worker exits immediately, so the container
 behaves exactly as a display-only build (generic silhouettes, zero overhead).
 
 Only public read endpoints of BirdNET-Go are touched; the worker never writes to
-it. Generation reuses the existing scripts verbatim (pregen -> cutout ->
+it. Generation reuses the existing scripts verbatim (pregen -> matte ->
 build_masks), so a change to the art style or the mask format stays a one-file
 fix in those scripts.
 
@@ -48,7 +48,7 @@ from pregen import slugify
 
 HERE = Path(__file__).resolve().parent
 PREGEN = HERE / "pregen.py"
-CUTOUT = HERE / "cutout.py"
+MATTE = HERE / "matte.py"
 BUILD_MASKS = HERE / "build_masks.py"
 MAKE_FALLBACK = HERE / "make_fallback.py"
 
@@ -147,7 +147,7 @@ def manifest_path(assets_dir: Path) -> Path:
 def _run(cmd: list[str], **kwargs) -> int:
     """Run a pipeline script, letting its stdout/stderr flow to the container
     log. Non-zero is returned, not raised: a partial cycle should not kill the
-    worker (pregen/cutout skip already-done work, so the next cycle retries)."""
+    worker (pregen/matte skip already-done work, so the next cycle retries)."""
     proc = subprocess.run([sys.executable, *cmd], check=False, **kwargs)
     return proc.returncode
 
@@ -185,12 +185,10 @@ def generate(
     refs_dir: Path,
     gemini_key: str,
 ) -> None:
-    """Render + cut out the missing species. pregen renders both poses on the
-    cream ground; cutout removes it (BiRefNet). Cutout is run one pose per process:
-    the matting model is heavy, and a second inference in the same process gets
-    OOM-killed on a small host (the logs showed a perched pose cutting fine and the
-    flight pose in the same call then failing). Any failure is logged with its exit
-    code."""
+    """Render + matte the missing species. pregen renders both poses on the flat
+    magenta ground; matte.py removes it (region matte in numpy/scipy - no heavy
+    model) and crops, writing the RGBA cutout back in place. Any failure is
+    logged with its exit code."""
     args = [str(PREGEN), "--out", str(assets_dir), "--refs", str(refs_dir)]
     if STYLES_DIR.is_dir():
         args += ["--styles", str(STYLES_DIR)]
@@ -206,14 +204,10 @@ def generate(
     env = {**os.environ, "GEMINI_API_KEY": gemini_key}
     _run(args, env=env)
 
-    # Cut each pose in its OWN cutout process. A batch (or even both poses of one
-    # species) shares a single process, and the logs showed the second inference
-    # in that process being killed — the perched pose cut fine, then the flight
-    # pose in the same call failed with no [cut] line. A fresh process per pose
-    # matches the confirmed-working "one image at a time" behaviour and lets the OS
-    # reclaim the matting model's memory between images. cutout skips already-cut
-    # files, so re-runs stay cheap. The exit code is logged so an OOM kill
-    # (137 / negative) is distinguishable from a bad render (1) or cutout error (2).
+    # Matte each rendered pose IN PLACE. matte.py is lightweight (numpy/scipy),
+    # so unlike the old BiRefNet cutout there's no per-process OOM concern; it
+    # skips files that are already transparent, so re-runs stay cheap. The exit
+    # code is logged so a bad render is distinguishable from a matte error.
     pose_files = [
         f"{slug}{suf}"
         for _, _, slug in missing
@@ -222,13 +216,14 @@ def generate(
     ]
     failed: list[str] = []
     for pose in pose_files:
-        rc = _run([str(CUTOUT), "--dir", str(assets_dir), pose])
+        p = str(assets_dir / f"{pose}.png")
+        rc = _run([str(MATTE), "--region", p, "--out", p])
         if rc != 0:
             failed.append(pose)
-            print(f"saezuri-worker: cutout FAILED for {pose}.png (exit {rc}); "
-                  f"cream ground left uncut", file=sys.stderr)
+            print(f"saezuri-worker: matte FAILED for {pose}.png (exit {rc}); "
+                  f"magenta ground left uncut", file=sys.stderr)
     if failed:
-        print(f"saezuri-worker: cutout failed for {len(failed)}/{len(pose_files)} "
+        print(f"saezuri-worker: matte failed for {len(failed)}/{len(pose_files)} "
               f"pose(s) this cycle: {', '.join(failed)}", file=sys.stderr)
 
 

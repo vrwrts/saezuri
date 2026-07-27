@@ -2,21 +2,21 @@
 """AvianVisitors - generate kachō-e bird illustrations for a region.
 
 Step 1 of the illustration pipeline:
-    1. pregen.py       render each bird on a uniform cream ground
-    2. cutout.py       remove the ground (BiRefNet) and crop to the bird
-    3. build_masks.py  refresh the collage silhouette masks in apt.js
+    1. pregen.py       render each bird on a uniform magenta ground
+    2. matte.py        remove the ground (region matte) and crop to the bird
+    3. build_masks.py  refresh the collage silhouette masks
 
 Reads a species list (BirdNET-Pi's labels.txt, eBird, or stdin),
 fetches a Wikipedia reference photo for each species, and generates an
 illustration via the Gemini 2.5 Flash Image API. Saves PNGs into
 avian/assets/illustrations/.
 
-The prompt renders each bird on a CREAM ground, not a transparent one:
-the model can't cut transparency cleanly, but a flat known ground removes
-cleanly in step 2. Each species gets two poses: <slug>.png (perched) and
-<slug>-2.png (flight). Edit avian/scripts/prompt.template.md to change the
-visual style - the prompt body is re-sent verbatim per request with
-{sci_name}, {com_name}, and {pose} substituted.
+The prompt renders each bird on a flat MAGENTA ground, not a transparent one:
+the model can't cut transparency cleanly, but a distinct known ground is
+removed cleanly by region matting in step 2 (matte.py). Each species gets two
+poses: <slug>.png (perched) and <slug>-2.png (flight). Edit prompt.template.md
+to change the visual style - the prompt body is re-sent verbatim per request
+with {sci_name}, {com_name}, and {pose} substituted.
 
 Reference photos:
     Cached in avian/assets/references/. The auto-fetch hits the

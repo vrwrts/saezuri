@@ -13,19 +13,15 @@ RUN pnpm build
 # --- Runtime stage: nginx serves the bundle, proxies /api/, and (optionally)
 #     runs the illustration worker beside it. ---
 #
-# The base is Debian (not alpine) because the worker's matting model runs on
-# onnxruntime, which ships glibc wheels only. The generator toolchain is present
+# alpine base: the cutout step is now matte.py (numpy + scipy + Pillow, all with
+# musl wheels), so the image no longer needs onnxruntime's glibc-only wheels, a
+# Debian base, or a baked ~1 GB matting model. The generator toolchain is present
 # in every image, but the worker only runs when GEMINI_API_KEY is set — a
-# display-only container pays the image size, not any runtime cost. See
-# CLAUDE.md / the plan for the "one heavy image for everyone" decision; a leaner
-# generator-less variant is a possible future follow-up.
-FROM nginx:bookworm AS runtime
+# display-only container pays a little image size, not any runtime cost.
+FROM nginx:alpine AS runtime
 
-# Python + the pipeline dependencies (rembg / onnxruntime / Pillow). This is the
-# bulk of the image size.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-pip \
-    && rm -rf /var/lib/apt/lists/*
+# Python + the pipeline dependencies (numpy / scipy / Pillow).
+RUN apk add --no-cache python3 py3-pip
 COPY pipeline/requirements.txt /opt/saezuri/pipeline/requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages \
         -r /opt/saezuri/pipeline/requirements.txt
@@ -35,12 +31,6 @@ RUN pip3 install --no-cache-dir --break-system-packages \
 # is why successful `[ok]` lines (stdout) weren't showing while failures
 # (stderr, line-buffered) were.
 ENV PYTHONUNBUFFERED=1
-
-# Bake the BiRefNet matting model into the image so the first generation needs
-# no download and works offline. rembg resolves models under U2NET_HOME.
-ENV U2NET_HOME=/opt/saezuri/models
-RUN mkdir -p "$U2NET_HOME" \
-    && python3 -c "from rembg import new_session; new_session('birefnet-general')"
 
 # Pipeline scripts + bundled reference art (styles/anti-refs, when present).
 COPY pipeline/ /opt/saezuri/pipeline/
