@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Collage } from '../collage/Collage.tsx'
+import { CollageLoading } from '../components/CollageLoading.tsx'
 import { EmptyState } from '../components/EmptyState.tsx'
 import { ErrorBoundary } from '../components/ErrorBoundary.tsx'
 import { Header } from '../components/Header.tsx'
@@ -45,6 +46,11 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   const live = useRecentSpecies(preset)
   const species: Species[] = USE_MOCK ? mockSpecies(manifest) : live.species
 
+  // A window's first fetch shows the loading indicator instead of the empty
+  // nest; cached windows resolve synchronously so this is false for them. Mock
+  // mode synthesizes species synchronously, so it never has a loading phase.
+  const loading = USE_MOCK ? false : live.loading
+
   const notIllustrated = useMemo(
     () => species.filter((s) => !hasArt(manifest, s.sci)).length,
     [species, manifest],
@@ -63,18 +69,23 @@ function CollageView({ preset }: { preset: WindowPreset }) {
       </div>
 
       <main className="view">
-        <ErrorBoundary>
-          <Collage
-            species={species}
-            manifest={manifest}
-            blossomKey={preset}
-            emptyState={<EmptyState fallbackKey={manifest.fallbackKey} />}
-          />
-        </ErrorBoundary>
+        {loading ? (
+          <CollageLoading />
+        ) : (
+          <ErrorBoundary>
+            <Collage
+              species={species}
+              manifest={manifest}
+              blossomKey={preset}
+              emptyState={<EmptyState fallbackKey={manifest.fallbackKey} />}
+            />
+          </ErrorBoundary>
+        )}
       </main>
 
       <footer className="status mono">
         <StatusLine
+          loading={loading}
           count={species.length}
           notIllustrated={notIllustrated}
           truncated={!USE_MOCK && live.truncated}
@@ -87,13 +98,17 @@ function CollageView({ preset }: { preset: WindowPreset }) {
 }
 
 interface StatusProps {
+  loading: boolean
   count: number
   notIllustrated: number
   truncated: boolean
   error: Error | null
 }
 
-function StatusLine({ count, notIllustrated, truncated, error }: StatusProps) {
+function StatusLine({ loading, count, notIllustrated, truncated, error }: StatusProps) {
+  // Mid-load the count is not yet meaningful (it would read "0 species"); the
+  // centered indicator carries the state, so the status line stays quiet.
+  if (loading) return null
   if (error) return <span className="status-warn">can’t reach BirdNET-Go — {error.message}</span>
   const parts: string[] = [`${count} species`]
   if (notIllustrated > 0) parts.push(`${notIllustrated} not yet illustrated`)

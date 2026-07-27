@@ -11,6 +11,11 @@ export interface RecentSpecies {
   /** True when the fetch hit its page cap before covering the window. */
   truncated: boolean
   error: Error | null
+  /** True only on the first load of a window with no cached data (SWR's
+   *  isLoading). A window already in SWR's cache resolves synchronously, so
+   *  this stays false when switching back to it — the first-load indicator
+   *  never re-flashes, and a genuinely empty window still shows the nest. */
+  loading: boolean
 }
 
 /** Polls BirdNET-Go for the active window's per-species counts. SWR pauses
@@ -19,7 +24,7 @@ export interface RecentSpecies {
  *  preset changes. The fetcher resolves the window fresh each poll so the time
  *  range stays current. */
 export function useRecentSpecies(preset: WindowPreset): RecentSpecies {
-  const { data, error } = useSWR(
+  const { data, error, isLoading } = useSWR(
     ['recent-species', preset],
     () => loadSpecies(resolveWindow(preset)),
     { refreshInterval: DEFAULT_POLL_MS },
@@ -29,5 +34,6 @@ export function useRecentSpecies(preset: WindowPreset): RecentSpecies {
     species: data?.species ?? [],
     truncated: data?.truncated ?? false,
     error: (error as Error | undefined) ?? null,
+    loading: isLoading,
   }
 }
