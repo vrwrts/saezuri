@@ -6,7 +6,7 @@ import {
   type Species,
   speciesFromSummary,
 } from './species.ts'
-import type { ResolvedWindow } from './window.ts'
+import type { RangeWindow, ResolvedWindow } from './window.ts'
 
 // Turns a resolved window into a Species[]. For bounded windows it pages
 // /detections newest-first and stops as soon as the window is covered (or a
@@ -42,20 +42,18 @@ const DEFAULTS = {
 
 const defaultDeps: LoadDeps = { getDetections, getSpeciesSummary }
 
-export async function loadSpecies(
-  window: ResolvedWindow,
+/** Raw detection rows covering a bounded window, newest-first. Pages
+ *  /detections and early-stops once the oldest row predates the cutoff (or the
+ *  result is exhausted / the page cap is hit). Split out from loadSpecies so the
+ *  refresh service can seed its in-memory store from a single 7d fetch and then
+ *  aggregate each sub-window off the same rows. `covered` is false when the page
+ *  cap was hit before the window was fully paged (⇒ truncated). */
+export async function fetchWindowRows(
+  window: RangeWindow,
   options: LoadOptions = {},
   signal?: AbortSignal,
   deps: LoadDeps = defaultDeps,
-): Promise<LoadResult> {
-  if (window.kind === 'all') {
-    const rows = await deps.getSpeciesSummary(
-      { limit: options.summaryLimit ?? DEFAULTS.summaryLimit },
-      signal,
-    )
-    return { species: speciesFromSummary(rows), truncated: false }
-  }
-
+): Promise<{ rows: DetectionResponse[]; covered: boolean }> {
   const pageSize = options.pageSize ?? DEFAULTS.pageSize
   const maxPages = options.maxPages ?? DEFAULTS.maxPages
   const rows: DetectionResponse[] = []
@@ -89,6 +87,24 @@ export async function loadSpecies(
     }
   }
 
+  return { rows, covered }
+}
+
+export async function loadSpecies(
+  window: ResolvedWindow,
+  options: LoadOptions = {},
+  signal?: AbortSignal,
+  deps: LoadDeps = defaultDeps,
+): Promise<LoadResult> {
+  if (window.kind === 'all') {
+    const rows = await deps.getSpeciesSummary(
+      { limit: options.summaryLimit ?? DEFAULTS.summaryLimit },
+      signal,
+    )
+    return { species: speciesFromSummary(rows), truncated: false }
+  }
+
+  const { rows, covered } = await fetchWindowRows(window, options, signal, deps)
   const species = aggregateDetections(rows, { sinceMs: window.sinceMs })
   return { species, truncated: !covered }
 }

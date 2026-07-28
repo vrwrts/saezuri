@@ -12,10 +12,14 @@ export type WindowPreset = '1H' | '12H' | '24H' | '7D' | 'ALL'
 
 export const WINDOW_PRESETS: readonly WindowPreset[] = ['1H', '12H', '24H', '7D', 'ALL']
 
+/** Lowercased URL segment for each preset — also the snapshot's per-window key. */
+export type WindowSegment = '1h' | '12h' | '24h' | '7d' | 'all'
+
 /** Canonical URL segment for a preset: `'1H' -> '1h'`, `'ALL' -> 'all'`. The
- *  route layer composes this under a base path (see src/routes.ts). */
-export function presetToSegment(preset: WindowPreset): string {
-  return preset.toLowerCase()
+ *  route layer composes this under a base path (see src/routes.ts), and the
+ *  refresh service keys the snapshot by it. */
+export function presetToSegment(preset: WindowPreset): WindowSegment {
+  return preset.toLowerCase() as WindowSegment
 }
 
 /** Parse a URL path segment back to a preset, case-insensitively and tolerant of

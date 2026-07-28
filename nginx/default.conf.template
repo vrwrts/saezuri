@@ -19,9 +19,25 @@ server {
         try_files $uri =404;
     }
 
-    # The layout manifest is optional; when it isn't shipped, return a clean 404
-    # so the app falls back to its built-in manifest (not the SPA index.html).
+    # Mutable, service-published artifacts. `no-cache` = always revalidate
+    # (cheap 304s via nginx's ETag/Last-Modified), so a regenerated file is never
+    # served stale — the fix for viewers seeing new art minutes apart. A missing
+    # file 404s cleanly (the app falls back to its built-in manifest / an empty
+    # snapshot) rather than falling through to the SPA index.html.
     location = /layout-manifest.json {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+    location = /snapshot.json {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
+    # Rendered e-ink frames (written by the refresh service). Regex so it beats
+    # the SPA fallback below; a missing frame 404s instead of returning
+    # index.html, and `/collage/7d` (no .png) still routes to the app.
+    location ~ ^/collage/(1h|12h|24h|7d|all)\.png$ {
+        add_header Cache-Control "no-cache";
         try_files $uri =404;
     }
 
