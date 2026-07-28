@@ -81,15 +81,12 @@ function CollageView({ preset }: { preset: WindowPreset }) {
 
   return (
     <div className="stage">
-      <div className="topbar">
+      <div className="controls">
+        <WindowPicker value={preset} onChange={(p) => navigate(collagePath(p))} />
         <ThemeToggle />
       </div>
 
       <Header eyebrow="around here" title="recently heard" />
-
-      <div className="controls">
-        <WindowPicker value={preset} onChange={(p) => navigate(collagePath(p))} />
-      </div>
 
       <main className="view">
         {loading ? (
@@ -109,7 +106,6 @@ function CollageView({ preset }: { preset: WindowPreset }) {
       <footer className="status mono">
         <StatusLine
           loading={loading}
-          count={species.length}
           notIllustrated={notIllustrated}
           truncated={!USE_MOCK && live.truncated}
           error={!USE_MOCK ? live.error : null}
@@ -122,21 +118,22 @@ function CollageView({ preset }: { preset: WindowPreset }) {
 
 interface StatusProps {
   loading: boolean
-  count: number
   notIllustrated: number
   truncated: boolean
   error: Error | null
 }
 
-function StatusLine({ loading, count, notIllustrated, truncated, error }: StatusProps) {
-  // Mid-load the count is not yet meaningful (it would read "0 species"); the
-  // centered indicator carries the state, so the status line stays quiet.
+function StatusLine({ loading, notIllustrated, truncated, error }: StatusProps) {
+  // The species count has moved out of the footer to free the band for
+  // navigation; the status line now stays empty in the normal case and only
+  // surfaces on a problem (loading, error) or a caveat (awaiting art, truncated).
   if (loading) return null
   // The browser reads a static snapshot now, not BirdNET-Go directly, so a
   // failure means the snapshot is unavailable/stale, not the backend.
   if (error) return <span className="status-warn">waiting for data — {error.message}</span>
-  const parts: string[] = [`${count} species`]
+  const parts: string[] = []
   if (notIllustrated > 0) parts.push(`${notIllustrated} awaiting art`)
   if (truncated) parts.push('window truncated')
+  if (parts.length === 0) return null
   return <span>{parts.join(' · ')}</span>
 }
