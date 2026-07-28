@@ -23,20 +23,19 @@ const LOADING_INDICATOR_DELAY_MS = 1000
 // BirdNET-Go, so the collage can be demoed without a backend.
 const USE_MOCK = import.meta.env.VITE_MOCK === '1'
 
-/** The collage for a single time window, addressed by URL (`/collage/1h`,
- *  `/collage/24h`, …). The window preset lives entirely in the path — this
- *  component derives it from the `:window` route param and navigates to change
- *  it, so a window is shareable, bookmarkable, and survives reload. */
+/** The collage for a single time window, addressed by URL (`/1h`, `/24h`, …).
+ *  The window preset lives entirely in the path — this component derives it from
+ *  the `:window` route param and navigates to change it, so a window is
+ *  shareable, bookmarkable, and survives reload. */
 export default function CollagePage() {
   const { window: windowParam } = useParams()
   const preset = pathToPreset(windowParam ?? '')
 
   // Unknown window in the URL: send it to the default rather than rendering
-  // nothing. The route table also catches `/` and non-collage paths, but this
-  // guards a segment that looked like a window but isn't (e.g. `/collage/2h`).
+  // nothing. The route table also catches `/` and unknown paths, but this
+  // guards a segment that looked like a window but isn't (e.g. `/2h`).
   if (!preset) return <Navigate to={collagePath('24H')} replace />
-  // Canonicalize casing so the address bar matches the picker (`/collage/1H` ->
-  // `/collage/1h`).
+  // Canonicalize casing so the address bar matches the picker (`/1H` -> `/1h`).
   if (windowParam !== presetToSegment(preset)) {
     return <Navigate to={collagePath(preset)} replace />
   }
@@ -81,12 +80,15 @@ function CollageView({ preset }: { preset: WindowPreset }) {
 
   return (
     <div className="stage">
-      <div className="controls">
-        <WindowPicker value={preset} onChange={(p) => navigate(collagePath(p))} />
+      <div className="topbar">
         <ThemeToggle />
       </div>
 
       <Header eyebrow="around here" title="recently heard" />
+
+      <div className="controls">
+        <WindowPicker value={preset} onChange={(p) => navigate(collagePath(p))} />
+      </div>
 
       <main className="view">
         {loading ? (
@@ -106,6 +108,7 @@ function CollageView({ preset }: { preset: WindowPreset }) {
       <footer className="status mono">
         <StatusLine
           loading={loading}
+          count={species.length}
           notIllustrated={notIllustrated}
           truncated={!USE_MOCK && live.truncated}
           error={!USE_MOCK ? live.error : null}
@@ -118,22 +121,21 @@ function CollageView({ preset }: { preset: WindowPreset }) {
 
 interface StatusProps {
   loading: boolean
+  count: number
   notIllustrated: number
   truncated: boolean
   error: Error | null
 }
 
-function StatusLine({ loading, notIllustrated, truncated, error }: StatusProps) {
-  // The species count has moved out of the footer to free the band for
-  // navigation; the status line now stays empty in the normal case and only
-  // surfaces on a problem (loading, error) or a caveat (awaiting art, truncated).
+function StatusLine({ loading, count, notIllustrated, truncated, error }: StatusProps) {
+  // Mid-load the count is not yet meaningful (it would read "0 species"); the
+  // centered indicator carries the state, so the status line stays quiet.
   if (loading) return null
   // The browser reads a static snapshot now, not BirdNET-Go directly, so a
   // failure means the snapshot is unavailable/stale, not the backend.
   if (error) return <span className="status-warn">waiting for data — {error.message}</span>
-  const parts: string[] = []
+  const parts: string[] = [`${count} species`]
   if (notIllustrated > 0) parts.push(`${notIllustrated} awaiting art`)
   if (truncated) parts.push('window truncated')
-  if (parts.length === 0) return null
   return <span>{parts.join(' · ')}</span>
 }
