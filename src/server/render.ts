@@ -145,11 +145,10 @@ export async function renderFrame(
   return await canvas.encode('png')
 }
 
-/** Atomically write a rendered frame to htmlDir/collage/<segment>.png. */
+/** Atomically write a rendered frame to htmlDir/<segment>.png. */
 export async function writeFrame(htmlDir: string, segment: string, png: Buffer): Promise<void> {
-  const dir = join(htmlDir, 'collage')
-  await mkdir(dir, { recursive: true })
-  const path = join(dir, `${segment}.png`)
+  await mkdir(htmlDir, { recursive: true })
+  const path = join(htmlDir, `${segment}.png`)
   const tmp = `${path}.tmp`
   await writeFile(tmp, png)
   await rename(tmp, path)

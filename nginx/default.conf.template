@@ -35,8 +35,8 @@ server {
 
     # Rendered e-ink frames (written by the refresh service). Regex so it beats
     # the SPA fallback below; a missing frame 404s instead of returning
-    # index.html, and `/collage/7d` (no .png) still routes to the app.
-    location ~ ^/collage/(1h|12h|24h|7d|all)\.png$ {
+    # index.html, and `/7d` (no .png) still routes to the app.
+    location ~ ^/(1h|12h|24h|7d|all)\.png$ {
         add_header Cache-Control "no-cache";
         try_files $uri =404;
     }

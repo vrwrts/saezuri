@@ -172,6 +172,12 @@ body {
   letter-spacing: 0.02em;
 }
 
+.topbar {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 6;
+}
 .theme-toggle {
   display: grid;
   place-items: center;
@@ -191,30 +197,17 @@ body {
   color: var(--ink);
 }
 
-/* Top bar: timeframe selector at the left edge, theme toggle at the right.
-   space-between splits them; align-items keeps the 34px toggle centered against
-   the shorter picker. */
 .controls {
   flex: 0 0 auto;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 16px 8px;
+  justify-content: center;
+  padding: 4px 16px 10px;
 }
-/* One set of size tokens drives the whole control — track padding (which is
-   also the thumb's inset), gap, option padding, and type. The tablet/mobile
-   breakpoints below only retune these, so the sliding pill's vertical inset
-   stays in lockstep with the track without any extra overrides. */
 .window-picker {
-  --wp-pad: 3px;
-  --wp-gap: 2px;
-  --wp-opt-py: 6px;
-  --wp-opt-px: 14px;
-  --wp-font: 12px;
   position: relative;
   display: inline-flex;
-  gap: var(--wp-gap);
-  padding: var(--wp-pad);
+  gap: 2px;
+  padding: 3px;
   border-radius: 999px;
   background: var(--paper-2);
   box-shadow: var(--recess);
@@ -222,11 +215,12 @@ body {
 /* Sliding active pill: a single element that glides under the selected option
    instead of the highlight snapping between buttons. Its left/width are measured
    from the active option (see WindowPicker) and applied inline; the transition
-   here does the gliding. It sits behind the labels and never intercepts clicks. */
+   here does the gliding. It sits behind the labels and never intercepts clicks.
+   top/bottom match the 3px track padding so it insets evenly. */
 .window-thumb {
   position: absolute;
-  top: var(--wp-pad);
-  bottom: var(--wp-pad);
+  top: 3px;
+  bottom: 3px;
   left: 0;
   border-radius: 999px;
   background: var(--pill);
@@ -244,13 +238,13 @@ body {
 .window-option {
   position: relative;
   z-index: 1;
-  padding: var(--wp-opt-py) var(--wp-opt-px);
+  padding: 6px 14px;
   border: 0;
   border-radius: 999px;
   background: none;
   color: var(--ink-soft);
   font-family: var(--font-mono);
-  font-size: var(--wp-font);
+  font-size: 12px;
   letter-spacing: 0.04em;
   cursor: pointer;
   transition: color 140ms ease;
@@ -260,24 +254,6 @@ body {
 }
 .window-option.is-active {
   color: var(--ink);
-}
-/* Tablet: nudge the option padding and type down a step. */
-@media (max-width: 900px) {
-  .window-picker {
-    --wp-opt-px: 12px;
-    --wp-font: 11px;
-  }
-}
-/* Mobile: the selector shares the narrow top bar with the theme toggle, so pull
-   it in further — tighter track, less option padding, smaller type. */
-@media (max-width: 560px) {
-  .window-picker {
-    --wp-pad: 2px;
-    --wp-gap: 1px;
-    --wp-opt-py: 5px;
-    --wp-opt-px: 9px;
-    --wp-font: 10px;
-  }
 }
 
 .status {

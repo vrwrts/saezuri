@@ -19,8 +19,8 @@ export function WindowPicker({ value, onChange }: Props) {
   // effect (not effect) so the initial position is committed before paint — the
   // pill appears already under the active tab instead of animating in from the
   // left. Re-runs on window change, animating from the previous geometry, and
-  // re-measures on resize: the selector shrinks at the tablet/mobile breakpoints,
-  // so a viewport change alters the geometry the pill is pinned to.
+  // re-measures via a ResizeObserver so a late reflow (e.g. the mono web font
+  // swapping in) keeps the pill pinned to the option's real geometry.
   useLayoutEffect(() => {
     const measure = () => {
       const el = optionRefs.current[activeIndex]
