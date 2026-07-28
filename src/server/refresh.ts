@@ -234,6 +234,7 @@ class Refresher {
       { baseUrl: this.cfg.baseUrl, token: this.cfg.token },
       {
         onConnect: async () => {
+          log('stream connected')
           await this.safe('backfill', () => this.backfill())
           await this.safe('publish', () => this.publish())
         },
@@ -243,7 +244,12 @@ class Refresher {
             this.generator.enqueue(row.scientificName, row.commonName)
           }
         },
-        onError: (e) => logErr('stream', e),
+        // The server closes the stream every ~30 min (and any blip drops it);
+        // undici surfaces that as `terminated`. It's expected and self-healing —
+        // the loop reconnects and re-backfills — so log it as a reconnect, not a
+        // failure.
+        onError: (e) =>
+          log(`stream disconnected (${e instanceof Error ? e.message : String(e)}); reconnecting`),
       },
     )
   }
