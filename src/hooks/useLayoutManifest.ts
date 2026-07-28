@@ -1,4 +1,5 @@
 import useSWR from 'swr'
+import { DEFAULT_MANIFEST } from '../domain/defaultManifest.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
 
 // Fetches the layout manifest once at boot. The full manifest (all illustrated
@@ -7,31 +8,25 @@ import type { LayoutManifest } from '../domain/manifest.ts'
 // ships no borrowed art — the hook falls back to a built-in manifest holding
 // only the generic silhouette, so every species still packs and renders.
 
+// DEFAULT_MANIFEST now lives in a React/SWR-free module so the Node refresh
+// service can share it; re-exported here so existing importers/tests are
+// unaffected.
+export { DEFAULT_MANIFEST } from '../domain/defaultManifest.ts'
+
 const MANIFEST_URL = '/layout-manifest.json'
 
 // Poll the manifest on the same cadence as the species data (useRecentSpecies),
-// so illustrations the optional in-container worker generates on the fly replace
-// the fallback silhouette live, without a manual page reload. The file is served
-// with normal HTTP caching, so an unchanged manifest costs only a cheap 304.
+// so illustrations the refresh service generates on the fly replace the fallback
+// silhouette live, without a manual page reload.
 const MANIFEST_POLL_MS = 30_000
 
-/** Fallback-only manifest, baked from pipeline output. The mask is the exact
- *  silhouette of public/assets/illustrations/_fallback.png so packing is
- *  faithful even with no manifest file present. */
-export const DEFAULT_MANIFEST: LayoutManifest = {
-  dims: { _fallback: [560, 460] },
-  masks: {
-    _fallback: {
-      w: 93,
-      h: 76,
-      bits: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH/gAAAAAAAAAAAAD//AAAAAAAAAAAAA//+AAAAAAAAAAAAP//4AAAAAAAAAAAD///AAAAAAAAAAAA///8AAAAAAAAAAAP///wAAAAAAAAAAB///+AAAAAAAAAAAP///8AAAAAAAAAwD/j///gAAAAAAAB4f8f///gAAAAAAAH//3////gAAAAAAAP///////AAAAAAAAf//////8AAAAAAAB///////wAAAAAAAD///////gAAAAAAAP//////+AAAAAAAA///////wAAAAAAAH///////AAAAAAAAf//////8AAAAAAAD///////gAAAAAAA///////+AAADAAAH///////wAAH4AAB////////AAP/AAAP///////4Af/wAAB////////B//+AAAP///////////wAAB///////////8AAAP///////////gAAB///////////8AAAP///////////gAAB////////D//4AAAP///////4D//AAAB////////AD/4AAAH///////wAD+AAAA///////+AADwAAAD///////gAAAAAAAf//////8AAAAAAAB///////AAAAAAAAH//////wAAAAAAAAf/////8AAAAAAAAB//////AAAAAAAAAH/////wAAAAAAAAAf////8AAAAAAAAAA////+AAAAAAAAAAB////AAAAAAAAAAAB///gAAAAAAAAAAAB//AAAAAAAAAAAAACAgAAAAAAAAAAAAAQEAAAAAAAAAAAAACAgAAAAAAAAAAAAAQEAAAAAAAAAAAAACAgAAAAAAAAAAAAAQEAAAAAAAAAAAAACAgAAAAAAAAAAAAAQEAAAAAAAAAAAD/////wAAAAAAAAAf/////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
-    },
-  },
-  fallbackKey: '_fallback',
-}
-
 async function fetchManifest(url: string): Promise<LayoutManifest> {
-  const res = await fetch(url)
+  // `cache: 'no-store'` bypasses the browser's heuristic HTTP cache: with no
+  // explicit Cache-Control (older builds) a regenerated manifest could sit
+  // stale in-cache for minutes, so two viewers saw new art at different times.
+  // nginx now also sends `Cache-Control: no-cache`; this is the belt to that
+  // suspenders, guaranteeing every poll actually revalidates.
+  const res = await fetch(url, { cache: 'no-store' })
   if (!res.ok) throw new Error(`manifest ${res.status}`)
   const data = (await res.json()) as LayoutManifest
   if (!data.masks || !data.fallbackKey || !(data.fallbackKey in data.masks)) {

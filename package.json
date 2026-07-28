@@ -9,6 +9,8 @@
     "dev": "vite",
     "dev:mock": "VITE_MOCK=1 vite",
     "build": "tsc --noEmit && vite build",
+    "build:server": "esbuild src/server/refresh.ts --bundle --platform=node --format=esm --target=node22 --external:@napi-rs/canvas --outfile=dist-server/refresh.mjs",
+    "refresh:dev": "pnpm build:server && node dist-server/refresh.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -18,7 +20,14 @@
     "check": "biome check .",
     "check:fix": "biome check --write ."
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@napi-rs/canvas"
+    ]
+  },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1",
@@ -33,6 +42,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "esbuild": "^0.28.1",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4.3.2",
     "typescript": "^6.0.3",

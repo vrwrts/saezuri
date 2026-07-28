@@ -9,17 +9,25 @@ services:
       # container. A LAN IP is simplest; a hostname (incl. one behind a reverse
       # proxy / Cloudflare) works too — its host is forwarded upstream as Host+SNI.
       BIRDNETGO_URL: ${BIRDNETGO_URL:?set BIRDNETGO_URL in .env}
-      # Optional: token for a PrivateMode instance (injected by nginx).
+      # Optional: token for a PrivateMode instance (used by the refresh service
+      # for the API + SSE stream, and injected by nginx on /api/).
       BIRDNETGO_TOKEN: ${BIRDNETGO_TOKEN:-}
       # Optional: on-demand illustration generation (see .env.example). Unset =>
-      # display-only (generic silhouettes), no worker, no runtime cost.
+      # display-only: the refresh service still publishes, it just skips
+      # generation, so new species stay hidden until art exists.
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GENERATE_INTERVAL: ${GENERATE_INTERVAL:-30m}
       # Throttle between image-API calls (unset => pregen's 6s free-tier default).
       GENERATE_SLEEP: ${GENERATE_SLEEP:-}
+      # Cap species generated per pipeline run.
+      GENERATE_MAX_PER_CYCLE: ${GENERATE_MAX_PER_CYCLE:-4}
+      # --- e-ink frame (/collage/<window>.png) size + look; set to your panel ---
+      FRAME_WIDTH: ${FRAME_WIDTH:-800}
+      FRAME_HEIGHT: ${FRAME_HEIGHT:-480}
+      FRAME_BG: ${FRAME_BG:-#fcfcfb}
     # Persist generated illustrations across upgrades so the Gemini calls aren't
     # re-spent. The layout manifest is rebuilt from them at startup. Harmless to
     # keep even if you don't generate art (it just holds the fallback silhouette).
+    # (snapshot.json + /collage/*.png live outside the volume — regenerated at start.)
     volumes:
       - saezuri-illustrations:/usr/share/nginx/html/assets/illustrations
     restart: unless-stopped

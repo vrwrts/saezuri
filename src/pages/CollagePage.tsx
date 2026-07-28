@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Collage } from '../collage/Collage.tsx'
 import { CollageLoading } from '../components/CollageLoading.tsx'
@@ -8,7 +7,6 @@ import { Header } from '../components/Header.tsx'
 import { ThemeToggle } from '../components/ThemeToggle.tsx'
 import { WindowPicker } from '../components/WindowPicker.tsx'
 import { mockSpecies } from '../dev/mock.ts'
-import { hasArt } from '../domain/asset.ts'
 import type { Species } from '../domain/species.ts'
 import { pathToPreset, presetToSegment, type WindowPreset } from '../domain/window.ts'
 import { useDelayedFlag } from '../hooks/useDelayedFlag.ts'
@@ -52,9 +50,9 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   const live = useRecentSpecies(preset)
   const species: Species[] = USE_MOCK ? mockSpecies(manifest) : live.species
 
-  // A window's first fetch shows the loading indicator instead of the empty
-  // nest; cached windows resolve synchronously so this is false for them. Mock
-  // mode synthesizes species synchronously, so it never has a loading phase.
+  // The first snapshot fetch shows the loading indicator instead of the empty
+  // nest; once loaded, switching windows is instant (one file, all windows), so
+  // this stays false. Mock mode synthesizes species synchronously — no loading.
   const loading = USE_MOCK ? false : live.loading
 
   // Suppress the indicator for the first second of loading — a quick load shows
@@ -62,10 +60,24 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   // the view stays blank until either the data arrives or the delay elapses.
   const showLoadingIndicator = useDelayedFlag(loading, LOADING_INDICATOR_DELAY_MS)
 
-  const notIllustrated = useMemo(
-    () => species.filter((s) => !hasArt(manifest, s.sci)).length,
-    [species, manifest],
-  )
+  // `species` arrives pre-gated to illustrated-only from the snapshot; `heard`
+  // and `notIllustrated` describe the withheld tail. Mock species are all
+  // illustrated, so nothing is withheld.
+  const heard = USE_MOCK ? species.length : live.heard
+  const notIllustrated = USE_MOCK ? 0 : live.notIllustrated
+
+  // Distinguish a genuinely empty window from one where birds were heard but
+  // none is illustrated yet (e.g. right after a new species, or a container with
+  // no generated art).
+  const emptyState =
+    species.length === 0 && heard > 0 ? (
+      <EmptyState
+        fallbackKey={manifest.fallbackKey}
+        message={`heard ${heard} species — none illustrated yet`}
+      />
+    ) : (
+      <EmptyState fallbackKey={manifest.fallbackKey} />
+    )
 
   return (
     <div className="stage">
@@ -88,7 +100,7 @@ function CollageView({ preset }: { preset: WindowPreset }) {
               species={species}
               manifest={manifest}
               blossomKey={preset}
-              emptyState={<EmptyState fallbackKey={manifest.fallbackKey} />}
+              emptyState={emptyState}
             />
           </ErrorBoundary>
         )}
@@ -120,9 +132,11 @@ function StatusLine({ loading, count, notIllustrated, truncated, error }: Status
   // Mid-load the count is not yet meaningful (it would read "0 species"); the
   // centered indicator carries the state, so the status line stays quiet.
   if (loading) return null
-  if (error) return <span className="status-warn">can’t reach BirdNET-Go — {error.message}</span>
+  // The browser reads a static snapshot now, not BirdNET-Go directly, so a
+  // failure means the snapshot is unavailable/stale, not the backend.
+  if (error) return <span className="status-warn">waiting for data — {error.message}</span>
   const parts: string[] = [`${count} species`]
-  if (notIllustrated > 0) parts.push(`${notIllustrated} not yet illustrated`)
+  if (notIllustrated > 0) parts.push(`${notIllustrated} awaiting art`)
   if (truncated) parts.push('window truncated')
   return <span>{parts.join(' · ')}</span>
 }
