@@ -40,6 +40,7 @@ interface Config {
   summaryIntervalMs: number
   publishDebounceMs: number
   geminiEnabled: boolean
+  downloadBaseUrl: string
   pythonBin: string
   workerScript: string
   assetsDir: string
@@ -63,6 +64,19 @@ function readConfig(): Config {
   const baseUrl = (process.env.BIRDNETGO_URL ?? '').trim()
   if (!baseUrl) throw new Error('BIRDNETGO_URL is required')
   const htmlDir = (process.env.FRAME_HTML_DIR ?? '/usr/share/nginx/html').trim()
+  // Free pre-made art source: the repo root for downloads (generate.ts appends
+  // /illustrations/<slug>.png). Default is jsDelivr over the public illustrations
+  // repo; an empty ILLUSTRATIONS_REPO disables it; ILLUSTRATIONS_BASE_URL overrides
+  // (e.g. a local http.server in tests).
+  const illustrationsRepo = (
+    process.env.ILLUSTRATIONS_REPO ?? 'vrwrts/saezuri-illustrations'
+  ).trim()
+  const illustrationsRef = (process.env.ILLUSTRATIONS_REF ?? 'main').trim()
+  const downloadBaseUrl =
+    (process.env.ILLUSTRATIONS_BASE_URL ?? '').trim() ||
+    (illustrationsRepo
+      ? `https://cdn.jsdelivr.net/gh/${illustrationsRepo}@${illustrationsRef}`
+      : '')
   return {
     baseUrl,
     token: (process.env.BIRDNETGO_TOKEN ?? '').trim() || undefined,
@@ -71,6 +85,7 @@ function readConfig(): Config {
     summaryIntervalMs: intEnv('SUMMARY_INTERVAL_MS', 1_800_000),
     publishDebounceMs: intEnv('PUBLISH_DEBOUNCE_MS', 20_000),
     geminiEnabled: Boolean((process.env.GEMINI_API_KEY ?? '').trim()),
+    downloadBaseUrl,
     pythonBin: (process.env.PYTHON_BIN ?? 'python3').trim(),
     workerScript: (process.env.WORKER_SCRIPT ?? '/opt/saezuri/pipeline/worker.py').trim(),
     assetsDir: join(htmlDir, 'assets', 'illustrations'),
@@ -106,7 +121,8 @@ class Refresher {
       cacheDir: cfg.cacheDir,
       maxPerCycle: cfg.maxPerCycle,
       enabled: cfg.geminiEnabled,
-      // Reload the manifest + republish so the freshly-generated art appears.
+      downloadBaseUrl: cfg.downloadBaseUrl,
+      // Reload the manifest + republish so the freshly-acquired art appears.
       onGenerated: () => this.safe('publish', () => this.publish()),
     })
   }
@@ -213,9 +229,11 @@ class Refresher {
   }
 
   async run(): Promise<void> {
-    log(
-      `starting; publishing to ${this.cfg.htmlDir} (generation ${this.cfg.geminiEnabled ? 'on' : 'off'})`,
-    )
+    const artSource =
+      [this.cfg.downloadBaseUrl && 'download', this.cfg.geminiEnabled && 'generate']
+        .filter(Boolean)
+        .join('+') || 'none'
+    log(`starting; publishing to ${this.cfg.htmlDir} (art source: ${artSource})`)
     // Ensure a manifest file (and the fallback silhouette) exist up front so the
     // browser always fetches a real manifest, before any generation.
     await this.safe('rebuild', () => this.generator.rebuildManifest())

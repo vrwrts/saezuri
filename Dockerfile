@@ -20,6 +20,17 @@ RUN mkdir -p /opt/canvas && cd /opt/canvas \
         "@napi-rs/canvas@$(node -p "require('/app/node_modules/@napi-rs/canvas/package.json').version")" \
     && node -e "require('@napi-rs/canvas')"
 
+# Vendor the generation pipeline from the illustrations repo at a PINNED release.
+# We fetch only the pipeline.tar.gz asset (not the whole art repo), so the build
+# stays lean. Bumping PIPELINE_VERSION (a normal app commit) adopts a new pipeline.
+# NOTE: the illustrations repo must have published this release first.
+ARG PIPELINE_VERSION=v1.0.0
+RUN apk add --no-cache curl \
+    && mkdir -p /build \
+    && curl -fSL "https://github.com/vrwrts/saezuri-illustrations/releases/download/${PIPELINE_VERSION}/pipeline.tar.gz" \
+       | tar -xz -C /build \
+    && test -f /build/pipeline/worker.py
+
 # --- Runtime stage: nginx serves the bundle + proxies /api/; the Node refresh
 #     service runs beside it (SSE → snapshot + e-ink frames + on-demand art). ---
 #
@@ -31,16 +42,16 @@ FROM nginx:alpine AS runtime
 
 # Python (pipeline: numpy / scipy / Pillow) + Node (the refresh service).
 RUN apk add --no-cache python3 py3-pip nodejs
-COPY pipeline/requirements.txt /opt/saezuri/pipeline/requirements.txt
+
+# The vendored pipeline (pinned illustrations release, from the build stage) + its
+# deps. Includes the generation scripts + bundled reference art (styles/anti-refs).
+COPY --from=build /build/pipeline /opt/saezuri/pipeline
 RUN pip3 install --no-cache-dir --break-system-packages \
         -r /opt/saezuri/pipeline/requirements.txt
 
 # Stream Python stdout straight to `docker logs` rather than block-buffering it
 # during long generation runs.
 ENV PYTHONUNBUFFERED=1
-
-# Pipeline scripts + bundled reference art (styles/anti-refs, when present).
-COPY pipeline/ /opt/saezuri/pipeline/
 
 # The Node refresh service bundle + its native canvas dep; smoke-test it loads.
 COPY --from=build /app/dist-server/refresh.mjs /opt/saezuri/server/refresh.mjs
@@ -53,11 +64,13 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Config template (rendered at start) + entrypoint hooks. The template lives
 # OUTSIDE /etc/nginx/templates so the image's built-in envsubst step doesn't
 # clobber nginx's own $variables — our hook substitutes only BIRDNETGO_URL.
-# 40 renders the proxy config; 50 launches the refresh service (both before nginx).
+# 40 renders the proxy config; 50 launches the refresh service (which fetches
+# per-species art and rebuilds the manifest). Both run before nginx, in that order.
 COPY nginx/default.conf.template /etc/nginx/saezuri.conf.template
 COPY nginx/entrypoint.sh /docker-entrypoint.d/40-saezuri.sh
 COPY nginx/generator.sh /docker-entrypoint.d/50-generator.sh
-RUN chmod +x /docker-entrypoint.d/40-saezuri.sh /docker-entrypoint.d/50-generator.sh
+RUN chmod +x /docker-entrypoint.d/40-saezuri.sh \
+             /docker-entrypoint.d/50-generator.sh
 
 EXPOSE 80
 # nginx:alpine's own entrypoint runs /docker-entrypoint.d/* then starts nginx.

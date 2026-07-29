@@ -2,6 +2,7 @@
   "name": "saezuri",
   "private": true,
   "version": "0.1.0",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "description": "Self-hosted live bird collage for BirdNET-Go, in the AvianVisitors kachō-e style.",
   "packageManager": "pnpm@10.26.0",

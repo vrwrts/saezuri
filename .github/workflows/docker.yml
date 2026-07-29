@@ -12,7 +12,9 @@ on:
       - 'site/**'
       - 'fixtures/**'
       - '**.md'
-      # pipeline/ is bundled into the image now, so PRs touching it must revalidate the build.
+      # The build vendors the pipeline.tar.gz release asset from the public
+      # saezuri-illustrations repo (pinned by PIPELINE_VERSION) — no secret needed,
+      # so fork PRs build fine.
 
 jobs:
   build:
