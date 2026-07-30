@@ -21,9 +21,11 @@ THE SOFTWARE.
 
 ---
 
-NOTE: This license applies only to the original code in this repository.
-The contents of the `pipeline/` directory and the bundled illustration asset
-`public/assets/nest.webp` are licensed separately under CC-BY-NC-SA-4.0. See
-pipeline/LICENSE for the license text and README.md for attribution. Because
-this repository bundles and redistributes that material, the repository as a
-whole is subject to the non-commercial restriction of that license.
+NOTE: This MIT license covers the original code in this repository. The bundled
+illustration asset `public/assets/nest.webp` is licensed separately under
+CC-BY-NC-SA-4.0 (attribution in README.md); because the repository redistributes
+it, the repository as a whole is subject to that license's non-commercial
+restriction. The built Docker image additionally bundles, under the same
+CC-BY-NC-SA-4.0 terms, the generation pipeline vendored from the
+saezuri-illustrations repo and any bird illustrations it downloads at runtime —
+so the published image is likewise non-commercial.

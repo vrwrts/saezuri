@@ -14,8 +14,9 @@ on:
       - 'fixtures/**'
       - '.github/**'
       - '**.md'
-      # pipeline/ IS shipped now (the on-demand illustration worker runs in the
-      # image), so changes there can cut a release like any other app code.
+      # The generation pipeline lives in the saezuri-illustrations repo (versioned there);
+      # the app adopts a new one by bumping PIPELINE_VERSION in the Dockerfile, which is a
+      # normal releasable app change.
 
 concurrency:
   group: release

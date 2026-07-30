@@ -25,9 +25,9 @@ One required setting; the rest are optional (see [`.env.example`](.env.example))
 | ------------------- | -------- | ----------------------------------------------------------------------- |
 | `BIRDNETGO_URL`     | yes      | Base URL of your BirdNET-Go instance, e.g. `http://192.168.1.10:8080`.  |
 | `BIRDNETGO_TOKEN`   | no       | Auth token for a `PrivateMode` instance; nginx injects it, never the browser. |
-| `GEMINI_API_KEY`    | no       | Google AI (Gemini) key. Set it to generate illustrations on demand (see below); unset stays display-only. |
-| `GENERATE_INTERVAL` | no       | How often the generator checks for newly detected species. `30m`/`1h`/`600s`; default `30m`. |
+| `GEMINI_API_KEY`    | no       | Google AI (Gemini) key. Set it to *also* generate art for species the repo lacks (see below); unset relies on downloads only. |
 | `GENERATE_SLEEP`    | no       | Seconds between image-API calls, to stay under the Gemini free tier. Default `6` (matches the pipeline). |
+| `ILLUSTRATIONS_REPO`| no       | Source repo for free pre-made cutouts, auto-downloaded per detected species (default `vrwrts/saezuri-illustrations`; empty disables — see below). |
 
 `BIRDNETGO_URL` must be reachable **from inside the container**, and its host is forwarded
 upstream as the `Host` header (and SNI, for `https`). A LAN IP is simplest; a hostname works
@@ -47,11 +47,10 @@ docker run -d -p 8080:80 -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
 Then open <http://localhost:8080>. Images are published multi-arch (amd64 + arm64), so
 they run on a Raspberry Pi as well as an x86 host.
 
-## On-demand illustrations
+## On-demand generation (optional)
 
-Out of the box Saezuri renders every bird as the same generic silhouette — it ships no
-species art. To fill the collage with real kachō-e cutouts **without running the
-[`pipeline/`](pipeline/) by hand**, set `GEMINI_API_KEY`:
+The free downloads above only cover species someone has contributed art for. To *also* fill in
+anything the repo doesn't have — generated fresh in the same kachō-e style — set `GEMINI_API_KEY`:
 
 ```bash
 docker run -d -p 8080:80 \
@@ -61,27 +60,58 @@ docker run -d -p 8080:80 \
   ghcr.io/vrwrts/saezuri:latest
 ```
 
-A worker then runs beside nginx: every `GENERATE_INTERVAL` it asks your instance which
-species have actually been detected, generates a perched + flight cutout for any that are
-missing (reusing the same pipeline scripts, so the result is identical to a manual run),
-and refreshes the layout manifest the frontend polls. Silhouettes turn into real birds on
-their own over the first hours/days.
+The refresh service holds BirdNET-Go's detection SSE stream; the moment a new species is heard it
+first tries the free download, and if the repo doesn't have it, generates a perched + flight cutout
+(via the bundled pipeline), then refreshes the layout manifest the frontend polls. Silhouettes turn
+into real birds on their own within seconds to hours.
 
 Things to know:
 
 - **It uses the paid Gemini image API with _your_ key** — you pay for what it generates.
-  Only detected species are generated (typically dozens), not a whole region. There is no
-  count cap; generation is paced by `GENERATE_SLEEP` (default 6s) to stay under the free
-  tier, and it drains over successive cycles.
+  Only detected species not already downloaded are generated (typically a handful). Generation is
+  paced by `GENERATE_SLEEP` (default 6s) to stay under the free tier and capped per cycle by
+  `GENERATE_MAX_PER_CYCLE`.
 - **Persist the art** with the named volume above so container upgrades don't re-spend
   those API calls. The manifest is rebuilt from the volume at startup.
-- **The image is large.** Bundling the generator (Python + the BiRefNet matting model)
-  makes every image heavy, even when you don't enable generation. A leaner generator-less
-  variant may come later; for now `GEMINI_API_KEY` unset simply means the worker never
-  runs.
+- **The generator is bundled in every image** — vendored at build time from the
+  [saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) pipeline at a pinned
+  version (numpy/scipy cutout, no ML model, so the `nginx:alpine` image stays modest).
+  `GEMINI_API_KEY` unset simply means the worker never generates; the container is otherwise identical.
 - **Licensing.** Generating art locally for your own display is personal use. The style
   derives from the CC-BY-NC-SA lineage (see below) — confirm the obligations before
   publishing generated images.
+
+## Free illustrations
+
+You don't have to pay for generation to get real art. **On by default**, the moment BirdNET-Go
+reports a species the refresh service downloads its ready-made cutout from the
+[saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) repo (via the jsDelivr
+CDN) — no API key needed. Just mount the volume so it persists:
+
+```bash
+docker run -d -p 8080:80 \
+  -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
+  -v saezuri-illustrations:/usr/share/nginx/html/assets/illustrations \
+  ghcr.io/vrwrts/saezuri:latest
+```
+
+How it behaves:
+
+- **Per detected species, once.** Each species' cutout is fetched when first heard and kept in
+  the volume, so a restart re-downloads nothing. A fresh display fills in over the first hours
+  as birds are heard (not all at t=0).
+- **Composes with on-demand generation.** Download is tried first (free); if `GEMINI_API_KEY`
+  is set, a species the repo *doesn't* have still falls back to Gemini generation.
+- **Requires `BIRDNETGO_URL`** — the refresh service (which fetches art and builds the manifest)
+  only runs when it's set.
+- **Offline-safe / disable.** A failed fetch is non-fatal (silhouette until art exists). Set
+  `ILLUSTRATIONS_REPO=` (empty) to turn downloading off entirely; pin `ILLUSTRATIONS_REF` to a
+  release tag instead of `main` for a fixed art set.
+- **Licensing.** The illustrations (and the generation pipeline the image bundles) are
+  **CC-BY-NC-SA-4.0** — non-commercial. See the illustrations repo and *Credits and licensing* below.
+
+Want to contribute art for more species? Generate them with your key and open a PR — see the
+[saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) repo.
 
 ## Develop
 
@@ -127,9 +157,10 @@ image, and deploys to Cloudflare Pages — see [`site/README.md`](site/README.md
   multi-arch image (`linux/amd64` + `linux/arm64`) and pushes it to `ghcr.io/vrwrts/saezuri`
   as `:X.Y.Z`, `:X.Y`, and `:latest`. No manual tagging.
 - **Site vs app:** changes under `site/` and docs never cut an app release — the landing
-  site deploys itself to Cloudflare. `pipeline/` now ships in the image (the on-demand
-  illustration worker), so a `feat:`/`fix:` there releases like any other app code; use
-  non-releasing types (`chore:`, `docs:`) for tooling-only tweaks.
+  site deploys itself to Cloudflare. The generation **pipeline lives in the
+  [saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) repo** (versioned
+  there); the app adopts a new one by bumping the `PIPELINE_VERSION` build arg in the Dockerfile,
+  which cuts a normal app release.
 - **One-time setup:** after the first release, set the `saezuri` package to **public** in
   the org's GHCR package settings so anonymous `docker pull` works, and link it to the repo.
 
@@ -137,7 +168,9 @@ image, and deploys to Cloudflare Pages — see [`site/README.md`](site/README.md
 
 Saezuri is an **original, clean-room reimplementation** of a collage frontend. It shares
 no source with AvianVisitors; it matches the look and feel and reuses only the
-backend-agnostic illustration tooling (see [`pipeline/`](pipeline/)).
+backend-agnostic illustration tooling, which lives in the
+[saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) repo and is vendored
+into the Docker image.
 
 - Design, collage aesthetic, and the illustration pipeline are owed to
   **[AvianVisitors](https://github.com/Twarner491/AvianVisitors)** by Teddy Warner.
@@ -146,9 +179,10 @@ backend-agnostic illustration tooling (see [`pipeline/`](pipeline/)).
   of Ornithology, Cornell University.
 - Detections come from **[BirdNET-Go](https://github.com/tphakala/birdnet-go)** by Tomi Phakala.
 
-The reused illustration assets and pipeline carry the **CC-BY-NC-SA-4.0** license inherited
-from BirdNET-Pi — **non-commercial use only**. This includes the empty-state nest
-illustration (`public/assets/nest.webp`), which is bundled and shipped under that license,
-attributed to AvianVisitors / BirdNET-Pi. Purely local, personal use does not trigger
-distribution terms, but publishing images or a derived repository does; confirm the
-obligations before doing so. Attribution headers on ported files are preserved.
+The reused illustrations and pipeline carry the **CC-BY-NC-SA-4.0** license inherited from
+BirdNET-Pi — **non-commercial use only**. In this repo that covers the empty-state nest
+illustration (`public/assets/nest.webp`), bundled and shipped under that license. The Docker
+image additionally bundles the vendored pipeline and any downloaded bird illustrations, all
+CC-BY-NC-SA-4.0 — so the published image is non-commercial (see [`LICENSE`](LICENSE)). Purely
+local, personal use does not trigger distribution terms, but publishing images or a derived
+repository does; confirm the obligations before doing so.

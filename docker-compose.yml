@@ -20,6 +20,12 @@ services:
       GENERATE_SLEEP: ${GENERATE_SLEEP:-}
       # Cap species generated per pipeline run.
       GENERATE_MAX_PER_CYCLE: ${GENERATE_MAX_PER_CYCLE:-4}
+      # --- Free pre-made illustrations (see .env.example) ---
+      # Per detected species, the refresh service downloads a ready-made cutout from
+      # the saezuri-illustrations repo (via jsDelivr) — no Gemini key needed. Defaults
+      # on; set ILLUSTRATIONS_REPO empty to disable. Composes with on-demand generation.
+      ILLUSTRATIONS_REPO: ${ILLUSTRATIONS_REPO-vrwrts/saezuri-illustrations}
+      ILLUSTRATIONS_REF: ${ILLUSTRATIONS_REF:-main}
       # --- e-ink frame (/<window>.png) size + look; set to your panel ---
       FRAME_WIDTH: ${FRAME_WIDTH:-800}
       FRAME_HEIGHT: ${FRAME_HEIGHT:-480}
