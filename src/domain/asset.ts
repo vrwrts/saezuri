@@ -31,9 +31,18 @@ export function imagePath(key: string, ver?: string): string {
   return ver ? `${url}?v=${ver}` : url
 }
 
-/** True when the species has its own illustration in the manifest. */
+/** True when the species has its own illustration in the manifest (its perched key,
+ *  the one `resolveArt` anchors on). Used to gate what's *shown*. */
 export function hasArt(manifest: LayoutManifest, scientificName: string): boolean {
   return slugify(scientificName) in manifest.masks
+}
+
+/** True when the species is fully illustrated — BOTH the perched and flight poses are
+ *  present. This is the gate for *generation*: a species needs art until it's complete,
+ *  so a half-deleted pair regenerates its missing pose. */
+export function isComplete(manifest: LayoutManifest, scientificName: string): boolean {
+  const base = slugify(scientificName)
+  return base in manifest.masks && `${base}-2` in manifest.masks
 }
 
 /** Roll for the flight pose. Injectable RNG keeps callers testable. */

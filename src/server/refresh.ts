@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { hasArt } from '../domain/asset.ts'
+import { isComplete } from '../domain/asset.ts'
 import { DEFAULT_MANIFEST } from '../domain/defaultManifest.ts'
 import { fetchWindowRows, type LoadDeps, loadSpecies } from '../domain/load.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
@@ -174,6 +174,7 @@ class Refresher {
       }
     }
     this.manifest = await loadManifest(this.cfg.htmlDir)
+    this.enqueueMissingArt(now)
     const snapshot = buildSnapshot({
       store: this.store,
       allSpecies: this.allSpecies,
@@ -184,6 +185,17 @@ class Refresher {
     // frame) never references art the manifest doesn't yet describe.
     await writeSnapshot(this.cfg.htmlDir, snapshot)
     await this.renderFrames(snapshot)
+  }
+
+  /** Enqueue any recently-heard species missing a complete illustration pair, so gaps
+   *  fill on startup / after art is deleted — not only when a species is next heard
+   *  live (onDetection). Cheap + idempotent: the generator dedupes in-flight/queued
+   *  slugs and `isComplete` skips species that already have both poses. */
+  private enqueueMissingArt(now: number): void {
+    const since = (resolveWindow('7D', now) as RangeWindow).sinceMs
+    for (const s of this.store.aggregate(since)) {
+      if (!isComplete(this.manifest, s.sci)) this.generator.enqueue(s.sci, s.com)
+    }
   }
 
   /** Render the e-ink PNG for each configured window, skipping any whose species
@@ -258,7 +270,7 @@ class Refresher {
         },
         onDetection: (row) => {
           if (this.store.add(row)) this.schedulePublish()
-          if (!hasArt(this.manifest, row.scientificName)) {
+          if (!isComplete(this.manifest, row.scientificName)) {
             this.generator.enqueue(row.scientificName, row.commonName)
           }
         },
