@@ -1,3 +1,4 @@
+import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { isComplete } from '../domain/asset.ts'
 import { DEFAULT_MANIFEST } from '../domain/defaultManifest.ts'
@@ -12,8 +13,15 @@ import { buildSnapshot, loadManifest, writeSnapshot } from './publish.ts'
 import { frameSignature, renderFrame, writeFrame } from './render.ts'
 import { DetectionStore } from './store.ts'
 import { runDetectionStream } from './stream.ts'
+import { watchAssetRemovals } from './watchAssets.ts'
 
 const ALL_SEGMENTS: readonly WindowSegment[] = ['1h', '12h', '24h', '7d', 'all']
+
+// Coalesce a burst of cutout removals (e.g. `rm *.png`) into a single heal, and
+// how long to wait before re-arming the watcher after an error / a not-yet-created
+// assets dir. Internal reliability timings, not operator knobs.
+const ASSET_HEAL_DEBOUNCE_MS = 2_000
+const ASSET_WATCH_REARM_MS = 1_000
 
 function parseWindows(raw: string | undefined): WindowSegment[] {
   if (!raw) return [...ALL_SEGMENTS]
@@ -198,6 +206,16 @@ class Refresher {
     }
   }
 
+  /** A cutout vanished from disk (manual delete, cache eviction). Rebuild the
+   *  manifest from disk so the gone slug drops out of `masks` — otherwise
+   *  `isComplete` / `hasArt` keep trusting a stale key — then publish, which
+   *  re-enqueues the now-incomplete recent species so the generator refetches /
+   *  regenerates them, and drops any others to the silhouette instead of a 404. */
+  private async heal(): Promise<void> {
+    await this.generator.rebuildManifest()
+    await this.publish()
+  }
+
   /** Render the e-ink PNG for each configured window, skipping any whose species
    *  + manifest fingerprint is unchanged so the file (and its mtime) stays put —
    *  no needless e-ink refresh. A canvas failure for one window is isolated. */
@@ -256,6 +274,18 @@ class Refresher {
     setInterval(() => {
       void this.safe('aging', () => this.publish())
     }, this.cfg.agingIntervalMs)
+
+    // React to art disappearing while we run (a manual delete, a cache eviction).
+    // Startup already reflects disk via rebuildManifest; this keeps it doing so
+    // from now on, healing immediately instead of only at the next restart.
+    await this.safe('assets-dir', async () => {
+      await mkdir(this.cfg.assetsDir, { recursive: true })
+    })
+    watchAssetRemovals(this.cfg.assetsDir, () => void this.safe('heal', () => this.heal()), {
+      debounceMs: ASSET_HEAL_DEBOUNCE_MS,
+      rearmMs: ASSET_WATCH_REARM_MS,
+      onError: logErr,
+    })
 
     // The stream is the primary signal. Each (re)connect re-backfills the store
     // (healing any gap) and publishes; each detection feeds the store, enqueues
