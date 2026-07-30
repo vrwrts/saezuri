@@ -44,16 +44,21 @@ Rules:
 1. Never copy source from `reference/` into the app. Reimplement in our own code.
 2. Never commit anything under `reference/`. It is gitignored. If `git status` ever
    shows files under `reference/`, stop and fix `.gitignore` before committing.
-3. The only exception, the one thing we port rather than reimplement, is the
-   illustration tooling: the image-generation prompt template and the pregen, cutout,
-   and mask-building scripts. These go in `pipeline/` with their original attribution
-   and license headers preserved, because they are backend-agnostic and not worth
-   rewriting.
+3. The only exception, the one thing we ported rather than reimplemented, is the
+   illustration tooling: the image-generation prompt template and the pregen, matte,
+   and mask-building scripts, with their original attribution and license headers
+   preserved. These now live in their own repo,
+   [`saezuri-illustrations`](https://github.com/vrwrts/saezuri-illustrations) (alongside
+   the community-contributed art). There is no in-repo `pipeline/` directory: the app
+   vendors that pipeline into its Docker image at a pinned `PIPELINE_VERSION` (see the
+   `Dockerfile`) for on-demand generation, and at runtime downloads pre-generated
+   illustrations from that repo per detected species.
 ## Attribution and licensing
  
 - `README.md` must credit AvianVisitors and, through it, BirdNET-Pi.
-- Preserve license headers on anything reused in `pipeline/` and on any illustration
-  assets carried over.
+- Preserve license headers on the ported illustration tooling (now in the
+  `saezuri-illustrations` repo, vendored into the image) and on any illustration assets
+  carried over (e.g. the bundled `public/assets/nest.webp`).
 - The BirdNET-Pi lineage is likely copyleft. Before publishing any image or repo,
   confirm the license and its obligations. Purely local, personal use does not trigger
   distribution terms, but publishing does.
@@ -71,9 +76,10 @@ Rules:
  
 - Admin or settings control. Saezuri is read-only for now. The BirdNET-Go settings
   API is a later, separate piece and must not creep into v1.
-- Regenerating a European species cutout set. For now the existing AvianVisitors
-  cutouts are dev placeholders so the UI is testable. The European regeneration via
-  `pipeline/` is a later task.
+- Producing the full illustration set. Art is contributed as PRs to the
+  `saezuri-illustrations` repo (a flat folder the app auto-downloads per detected
+  species); the AvianVisitors cutouts under `public/assets/` remain gitignored dev
+  placeholders so the UI is testable locally. Growing that set is ongoing, not a v1 gate.
 ## Common commands
  
 To be filled in once the scaffold lands. Expected shape:
