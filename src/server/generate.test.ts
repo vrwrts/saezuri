@@ -34,14 +34,15 @@ const BASE = 'http://fixtures.test'
 let assetsDir: string
 let onGenerated: Mock<() => Promise<void>>
 
-// fetch stub: 200 for the perched pose of "present" slugs, 404 for everything else.
-function stubFetch(presentSlugs: string[]) {
+// fetch stub: 200 for exactly the listed pose filenames (e.g. 'turdus-merula' for the
+// perched pose, 'turdus-merula-2' for flight), 404 for everything else.
+function stubFetch(presentPoses: string[]) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
       const m = url.match(/\/illustrations\/(.+)\.png$/)
       const name = m?.[1]
-      if (name && presentSlugs.includes(name)) {
+      if (name && presentPoses.includes(name)) {
         return { ok: true, arrayBuffer: async () => PNG.buffer.slice(0) } as unknown as Response
       }
       return { ok: false, status: 404 } as Response
@@ -81,16 +82,33 @@ afterEach(async () => {
 })
 
 describe('Generator art acquisition', () => {
-  it('downloads a present species and rebuilds the manifest (no Gemini key)', async () => {
-    stubFetch(['turdus-merula'])
+  it('downloads a complete pair and rebuilds the manifest (no Gemini key)', async () => {
+    stubFetch(['turdus-merula', 'turdus-merula-2']) // both poses available in the repo
     const g = makeGen({ enabled: false, downloadBaseUrl: BASE })
     g.enqueue('Turdus merula', 'Eurasian Blackbird')
     await idle(g)
 
-    expect(await readdir(assetsDir)).toContain('turdus-merula.png')
-    // Manifest rebuilt (download-only path), never Gemini generation.
+    const files = await readdir(assetsDir)
+    expect(files).toContain('turdus-merula.png')
+    expect(files).toContain('turdus-merula-2.png')
+    // Complete via download → manifest rebuilt, never Gemini generation.
     expect(spawnCalls.some((a) => a.includes('--rebuild'))).toBe(true)
     expect(spawnCalls.some((a) => a.includes('--generate'))).toBe(false)
+    expect(onGenerated).toHaveBeenCalledTimes(1)
+  })
+
+  it('generates only the missing pose when the repo has a partial pair (keyed)', async () => {
+    stubFetch(['turdus-merula']) // repo has the perched pose only; flight 404s
+    const g = makeGen({ enabled: true, downloadBaseUrl: BASE })
+    g.enqueue('Turdus merula', 'Eurasian Blackbird')
+    await idle(g)
+
+    // Perched downloaded for free, but the pair is incomplete → Gemini fills the gap
+    // (pregen skips the pose already on disk).
+    expect(await readdir(assetsDir)).toContain('turdus-merula.png')
+    const gen = spawnCalls.find((a) => a.includes('--generate'))
+    expect(gen).toBeDefined()
+    expect(gen).toContain('Turdus merula|Eurasian Blackbird')
     expect(onGenerated).toHaveBeenCalledTimes(1)
   })
 

@@ -1,5 +1,6 @@
+import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import { hasArt } from '../domain/asset.ts'
+import { isComplete } from '../domain/asset.ts'
 import { DEFAULT_MANIFEST } from '../domain/defaultManifest.ts'
 import { fetchWindowRows, type LoadDeps, loadSpecies } from '../domain/load.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
@@ -12,8 +13,15 @@ import { buildSnapshot, loadManifest, writeSnapshot } from './publish.ts'
 import { frameSignature, renderFrame, writeFrame } from './render.ts'
 import { DetectionStore } from './store.ts'
 import { runDetectionStream } from './stream.ts'
+import { watchAssetRemovals } from './watchAssets.ts'
 
 const ALL_SEGMENTS: readonly WindowSegment[] = ['1h', '12h', '24h', '7d', 'all']
+
+// Coalesce a burst of cutout removals (e.g. `rm *.png`) into a single heal, and
+// how long to wait before re-arming the watcher after an error / a not-yet-created
+// assets dir. Internal reliability timings, not operator knobs.
+const ASSET_HEAL_DEBOUNCE_MS = 2_000
+const ASSET_WATCH_REARM_MS = 1_000
 
 function parseWindows(raw: string | undefined): WindowSegment[] {
   if (!raw) return [...ALL_SEGMENTS]
@@ -174,6 +182,7 @@ class Refresher {
       }
     }
     this.manifest = await loadManifest(this.cfg.htmlDir)
+    this.enqueueMissingArt(now)
     const snapshot = buildSnapshot({
       store: this.store,
       allSpecies: this.allSpecies,
@@ -184,6 +193,27 @@ class Refresher {
     // frame) never references art the manifest doesn't yet describe.
     await writeSnapshot(this.cfg.htmlDir, snapshot)
     await this.renderFrames(snapshot)
+  }
+
+  /** Enqueue any recently-heard species missing a complete illustration pair, so gaps
+   *  fill on startup / after art is deleted — not only when a species is next heard
+   *  live (onDetection). Cheap + idempotent: the generator dedupes in-flight/queued
+   *  slugs and `isComplete` skips species that already have both poses. */
+  private enqueueMissingArt(now: number): void {
+    const since = (resolveWindow('7D', now) as RangeWindow).sinceMs
+    for (const s of this.store.aggregate(since)) {
+      if (!isComplete(this.manifest, s.sci)) this.generator.enqueue(s.sci, s.com)
+    }
+  }
+
+  /** A cutout vanished from disk (manual delete, cache eviction). Rebuild the
+   *  manifest from disk so the gone slug drops out of `masks` — otherwise
+   *  `isComplete` / `hasArt` keep trusting a stale key — then publish, which
+   *  re-enqueues the now-incomplete recent species so the generator refetches /
+   *  regenerates them, and drops any others to the silhouette instead of a 404. */
+  private async heal(): Promise<void> {
+    await this.generator.rebuildManifest()
+    await this.publish()
   }
 
   /** Render the e-ink PNG for each configured window, skipping any whose species
@@ -245,6 +275,18 @@ class Refresher {
       void this.safe('aging', () => this.publish())
     }, this.cfg.agingIntervalMs)
 
+    // React to art disappearing while we run (a manual delete, a cache eviction).
+    // Startup already reflects disk via rebuildManifest; this keeps it doing so
+    // from now on, healing immediately instead of only at the next restart.
+    await this.safe('assets-dir', async () => {
+      await mkdir(this.cfg.assetsDir, { recursive: true })
+    })
+    watchAssetRemovals(this.cfg.assetsDir, () => void this.safe('heal', () => this.heal()), {
+      debounceMs: ASSET_HEAL_DEBOUNCE_MS,
+      rearmMs: ASSET_WATCH_REARM_MS,
+      onError: logErr,
+    })
+
     // The stream is the primary signal. Each (re)connect re-backfills the store
     // (healing any gap) and publishes; each detection feeds the store, enqueues
     // its art if missing, and schedules a debounced publish. Loops until aborted.
@@ -258,7 +300,7 @@ class Refresher {
         },
         onDetection: (row) => {
           if (this.store.add(row)) this.schedulePublish()
-          if (!hasArt(this.manifest, row.scientificName)) {
+          if (!isComplete(this.manifest, row.scientificName)) {
             this.generator.enqueue(row.scientificName, row.commonName)
           }
         },
