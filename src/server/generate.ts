@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { slugify } from '../domain/slug.ts'
@@ -72,26 +73,32 @@ export class Generator {
         const batch = this.take(cap)
         for (const s of batch) this.inFlight.add(slugify(s.sci))
         try {
-          // 1) Free pre-made art first (no key needed). Species the repo doesn't
-          //    have fall through to generation.
+          // 1) Free pre-made art first (no key needed). A species is only "done" via
+          //    download once BOTH poses are present; a partial pair still needs generation.
           const needGen: Species[] = []
-          let downloaded = 0
+          let downloadedAny = false
           for (const s of batch) {
-            if (this.opts.downloadBaseUrl && (await this.downloadArt(slugify(s.sci)))) downloaded++
-            else needGen.push(s)
+            let complete = false
+            if (this.opts.downloadBaseUrl) {
+              const { got, complete: c } = await this.downloadArt(slugify(s.sci))
+              if (got > 0) downloadedAny = true
+              complete = c
+            }
+            if (!complete) needGen.push(s)
           }
-          // 2) Generate the remainder, only if a Gemini key is set. spawnGenerate
-          //    ends with build_masks, so it rebuilds the manifest itself.
+          // 2) Generate whatever the repo didn't fully supply, only if a Gemini key is
+          //    set. spawnGenerate ends with build_masks, so it rebuilds the manifest;
+          //    pregen skips the pose(s) already on disk, so it only fills the gap.
           let generated = false
           if (this.opts.enabled && needGen.length > 0) {
             await this.spawnGenerate(needGen)
             generated = true
           }
-          // 3) If we only downloaded, rebuild the manifest so the new art is
-          //    described (no Gemini key needed). Then republish either way, BEFORE
-          //    clearing inFlight, so a fresh detection sees the art and isn't re-enqueued.
-          if (downloaded > 0 || generated) {
-            if (downloaded > 0 && !generated) await this.rebuildManifest()
+          // 3) If we only downloaded, rebuild the manifest so the new art is described
+          //    (no Gemini key needed). Then republish either way, BEFORE clearing
+          //    inFlight, so a fresh detection sees the art and isn't re-enqueued.
+          if (downloadedAny || generated) {
+            if (downloadedAny && !generated) await this.rebuildManifest()
             await this.opts.onGenerated()
           }
         } catch (e) {
@@ -105,29 +112,33 @@ export class Generator {
     }
   }
 
-  /** Download the ready-made cutout(s) for a slug from the illustrations repo into
-   *  assetsDir. Tries both poses; returns true if the perched pose landed (which is
-   *  what makes the species "illustrated"). Any miss/error is non-fatal — the species
+  /** Download whichever poses the repo has for a slug into assetsDir, skipping poses
+   *  already on disk. Returns how many new files landed (`got`) and whether the species
+   *  is now `complete` (both poses present). A miss/error is non-fatal — the species
    *  just falls through to generation. Writes atomically (tmp + rename). */
-  private async downloadArt(slug: string): Promise<boolean> {
+  private async downloadArt(slug: string): Promise<{ got: number; complete: boolean }> {
     await mkdir(this.opts.assetsDir, { recursive: true })
-    let gotPerched = false
+    let got = 0
     for (const suffix of ['', '-2']) {
       const name = `${slug}${suffix}.png`
+      const dest = join(this.opts.assetsDir, name)
+      if (existsSync(dest)) continue // already have this pose
       try {
         const res = await fetch(`${this.opts.downloadBaseUrl}/illustrations/${name}`)
         if (!res.ok) continue // 404 == not in the repo; silent, expected for many species
         const buf = Buffer.from(await res.arrayBuffer())
-        const dest = join(this.opts.assetsDir, name)
         const tmp = `${dest}.tmp`
         await writeFile(tmp, buf)
         await rename(tmp, dest)
-        if (suffix === '') gotPerched = true
+        got++
       } catch (e) {
         logErr(e) // network error — non-fatal, fall through to generation
       }
     }
-    return gotPerched
+    const complete =
+      existsSync(join(this.opts.assetsDir, `${slug}.png`)) &&
+      existsSync(join(this.opts.assetsDir, `${slug}-2.png`))
+    return { got, complete }
   }
 
   private spawnGenerate(batch: Species[]): Promise<void> {
