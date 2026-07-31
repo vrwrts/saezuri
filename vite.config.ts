@@ -2,22 +2,17 @@
 
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 
-// The browser only ever talks to Saezuri's own origin (CLAUDE.md invariant).
-// In production nginx proxies /api/ to BIRDNETGO_URL; in dev the Vite proxy
-// stands in for nginx so the app behaves identically. Point it at your
-// instance with BIRDNETGO_URL in a .env.local file (never committed).
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
-  const target = env.BIRDNETGO_URL || 'http://localhost:8080'
+// The browser only ever talks to Saezuri's own origin (CLAUDE.md invariant) and
+// reads only static files it publishes — it never calls BirdNET-Go. All
+// BirdNET-Go access is backend-only, done by the Node refresh service (run it
+// with `pnpm refresh:dev` pointed at BIRDNETGO_URL, publishing into ./public so
+// Vite serves the snapshot / manifest / species dictionaries). So there is no
+// dev API proxy here.
+export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
-    server: {
-      proxy: {
-        '/api': { target, changeOrigin: true },
-      },
-    },
     test: {
       // Pure logic tests run in node; component tests opt into jsdom with a
       // `// @vitest-environment jsdom` pragma at the top of the file.

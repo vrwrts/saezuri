@@ -3,11 +3,13 @@ import { join } from 'node:path'
 import { isComplete } from '../domain/asset.ts'
 import { DEFAULT_MANIFEST } from '../domain/defaultManifest.ts'
 import { fetchWindowRows, type LoadDeps, loadSpecies } from '../domain/load.ts'
+import { type DictLocale, SUPPORTED_DICT_LOCALES } from '../domain/locale.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
 import type { Snapshot } from '../domain/snapshot.ts'
 import type { Species } from '../domain/species.ts'
 import { type RangeWindow, resolveWindow, type WindowSegment } from '../domain/window.ts'
 import { makeNodeDeps } from './birdnetDeps.ts'
+import { publishDictionaries } from './dictionaries.ts'
 import { Generator } from './generate.ts'
 import { buildSnapshot, loadManifest, writeSnapshot } from './publish.ts'
 import { frameSignature, renderFrame, writeFrame } from './render.ts'
@@ -28,6 +30,16 @@ function parseWindows(raw: string | undefined): WindowSegment[] {
   const wanted = new Set(raw.split(',').map((s) => s.trim().toLowerCase()))
   const out = ALL_SEGMENTS.filter((s) => wanted.has(s))
   return out.length > 0 ? out : [...ALL_SEGMENTS]
+}
+
+/** Which species-name dictionaries to publish. Defaults to all supported; an
+ *  operator can narrow it (disk/bandwidth) via SPECIES_DICT_LOCALES. Unknown codes
+ *  are dropped; an empty/garbage list falls back to all. */
+function parseDictLocales(raw: string | undefined): DictLocale[] {
+  if (!raw) return [...SUPPORTED_DICT_LOCALES]
+  const wanted = new Set(raw.split(',').map((s) => s.trim().toLowerCase()))
+  const out = SUPPORTED_DICT_LOCALES.filter((l) => wanted.has(l))
+  return out.length > 0 ? out : [...SUPPORTED_DICT_LOCALES]
 }
 
 // The refresh service: owns the BirdNET-Go relationship and publishes the
@@ -59,6 +71,7 @@ interface Config {
   frameBg: string
   frameShadow: boolean
   frameWindows: WindowSegment[]
+  dictLocales: DictLocale[]
 }
 
 function intEnv(name: string, def: number): number {
@@ -104,6 +117,7 @@ function readConfig(): Config {
     frameBg: (process.env.FRAME_BG ?? '#fcfcfb').trim(),
     frameShadow: (process.env.FRAME_SHADOW ?? '1').trim() !== '0',
     frameWindows: parseWindows(process.env.FRAME_WINDOWS),
+    dictLocales: parseDictLocales(process.env.SPECIES_DICT_LOCALES),
   }
 }
 
@@ -148,6 +162,17 @@ class Refresher {
     const res = await loadSpecies(resolveWindow('ALL'), {}, undefined, this.deps)
     this.allSpecies = res.species
     this.lastSummaryMs = Date.now()
+  }
+
+  /** Download + publish BirdNET-Go's species-name dictionaries as static files so
+   *  the browser can localize display names without ever touching BirdNET-Go. */
+  private async publishDicts(): Promise<void> {
+    await publishDictionaries({
+      baseUrl: this.cfg.baseUrl,
+      token: this.cfg.token,
+      htmlDir: this.cfg.htmlDir,
+      locales: this.cfg.dictLocales,
+    })
   }
 
   /** Serialize publishes so overlapping triggers (aging tick, debounce,
@@ -268,6 +293,13 @@ class Refresher {
     // browser always fetches a real manifest, before any generation.
     await this.safe('rebuild', () => this.generator.rebuildManifest())
     await this.safe('summary', () => this.refreshSummary())
+    // Publish the species-name dictionaries the browser localizes from (static
+    // files on our origin — the browser never calls BirdNET-Go). Refreshed on the
+    // slow summary cadence so a backend upgrade is picked up without a restart.
+    await this.safe('dictionaries', () => this.publishDicts())
+    setInterval(() => {
+      void this.safe('dictionaries', () => this.publishDicts())
+    }, this.cfg.summaryIntervalMs)
 
     // Aging tick: republish so bounded windows shed detections that age past
     // their cutoff even when nothing new is heard (re-counts the store, no fetch).

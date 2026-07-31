@@ -1,5 +1,5 @@
-import { getDetections, getSpeciesSummary } from '../api/endpoints.ts'
-import type { DetectionResponse } from '../api/types.ts'
+import type { DetectionsQuery, SpeciesSummaryQuery } from '../api/endpoints.ts'
+import type { DetectionResponse, PaginatedResponse, SpeciesSummary } from '../api/types.ts'
 import {
   aggregateDetections,
   detectionInstantMs,
@@ -30,8 +30,14 @@ export interface LoadResult {
 }
 
 export interface LoadDeps {
-  getDetections: typeof getDetections
-  getSpeciesSummary: typeof getSpeciesSummary
+  getDetections: (
+    query: DetectionsQuery,
+    signal?: AbortSignal,
+  ) => Promise<PaginatedResponse<DetectionResponse>>
+  getSpeciesSummary: (
+    query?: SpeciesSummaryQuery,
+    signal?: AbortSignal,
+  ) => Promise<SpeciesSummary[]>
 }
 
 const DEFAULTS = {
@@ -39,8 +45,6 @@ const DEFAULTS = {
   maxPages: 10,
   summaryLimit: 100,
 } as const
-
-const defaultDeps: LoadDeps = { getDetections, getSpeciesSummary }
 
 /** Raw detection rows covering a bounded window, newest-first. Pages
  *  /detections and early-stops once the oldest row predates the cutoff (or the
@@ -51,8 +55,8 @@ const defaultDeps: LoadDeps = { getDetections, getSpeciesSummary }
 export async function fetchWindowRows(
   window: RangeWindow,
   options: LoadOptions = {},
-  signal?: AbortSignal,
-  deps: LoadDeps = defaultDeps,
+  signal: AbortSignal | undefined,
+  deps: LoadDeps,
 ): Promise<{ rows: DetectionResponse[]; covered: boolean }> {
   const pageSize = options.pageSize ?? DEFAULTS.pageSize
   const maxPages = options.maxPages ?? DEFAULTS.maxPages
@@ -93,8 +97,8 @@ export async function fetchWindowRows(
 export async function loadSpecies(
   window: ResolvedWindow,
   options: LoadOptions = {},
-  signal?: AbortSignal,
-  deps: LoadDeps = defaultDeps,
+  signal: AbortSignal | undefined,
+  deps: LoadDeps,
 ): Promise<LoadResult> {
   if (window.kind === 'all') {
     const rows = await deps.getSpeciesSummary(

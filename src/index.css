@@ -178,7 +178,10 @@ body {
   right: 16px;
   z-index: 6;
 }
-.theme-toggle {
+.menu {
+  position: relative;
+}
+.menu-button {
   display: grid;
   place-items: center;
   width: 34px;
@@ -193,8 +196,49 @@ body {
   cursor: pointer;
   transition: color 140ms ease;
 }
-.theme-toggle:hover {
+.menu-button:hover,
+.menu-button[aria-expanded='true'] {
   color: var(--ink);
+}
+
+/* Settings popover, anchored under the button, right-aligned so it never spills
+   off-screen from the top-right topbar. Stacks each control under a small label. */
+.menu-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 210px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--paper-2);
+  box-shadow: var(--raised);
+}
+.menu-row {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.menu-label {
+  color: var(--ink-soft);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.lang-select {
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: var(--recess);
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
 }
 
 .controls {
@@ -203,7 +247,7 @@ body {
   justify-content: center;
   padding: 4px 16px 10px;
 }
-.window-picker {
+.segmented {
   position: relative;
   display: inline-flex;
   gap: 2px;
@@ -214,10 +258,10 @@ body {
 }
 /* Sliding active pill: a single element that glides under the selected option
    instead of the highlight snapping between buttons. Its left/width are measured
-   from the active option (see WindowPicker) and applied inline; the transition
+   from the active option (see SegmentedControl) and applied inline; the transition
    here does the gliding. It sits behind the labels and never intercepts clicks.
    top/bottom match the 3px track padding so it insets evenly. */
-.window-thumb {
+.segmented-thumb {
   position: absolute;
   top: 3px;
   bottom: 3px;
@@ -231,11 +275,11 @@ body {
     width 260ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 @media (prefers-reduced-motion: reduce) {
-  .window-thumb {
+  .segmented-thumb {
     transition: none;
   }
 }
-.window-option {
+.segmented-option {
   position: relative;
   z-index: 1;
   padding: 6px 14px;
@@ -249,10 +293,10 @@ body {
   cursor: pointer;
   transition: color 140ms ease;
 }
-.window-option:hover {
+.segmented-option:hover {
   color: var(--ink-2);
 }
-.window-option.is-active {
+.segmented-option.is-active {
   color: var(--ink);
 }
 

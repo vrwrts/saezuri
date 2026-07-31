@@ -95,3 +95,19 @@ export function speciesFromSummary(rows: readonly SpeciesSummary[]): Species[] {
 function sortSpecies(species: Species[]): Species[] {
   return species.sort((a, b) => b.n - a.n || (b.lastSeenMs ?? 0) - (a.lastSeenMs ?? 0))
 }
+
+/** Rewrite each species' display name (`com`) with the dictionary's localized name
+ *  for that scientific name, falling back per-species to the original on any miss.
+ *  An empty/absent dictionary returns the input array unchanged (same reference),
+ *  and unchanged rows keep their object identity — so the collage layout memo never
+ *  churns when localization is a no-op. Pure; never mutates the input. */
+export function localizeCommonNames(
+  species: readonly Species[],
+  dict: ReadonlyMap<string, string> | null | undefined,
+): Species[] {
+  if (!dict || dict.size === 0) return species as Species[]
+  return species.map((s) => {
+    const localized = dict.get(s.sci)
+    return localized && localized !== s.com ? { ...s, com: localized } : s
+  })
+}

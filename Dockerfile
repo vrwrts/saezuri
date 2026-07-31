@@ -31,8 +31,9 @@ RUN apk add --no-cache curl \
        | tar -xz -C /build \
     && test -f /build/pipeline/worker.py
 
-# --- Runtime stage: nginx serves the bundle + proxies /api/; the Node refresh
-#     service runs beside it (SSE → snapshot + e-ink frames + on-demand art). ---
+# --- Runtime stage: nginx serves the static bundle (no BirdNET-Go proxy); the
+#     Node refresh service runs beside it (SSE → snapshot + e-ink frames +
+#     species dictionaries + on-demand art). ---
 #
 # alpine base: the cutout step is matte.py (numpy + scipy + Pillow, all with musl
 # wheels), so the image needs no glibc-only wheels or baked matting model. The
@@ -61,11 +62,12 @@ RUN cd /opt/saezuri/server && node -e "require('@napi-rs/canvas')"
 # Static bundle.
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Config template (rendered at start) + entrypoint hooks. The template lives
+# Config template (installed at start) + entrypoint hooks. The template lives
 # OUTSIDE /etc/nginx/templates so the image's built-in envsubst step doesn't
-# clobber nginx's own $variables — our hook substitutes only BIRDNETGO_URL.
-# 40 renders the proxy config; 50 launches the refresh service (which fetches
-# per-species art and rebuilds the manifest). Both run before nginx, in that order.
+# clobber nginx's own $variables — our hook just copies it verbatim now that
+# nothing is substituted. 40 installs the static-serving config; 50 launches the
+# refresh service (fetches per-species art + dictionaries, publishes the
+# snapshot). Both run before nginx, in that order.
 COPY nginx/default.conf.template /etc/nginx/saezuri.conf.template
 COPY nginx/entrypoint.sh /docker-entrypoint.d/40-saezuri.sh
 COPY nginx/generator.sh /docker-entrypoint.d/50-generator.sh

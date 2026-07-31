@@ -14,6 +14,17 @@ vi.mock('../hooks/useRecentSpecies.ts', () => ({
 vi.mock('../hooks/useLayoutManifest.ts', () => ({
   useLayoutManifest: () => ({ dims: {}, masks: {}, fallbackKey: '_fallback' }),
 }))
+// Localization hooks stubbed too, so the routing tests never fetch a dictionary
+// (jsdom's navigator.language would otherwise resolve a locale and request one).
+vi.mock('../hooks/useDictionaryIndex.ts', () => ({
+  useDictionaryIndex: () => ({ locales: [], default: null, loading: false }),
+}))
+vi.mock('../hooks/useLanguagePreference.ts', () => ({
+  useLanguagePreference: () => ({ lang: null, setLang: () => {} }),
+}))
+vi.mock('../hooks/useSpeciesDictionary.ts', () => ({
+  useSpeciesDictionary: () => new Map(),
+}))
 vi.mock('../collage/Collage.tsx', () => ({ Collage: () => null }))
 
 function renderAt(path: string) {

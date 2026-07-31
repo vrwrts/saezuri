@@ -1,17 +1,21 @@
+import { useMemo } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Collage } from '../collage/Collage.tsx'
 import { CollageLoading } from '../components/CollageLoading.tsx'
 import { EmptyState } from '../components/EmptyState.tsx'
 import { ErrorBoundary } from '../components/ErrorBoundary.tsx'
 import { Header } from '../components/Header.tsx'
-import { ThemeToggle } from '../components/ThemeToggle.tsx'
+import { SettingsMenu } from '../components/SettingsMenu.tsx'
 import { WindowPicker } from '../components/WindowPicker.tsx'
 import { mockSpecies } from '../dev/mock.ts'
-import type { Species } from '../domain/species.ts'
+import { localizeCommonNames, type Species } from '../domain/species.ts'
 import { pathToPreset, presetToSegment, type WindowPreset } from '../domain/window.ts'
 import { useDelayedFlag } from '../hooks/useDelayedFlag.ts'
+import { useDictionaryIndex } from '../hooks/useDictionaryIndex.ts'
+import { useLanguagePreference } from '../hooks/useLanguagePreference.ts'
 import { useLayoutManifest } from '../hooks/useLayoutManifest.ts'
 import { useRecentSpecies } from '../hooks/useRecentSpecies.ts'
+import { useSpeciesDictionary } from '../hooks/useSpeciesDictionary.ts'
 import { collagePath } from '../routes.ts'
 
 // A fast window switch resolves in well under a second; showing the loading
@@ -47,7 +51,14 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   const navigate = useNavigate()
   const manifest = useLayoutManifest()
   const live = useRecentSpecies(preset)
-  const species: Species[] = USE_MOCK ? mockSpecies(manifest) : live.species
+  // Display-language localization: the browser reads Saezuri's published dictionary
+  // files and re-labels species by scientific name. Non-blocking — names swap in
+  // when the chosen dictionary arrives; a miss/absent dict keeps the station's name.
+  const { locales, default: defaultLocale } = useDictionaryIndex()
+  const { lang, setLang } = useLanguagePreference(locales, defaultLocale)
+  const dict = useSpeciesDictionary(lang)
+  const baseSpecies: Species[] = USE_MOCK ? mockSpecies(manifest) : live.species
+  const species = useMemo(() => localizeCommonNames(baseSpecies, dict), [baseSpecies, dict])
 
   // The first snapshot fetch shows the loading indicator instead of the empty
   // nest; once loaded, switching windows is instant (one file, all windows), so
@@ -81,7 +92,7 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   return (
     <div className="stage">
       <div className="topbar">
-        <ThemeToggle />
+        <SettingsMenu locales={locales} lang={lang} onLang={setLang} />
       </div>
 
       <Header eyebrow="around here" title="recently heard" />

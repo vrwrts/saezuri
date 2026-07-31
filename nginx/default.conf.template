@@ -1,7 +1,7 @@
-# Saezuri nginx config template. Rendered at container start by
-# nginx/entrypoint.sh: only ${BIRDNETGO_URL} is substituted, so nginx runtime
-# variables ($host, $uri, ...) survive. The browser only ever talks to this
-# origin — every BirdNET-Go call is proxied through /api/ below.
+# Saezuri nginx config template. Copied verbatim at container start by
+# nginx/entrypoint.sh (no ${...} placeholders left to substitute). The browser
+# only ever talks to this origin, and this origin serves ONLY static files the
+# refresh service publishes — nginx does not proxy BirdNET-Go at all.
 server {
     listen 80;
     server_name _;
@@ -33,6 +33,15 @@ server {
         try_files $uri =404;
     }
 
+    # Published species-name dictionaries (index.json + one <locale>.json each). The
+    # browser reads these to localize display names. `no-cache` = revalidate (cheap
+    # 304s), so a republished dictionary is never served stale; a missing file 404s
+    # cleanly (the app falls back to the station's own names).
+    location /species-dict/ {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
     # Rendered e-ink frames (written by the refresh service). Regex so it beats
     # the SPA fallback below; a missing frame 404s instead of returning
     # index.html, and `/7d` (no .png) still routes to the app.
@@ -41,28 +50,12 @@ server {
         try_files $uri =404;
     }
 
-    # Reverse-proxy the BirdNET-Go API. ${BIRDNETGO_URL} is a literal after
-    # rendering, so no resolver is needed. The path prefix is preserved:
-    # /api/v2/... -> ${BIRDNETGO_URL}/api/v2/...
-    location /api/ {
-        proxy_pass ${BIRDNETGO_URL}/api/;
-        proxy_http_version 1.1;
-        # Forward the upstream's own host, not the browser's. nginx defaults the
-        # Host header to $proxy_host (the host from proxy_pass), which is what the
-        # dev Vite proxy does via changeOrigin. This matters when BIRDNETGO_URL is
-        # a hostname behind a reverse proxy / Cloudflare that routes by Host: a
-        # `Host $host` here would send the browser's host and the upstream 502s.
-        # For an https upstream, also send SNI (off by default) for the same reason.
-        proxy_ssl_server_name on;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        # SSE-friendly (BirdNET-Go's /detections/stream): no buffering, keep-alive.
-        proxy_set_header Connection "";
-        proxy_buffering off;
-        proxy_read_timeout 1h;
-        # Optional Authorization header for PrivateMode instances (empty otherwise).
-        include /etc/nginx/conf.d/saezuri_auth.inc;
-    }
+    # NOTE: Saezuri does NOT proxy the BirdNET-Go API to the browser. All
+    # BirdNET-Go access is backend-only (the Node refresh service holds the SSE
+    # stream and publishes the static files above); the browser only ever reads
+    # this origin's static files. Proxying /api/ here would expose the entire
+    # BirdNET-Go API (writes included) to anyone who can reach Saezuri — a real
+    # risk when Saezuri is on the internet but BirdNET-Go is not.
 
     # SPA fallback for client-side routes.
     location / {
