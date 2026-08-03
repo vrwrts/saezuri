@@ -1,8 +1,8 @@
 // The layout manifest ships the per-species geometry the collage packer needs:
-// an aspect ratio (`dims`) and a 1-bit silhouette (`masks`), keyed by slug. It
-// is generated offline by pipeline/build_masks.py from the cutout PNGs — see
-// pipeline/. A `fallbackKey` names a generic silhouette that unmatched species
-// borrow so they can still be packed and shown.
+// an aspect ratio (`dims`) and a 1-bit silhouette (`masks`), keyed by slug. The
+// refresh service builds it from the cutout PNGs and serves it as a static file.
+// A `fallbackKey` names a generic silhouette that unmatched species borrow so
+// they can still be packed and shown.
 
 export interface MaskRecord {
   w: number

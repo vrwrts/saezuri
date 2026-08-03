@@ -9,8 +9,8 @@ services:
       # container. A LAN IP is simplest; a hostname (incl. one behind a reverse
       # proxy / Cloudflare) works too — its host is forwarded upstream as Host+SNI.
       BIRDNETGO_URL: ${BIRDNETGO_URL:?set BIRDNETGO_URL in .env}
-      # Optional: token for a PrivateMode instance (used by the refresh service
-      # for the API + SSE stream, and injected by nginx on /api/).
+      # Optional: token for a PrivateMode instance (used only by the refresh
+      # service, for the API + SSE stream; never sent to the browser).
       BIRDNETGO_TOKEN: ${BIRDNETGO_TOKEN:-}
       # Optional: on-demand illustration generation (see .env.example). Unset =>
       # display-only: the refresh service still publishes, it just skips

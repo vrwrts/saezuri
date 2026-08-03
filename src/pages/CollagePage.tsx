@@ -18,9 +18,8 @@ import { useRecentSpecies } from '../hooks/useRecentSpecies.ts'
 import { useSpeciesDictionary } from '../hooks/useSpeciesDictionary.ts'
 import { collagePath } from '../routes.ts'
 
-// A fast window switch resolves in well under a second; showing the loading
-// indicator immediately makes it flash jarringly. Hold it back so only a
-// genuinely slow load ever surfaces it.
+// Hold the loading indicator back so a quick window switch doesn't flash it
+// (see useDelayedFlag).
 const LOADING_INDICATOR_DELAY_MS = 1000
 
 // When VITE_MOCK=1, species come from the local manifest instead of a live
@@ -65,9 +64,8 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   // this stays false. Mock mode synthesizes species synchronously — no loading.
   const loading = USE_MOCK ? false : live.loading
 
-  // Suppress the indicator for the first second of loading — a quick load shows
-  // nothing rather than a jarring flash. `loading` still gates the collage, so
-  // the view stays blank until either the data arrives or the delay elapses.
+  // `loading` gates the collage either way; this only decides whether the
+  // indicator shows during it.
   const showLoadingIndicator = useDelayedFlag(loading, LOADING_INDICATOR_DELAY_MS)
 
   // `species` arrives pre-gated to illustrated-only from the snapshot; `heard`

@@ -2,12 +2,11 @@ import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { DictionaryIndex } from '../domain/dictionary.ts'
 import { type DictLocale, reduceToDictLocale, SUPPORTED_DICT_LOCALES } from '../domain/locale.ts'
+import { birdnetFetch } from './birdnet.ts'
 
-// Backend-only: the refresh service downloads BirdNET-Go's species-name
-// dictionaries and republishes them as static files under <htmlDir>/species-dict/,
-// so the browser can localize display names by reading its own origin's static
-// files — never BirdNET-Go directly. Mirrors birdnetDeps.ts's Node fetch (direct
-// to ${BIRDNETGO_URL}/api/v2 with an optional bearer token).
+// The refresh service downloads BirdNET-Go's species-name dictionaries and
+// republishes them as static files under <htmlDir>/species-dict/, so the browser
+// localizes display names from its own origin rather than calling BirdNET-Go.
 
 const TAG = 'saezuri-dictionaries'
 const log = (msg: string) => console.log(`${TAG}: ${msg}`)
@@ -18,13 +17,6 @@ export interface PublishDictionariesConfig {
   htmlDir: string
   /** Which dictionary locales to attempt (default: all supported). */
   locales?: readonly DictLocale[]
-}
-
-function nodeGet(baseUrl: string, token: string | undefined, path: string): Promise<Response> {
-  const url = `${baseUrl.replace(/\/+$/, '')}/api/v2${path}`
-  const headers: Record<string, string> = { Accept: 'application/json' }
-  if (token) headers.Authorization = `Bearer ${token}`
-  return fetch(url, { headers })
 }
 
 async function writeJson(path: string, data: unknown): Promise<void> {
@@ -41,7 +33,7 @@ async function writeJson(path: string, data: unknown): Promise<void> {
  *  is the same in typical single-language setups and is all we need here.) */
 async function fetchStationDefault(baseUrl: string, token?: string): Promise<DictLocale | null> {
   try {
-    const res = await nodeGet(baseUrl, token, '/settings/dashboard')
+    const res = await birdnetFetch(baseUrl, token, '/settings/dashboard')
     if (!res.ok) return null
     const data = (await res.json()) as { locale?: string }
     return data.locale ? reduceToDictLocale(data.locale, SUPPORTED_DICT_LOCALES) : null
@@ -65,7 +57,7 @@ export async function publishDictionaries(
 
   for (const locale of wanted) {
     try {
-      const res = await nodeGet(cfg.baseUrl, cfg.token, `/species/dictionary/${locale}`)
+      const res = await birdnetFetch(cfg.baseUrl, cfg.token, `/species/dictionary/${locale}`)
       if (!res.ok) continue // 404 on older builds / unsupported locale — skip quietly
       const map = (await res.json()) as Record<string, string>
       await writeJson(join(dir, `${locale}.json`), map)

@@ -67,7 +67,6 @@ export function aggregateDetections(
       continue
     }
     existing.n += 1
-    // Adopt the label from the most recent detection.
     if (instant > (existing.lastSeenMs ?? -Infinity)) {
       existing.lastSeenMs = instant
       existing.com = d.commonName

@@ -25,27 +25,20 @@ const ALL_SEGMENTS: readonly WindowSegment[] = ['1h', '12h', '24h', '7d', 'all']
 const ASSET_HEAL_DEBOUNCE_MS = 2_000
 const ASSET_WATCH_REARM_MS = 1_000
 
-function parseWindows(raw: string | undefined): WindowSegment[] {
-  if (!raw) return [...ALL_SEGMENTS]
+// Resolve a comma-separated env override to the subset of `all` it names (in
+// `all`'s order). Unknown codes are dropped; an empty or all-unknown list falls
+// back to the full set.
+function parseCsvSubset<T extends string>(raw: string | undefined, all: readonly T[]): T[] {
+  if (!raw) return [...all]
   const wanted = new Set(raw.split(',').map((s) => s.trim().toLowerCase()))
-  const out = ALL_SEGMENTS.filter((s) => wanted.has(s))
-  return out.length > 0 ? out : [...ALL_SEGMENTS]
-}
-
-/** Which species-name dictionaries to publish. Defaults to all supported; an
- *  operator can narrow it (disk/bandwidth) via SPECIES_DICT_LOCALES. Unknown codes
- *  are dropped; an empty/garbage list falls back to all. */
-function parseDictLocales(raw: string | undefined): DictLocale[] {
-  if (!raw) return [...SUPPORTED_DICT_LOCALES]
-  const wanted = new Set(raw.split(',').map((s) => s.trim().toLowerCase()))
-  const out = SUPPORTED_DICT_LOCALES.filter((l) => wanted.has(l))
-  return out.length > 0 ? out : [...SUPPORTED_DICT_LOCALES]
+  const out = all.filter((v) => wanted.has(v))
+  return out.length > 0 ? out : [...all]
 }
 
 // The refresh service: owns the BirdNET-Go relationship and publishes the
-// per-window snapshot (and, later, the e-ink frames) nginx serves. It holds the
-// SSE detection stream, keeps a rolling 7d store, and republishes — debounced on
-// new detections, plus a slow aging tick so windows roll forward on their own.
+// per-window snapshot and e-ink frames nginx serves. It holds the SSE detection
+// stream, keeps a rolling 7d store, and republishes — debounced on new
+// detections, plus a slow aging tick so windows roll forward on their own.
 
 const TAG = 'saezuri-refresh'
 const log = (msg: string) => console.log(`${TAG}: ${msg}`)
@@ -116,8 +109,9 @@ function readConfig(): Config {
     frameHeight: intEnv('FRAME_HEIGHT', 480),
     frameBg: (process.env.FRAME_BG ?? '#fcfcfb').trim(),
     frameShadow: (process.env.FRAME_SHADOW ?? '1').trim() !== '0',
-    frameWindows: parseWindows(process.env.FRAME_WINDOWS),
-    dictLocales: parseDictLocales(process.env.SPECIES_DICT_LOCALES),
+    frameWindows: parseCsvSubset(process.env.FRAME_WINDOWS, ALL_SEGMENTS),
+    // Operators can narrow the dictionary set (disk/bandwidth) via SPECIES_DICT_LOCALES.
+    dictLocales: parseCsvSubset(process.env.SPECIES_DICT_LOCALES, SUPPORTED_DICT_LOCALES),
   }
 }
 
@@ -194,8 +188,7 @@ class Refresher {
     }
   }
 
-  /** Rebuild the manifest view, write the snapshot, then render the frames. The
-   *  manifest is loaded before the snapshot so the two stay consistent. */
+  /** Rebuild the manifest view, write the snapshot, then render the frames. */
   private async doPublish(): Promise<void> {
     const now = Date.now()
     this.store.prune(now)
@@ -231,11 +224,9 @@ class Refresher {
     }
   }
 
-  /** A cutout vanished from disk (manual delete, cache eviction). Rebuild the
-   *  manifest from disk so the gone slug drops out of `masks` — otherwise
-   *  `isComplete` / `hasArt` keep trusting a stale key — then publish, which
-   *  re-enqueues the now-incomplete recent species so the generator refetches /
-   *  regenerates them, and drops any others to the silhouette instead of a 404. */
+  /** Rebuild the manifest from disk and republish, so a vanished cutout drops out
+   *  of the masks and its species is re-enqueued rather than 404ing (see
+   *  watchAssets.ts). */
   private async heal(): Promise<void> {
     await this.generator.rebuildManifest()
     await this.publish()
@@ -289,13 +280,10 @@ class Refresher {
         .filter(Boolean)
         .join('+') || 'none'
     log(`starting; publishing to ${this.cfg.htmlDir} (art source: ${artSource})`)
-    // Ensure a manifest file (and the fallback silhouette) exist up front so the
-    // browser always fetches a real manifest, before any generation.
     await this.safe('rebuild', () => this.generator.rebuildManifest())
     await this.safe('summary', () => this.refreshSummary())
-    // Publish the species-name dictionaries the browser localizes from (static
-    // files on our origin — the browser never calls BirdNET-Go). Refreshed on the
-    // slow summary cadence so a backend upgrade is picked up without a restart.
+    // Refresh the dictionaries on the slow summary cadence so a backend upgrade is
+    // picked up without a restart.
     await this.safe('dictionaries', () => this.publishDicts())
     setInterval(() => {
       void this.safe('dictionaries', () => this.publishDicts())
@@ -307,9 +295,7 @@ class Refresher {
       void this.safe('aging', () => this.publish())
     }, this.cfg.agingIntervalMs)
 
-    // React to art disappearing while we run (a manual delete, a cache eviction).
-    // Startup already reflects disk via rebuildManifest; this keeps it doing so
-    // from now on, healing immediately instead of only at the next restart.
+    // Keep reacting to art deleted at runtime, not just at the next restart.
     await this.safe('assets-dir', async () => {
       await mkdir(this.cfg.assetsDir, { recursive: true })
     })
@@ -319,9 +305,8 @@ class Refresher {
       onError: logErr,
     })
 
-    // The stream is the primary signal. Each (re)connect re-backfills the store
-    // (healing any gap) and publishes; each detection feeds the store, enqueues
-    // its art if missing, and schedules a debounced publish. Loops until aborted.
+    // The detection stream is the primary signal; it reconnects and re-backfills
+    // until aborted (see stream.ts).
     await runDetectionStream(
       { baseUrl: this.cfg.baseUrl, token: this.cfg.token },
       {

@@ -16,8 +16,7 @@ interface Props {
 }
 
 /** Topbar settings: a menu button opening a popover with the theme switcher
- *  (light/dark/auto) and the display-language dropdown. Replaces the old bare
- *  light/dark toggle. */
+ *  (light/dark/auto) and the display-language dropdown. */
 export function SettingsMenu({ locales, lang, onLang }: Props) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)

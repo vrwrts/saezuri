@@ -95,6 +95,35 @@ export function maskOpaqueAt(mask: DecodedMask, mx: number, my: number): boolean
   return grid[my * mask.w + mx] === 1
 }
 
+/** Spiral step per ring, as a fraction of the tile's short side (floored at GRID_STRIDE). */
+const SEARCH_STEP_FRAC = 0.05
+
+/** After the first ring with a valid spot, scan this many extra steps outward so a
+ *  slightly better placement just beyond it can still win. */
+const RING_LOOKAHEAD_STEPS = 2
+
+/** Angular samples per ring: at least this many, growing with radius (one more per
+ *  RADIUS_PX_PER_SAMPLE) so wider rings keep a similar arc spacing. */
+const MIN_RING_SAMPLES = 36
+const RADIUS_PX_PER_SAMPLE = 1.6
+
+/** Random tie-break added to placement cost (× step), so equal-cost spots don't all
+ *  collapse onto one angle. */
+const JITTER_FRAC = 0.5
+
+function centerOfMass(tiles: readonly PlaceableTile[]): { x: number; y: number } {
+  let x = 0
+  let y = 0
+  let area = 0
+  for (const p of tiles) {
+    const a = p.fullW * p.fullH
+    x += (p.x + p.fullW / 2) * a
+    y += (p.y + p.fullH / 2) * a
+    area += a
+  }
+  return { x: x / area, y: y / area }
+}
+
 /**
  * Assign each tile an (x, y) top-left in viewport coords. Places the largest
  * tile at center, then spirals outward in elliptical rings (stretched by
@@ -182,37 +211,27 @@ export function maskPack<T extends PlaceableTile>(
       continue
     }
 
-    let comX = 0
-    let comY = 0
-    let comW = 0
-    for (const p of placed) {
-      const a = p.fullW * p.fullH
-      comX += (p.x + p.fullW / 2) * a
-      comY += (p.y + p.fullH / 2) * a
-      comW += a
-    }
-    comX /= comW
-    comY /= comW
+    const com = centerOfMass(placed)
 
     let best: { x: number; y: number } | null = null
     let bestCost = Infinity
-    const step = Math.max(GRID_STRIDE, Math.min(t.fullW, t.fullH) * 0.05)
+    const step = Math.max(GRID_STRIDE, Math.min(t.fullW, t.fullH) * SEARCH_STEP_FRAC)
     const maxR = Math.max(W, H)
     let foundRing = -1
     const phase = rand() * Math.PI * 2
 
     for (let r = 0; r <= maxR; r += step) {
-      if (foundRing >= 0 && r > foundRing + step * 2) break
-      const samples = Math.max(36, Math.floor(r / 1.6))
+      if (foundRing >= 0 && r > foundRing + step * RING_LOOKAHEAD_STEPS) break
+      const samples = Math.max(MIN_RING_SAMPLES, Math.floor(r / RADIUS_PX_PER_SAMPLE))
       for (let k = 0; k < samples; k++) {
         const theta = phase + (k / samples) * Math.PI * 2
         const px = cx + r * xBias * Math.cos(theta) - t.fullW / 2
         const py = cy + r * yBias * Math.sin(theta) - t.fullH / 2
         if (offGrid(t, px, py)) continue
         if (collides(t, px, py)) continue
-        const dxx = px + t.fullW / 2 - comX
-        const dyy = py + t.fullH / 2 - comY
-        const cost = Math.hypot(dxx / xBias, dyy / yBias) + rand() * step * 0.5
+        const dxx = px + t.fullW / 2 - com.x
+        const dyy = py + t.fullH / 2 - com.y
+        const cost = Math.hypot(dxx / xBias, dyy / yBias) + rand() * step * JITTER_FRAC
         if (cost < bestCost) {
           bestCost = cost
           best = { x: px, y: py }

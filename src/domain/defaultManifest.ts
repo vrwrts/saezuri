@@ -1,10 +1,9 @@
 import type { LayoutManifest } from './manifest.ts'
 
-// Fallback-only manifest, baked from pipeline output. The mask is the exact
-// silhouette of public/assets/illustrations/_fallback.png so packing is
-// faithful even with no manifest file present — a fresh checkout, a build that
-// ships no borrowed art, or (server-side) the refresh service before the first
-// build_masks run.
+// Fallback-only manifest. The mask is the exact silhouette of
+// public/assets/illustrations/_fallback.png, so packing stays faithful even with
+// no manifest file present — a fresh checkout, a build that ships no borrowed
+// art, or (server-side) the refresh service before it first builds one.
 //
 // Kept in its own React/SWR-free module so both the browser hook
 // (useLayoutManifest) and the Node refresh service can import it without one

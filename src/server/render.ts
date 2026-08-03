@@ -27,15 +27,22 @@ export interface FrameOptions {
 const SHADOW = { color: 'rgba(26,22,18,0.1)', blur: 6, offsetY: 2 }
 const DEFAULT_AR = 1.4
 
-/** Stable string hash → positive int seed (FNV-1a), so a species keeps its pose
- *  across renders (no e-ink churn) while ~FLY_PROB of the roster still fly. */
-function seedFor(sci: string): number {
-  let h = 0x811c9dc5
-  for (let i = 0; i < sci.length; i++) {
-    h ^= sci.charCodeAt(i)
-    h = Math.imul(h, 0x01000193)
+const FNV_OFFSET = 0x811c9dc5
+const FNV_PRIME = 0x01000193
+
+function fnv1a(str: string): number {
+  let h = FNV_OFFSET
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i)
+    h = Math.imul(h, FNV_PRIME)
   }
   return h >>> 0
+}
+
+/** Stable seed per species so its pose holds across renders (no e-ink churn),
+ *  while ~FLY_PROB of the roster still fly. */
+function seedFor(sci: string): number {
+  return fnv1a(sci)
 }
 
 /** Species[] → LayoutInput[] (mirrors Collage.tsx), with a deterministic pose so
@@ -83,17 +90,15 @@ export function containRect(
  *  unchanged frame — avoiding needless e-ink refreshes. */
 export function frameSignature(species: readonly Species[], manifest: LayoutManifest): string {
   const sp = species.map((s) => `${s.sci}:${s.n}`).join(',')
-  let vh = 0x811c9dc5
-  if (manifest.ver) {
-    for (const k of Object.keys(manifest.ver).sort()) {
-      const entry = `${k}=${manifest.ver[k]}`
-      for (let i = 0; i < entry.length; i++) {
-        vh ^= entry.charCodeAt(i)
-        vh = Math.imul(vh, 0x01000193)
-      }
-    }
-  }
-  return `${Object.keys(manifest.masks).length}:${(vh >>> 0).toString(36)}|${sp}`
+  const ver = manifest.ver
+  const verStr = ver
+    ? Object.keys(ver)
+        .sort()
+        .map((k) => `${k}=${ver[k]}`)
+        .join('')
+    : ''
+  const vh = fnv1a(verStr).toString(36)
+  return `${Object.keys(manifest.masks).length}:${vh}|${sp}`
 }
 
 /** Composite a window's species into a PNG buffer. */

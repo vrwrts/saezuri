@@ -8,6 +8,16 @@ import { type DecodedMask, isParked, maskPack, type PlaceableTile } from './pack
 /** Grid-cell gap dilated around every silhouette (eased on narrow screens). */
 const COLLAGE_PAD = 3
 
+/** Float slack when comparing a tile's area to the min-area floor. */
+const EPS = 1e-9
+
+/** Scale-to-fit: cap on shrink+repack passes, the shrink applied each pass, and the
+ *  fraction of each axis the cluster must fit within (a touch tighter vertically). */
+const MAX_FIT_ITERS = 10
+const FIT_SHRINK_STEP = 0.93
+const FIT_MARGIN_X = 0.96
+const FIT_MARGIN_Y = 0.94
+
 /** Count-dependent knobs. Density steps down as the plate gets busier. */
 export function tuning(nSpecies: number) {
   return {
@@ -100,11 +110,11 @@ export function computeLayout(inputs: readonly LayoutInput[], vp: Viewport): Lai
   // floor on rare birds stays intact.
   const sumA = tiles.reduce((a, t) => a + t.area, 0)
   if (sumA > budget) {
-    const fixedSum = tiles.filter((t) => t.area <= minArea + 1e-9).reduce((a, t) => a + t.area, 0)
+    const fixedSum = tiles.filter((t) => t.area <= minArea + EPS).reduce((a, t) => a + t.area, 0)
     const flexSum = sumA - fixedSum
     const flexBudget = Math.max(0, budget - fixedSum)
     const shrink = flexSum > 0 ? Math.min(1, flexBudget / flexSum) : 1
-    for (const t of tiles) if (t.area > minArea + 1e-9) t.area *= shrink
+    for (const t of tiles) if (t.area > minArea + EPS) t.area *= shrink
   }
 
   // Step 3: width/height from area + aspect.
@@ -122,16 +132,16 @@ export function computeLayout(inputs: readonly LayoutInput[], vp: Viewport): Lai
   let b = clusterBounds(placed)
 
   // Scale-to-fit: shrink + repack until nothing overflows or is parked.
-  for (let iter = 0; iter < 10; iter++) {
+  for (let iter = 0; iter < MAX_FIT_ITERS; iter++) {
     const missing = placed.some((t) => isParked(t))
     const overflow = b.L < 0 || b.T < 0 || b.R > W || b.B > H
     if (!missing && !overflow) break
-    let scale = 0.93
+    let scale = FIT_SHRINK_STEP
     if (overflow) {
       const clW = b.R - b.L
       const clH = b.B - b.T
-      const sx = (W * 0.96) / Math.max(clW, W * 0.96)
-      const sy = (H * 0.94) / Math.max(clH, H * 0.94)
+      const sx = (W * FIT_MARGIN_X) / Math.max(clW, W * FIT_MARGIN_X)
+      const sy = (H * FIT_MARGIN_Y) / Math.max(clH, H * FIT_MARGIN_Y)
       scale = Math.min(scale, sx, sy)
     }
     for (const t of tiles) {

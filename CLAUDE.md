@@ -36,6 +36,20 @@ Saezuri just visualizes recent detections.
   the one required setting.
 - Keep modules small and well-typed. Favor code that is easy to read and review over
   code that is short or clever.
+## Code style
+ 
+- **Comments explain WHY, not WHAT.** Delete comments that restate what the code already
+  says. Keep comments that explain *why* the code is the way it is — a rationale, an
+  external-system or wire-contract quirk, a security or attribution/licence constraint,
+  cross-file coordination, a non-obvious math invariant, or a deliberate trade-off. When
+  unsure whether a comment is a "why", keep it.
+- **Prefer self-documenting code.** Before writing a comment to explain a piece of code,
+  first try to make the code explain itself: name the constant, extract a helper, rename
+  the symbol.
+- **No magic numbers.** Give tuning values named constants, not inline comments.
+- **State each rationale once.** Don't repeat the same "why" across a type, the hook that
+  wraps it, and the call site — put it in the canonical place and let the others be silent.
+- Never strip licence, security, or wire-contract "why" notes — those are load-bearing.
 ## Reference material (critical rules)
  
 Two read-only clones live under `reference/`. They are for study only.
