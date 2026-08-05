@@ -215,9 +215,8 @@ body {
   gap: 16px;
   min-width: 244px;
   padding: 18px;
-  border-radius: 20px;
+  border-radius: 12px;
   background: var(--paper);
-  border: 1px solid var(--hairline);
   box-shadow: var(--edge-lg);
   transform-origin: top right;
   opacity: 0;
