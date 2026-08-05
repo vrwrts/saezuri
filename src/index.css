@@ -238,6 +238,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  align-items: baseline;
 }
 .menu-label {
   color: var(--ink-soft);
