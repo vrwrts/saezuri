@@ -1,4 +1,5 @@
 import type { DetectionResponse } from '../api/types.ts'
+import { birdnetFetch } from './birdnet.ts'
 
 // SSE consumer for BirdNET-Go's GET /api/v2/detections/stream — the same stream
 // its own dashboard uses. One persistent connection pushes every detection the
@@ -10,6 +11,8 @@ import type { DetectionResponse } from '../api/types.ts'
 // reconnects with a floor of 6s (the server rate-limits to 10 conns/min/IP).
 // Each (re)connect fires onConnect so the caller can re-backfill and heal any
 // gap — the stream is best-effort on top of an authoritative periodic backfill.
+
+const RECONNECT_FLOOR_MS = 6000
 
 export interface SSEEvent {
   event: string
@@ -99,14 +102,11 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
   })
 }
 
-async function connectOnce(
-  url: string,
-  opts: StreamOptions,
-  handlers: StreamHandlers,
-): Promise<void> {
-  const headers: Record<string, string> = { Accept: 'text/event-stream' }
-  if (opts.token) headers.Authorization = `Bearer ${opts.token}`
-  const res = await fetch(url, { headers, signal: opts.signal })
+async function connectOnce(opts: StreamOptions, handlers: StreamHandlers): Promise<void> {
+  const res = await birdnetFetch(opts.baseUrl, opts.token, '/detections/stream', {
+    accept: 'text/event-stream',
+    signal: opts.signal,
+  })
   if (!res.ok || !res.body) throw new Error(`stream ${res.status} ${res.statusText}`)
   await handlers.onConnect?.()
 
@@ -125,7 +125,7 @@ async function connectOnce(
       try {
         parsed = JSON.parse(ev.data)
       } catch {
-        continue // malformed frame — skip
+        continue
       }
       const row = normalizeDetection(parsed)
       if (row) handlers.onDetection(row)
@@ -138,11 +138,10 @@ export async function runDetectionStream(
   opts: StreamOptions,
   handlers: StreamHandlers,
 ): Promise<void> {
-  const url = `${opts.baseUrl.replace(/\/+$/, '')}/api/v2/detections/stream`
-  const backoff = Math.max(6000, opts.reconnectMinMs ?? 6000)
+  const backoff = Math.max(RECONNECT_FLOOR_MS, opts.reconnectMinMs ?? RECONNECT_FLOOR_MS)
   while (!opts.signal?.aborted) {
     try {
-      await connectOnce(url, opts, handlers)
+      await connectOnce(opts, handlers)
     } catch (e) {
       if (opts.signal?.aborted) break
       handlers.onError?.(e)

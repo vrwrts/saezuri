@@ -30,6 +30,13 @@ interface Props {
 
 const RESIZE_DEBOUNCE_MS = 120
 
+/** Fallback tile aspect ratio when a species has no manifest dims. */
+const DEFAULT_ASPECT_RATIO = 1.4
+
+/** Entrance bloom: each tile's delay is its distance from center × this, capped. */
+const BLOOM_DELAY_PER_PX = 0.6
+const MAX_BLOOM_DELAY_MS = 600
+
 export function Collage({ species, manifest, animate = true, blossomKey = '', emptyState }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [vp, setVp] = useState<Viewport>({ width: 0, height: 0 })
@@ -78,7 +85,7 @@ export function Collage({ species, manifest, animate = true, blossomKey = '', em
       const art = resolveArt(manifest, s.sci, prefersFlight)
       const mask = decodeMaskCached(art.key, manifest.masks[art.key])
       const dim = manifest.dims[art.key]
-      const ar = dim ? dim[0] / dim[1] : 1.4
+      const ar = dim ? dim[0] / dim[1] : DEFAULT_ASPECT_RATIO
       return {
         sci: s.sci,
         com: s.com,
@@ -133,7 +140,7 @@ export function Collage({ species, manifest, animate = true, blossomKey = '', em
                 key={`${blossomKey}:${t.sci}`}
                 tile={t}
                 animate={animate}
-                delayMs={Math.min(600, dist * 0.6)}
+                delayMs={Math.min(MAX_BLOOM_DELAY_MS, dist * BLOOM_DELAY_PER_PX)}
                 fallbackUrl={fallbackUrl}
                 hovered={t.sci === hoveredSci}
               />

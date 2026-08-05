@@ -11,11 +11,15 @@ grows the birds you hear most.
 ## How it works
 
 - **React + Vite + TypeScript + Tailwind** single-page app, no SSR.
-- The browser only ever talks to Saezuri's own origin. In production, **nginx** serves
-  the static bundle and reverse-proxies `/api/` to a BirdNET-Go base URL. This avoids CORS
-  and mixed-content, and lets the app work against a plain-HTTP LAN BirdNET-Go.
-- The collage polls BirdNET-Go's public read endpoints (`/api/v2`), counts detections per
-  species over a time window, and lays them out with a silhouette-mask packing algorithm.
+- The browser only ever talks to Saezuri's own origin, and reads **only the static files
+  Saezuri publishes** — it never calls BirdNET-Go. In production, **nginx** serves the
+  static bundle; it does not proxy the BirdNET-Go API.
+- A small **Node refresh service** runs beside nginx: it holds BirdNET-Go's detection
+  stream, counts detections per species over each time window, and publishes a static
+  snapshot (plus per-species art and localized name dictionaries) that the browser polls
+  and lays out with a silhouette-mask packing algorithm. Keeping BirdNET-Go backend-only
+  means a Saezuri exposed to the internet never exposes the BirdNET-Go API, and it still
+  works against a plain-HTTP LAN BirdNET-Go with no CORS or mixed-content.
 
 ## Configuration
 
@@ -28,6 +32,7 @@ One required setting; the rest are optional (see [`.env.example`](.env.example))
 | `GEMINI_API_KEY`    | no       | Google AI (Gemini) key. Set it to *also* generate art for species the repo lacks (see below); unset relies on downloads only. |
 | `GENERATE_SLEEP`    | no       | Seconds between image-API calls, to stay under the Gemini free tier. Default `6` (matches the pipeline). |
 | `ILLUSTRATIONS_REPO`| no       | Source repo for free pre-made cutouts, auto-downloaded per detected species (default `vrwrts/saezuri-illustrations`; empty disables — see below). |
+| `SPECIES_DICT_LOCALES`| no     | Comma-list of display languages to publish for browser localization (default: all 16 BirdNET-Go dictionary locales). Narrow it to save disk/bandwidth, e.g. `de,nl,en`. |
 
 `BIRDNETGO_URL` must be reachable **from inside the container**, and its host is forwarded
 upstream as the `Host` header (and SNI, for `https`). A LAN IP is simplest; a hostname works
@@ -120,8 +125,9 @@ Uses [pnpm](https://pnpm.io) (via Corepack — `corepack enable`).
 ```bash
 cp .env.example .env.local          # set BIRDNETGO_URL to your instance
 pnpm install
-pnpm dev                            # Vite dev server; /api is proxied to BIRDNETGO_URL
+pnpm dev                            # Vite dev server (serves the app + static files from ./public)
 pnpm dev:mock                       # no backend needed — species synthesized from the manifest
+FRAME_HTML_DIR=./public pnpm refresh:dev   # backend: publish snapshot + dictionaries into ./public
 pnpm test                           # unit tests (Vitest)
 pnpm check                          # lint + format check (Biome); check:fix to autofix
 pnpm build                          # type-check + production bundle

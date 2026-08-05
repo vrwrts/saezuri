@@ -1,3 +1,4 @@
+import { FLIGHT_SUFFIX } from '../domain/asset.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
 import type { Species } from '../domain/species.ts'
 
@@ -15,7 +16,7 @@ function titleCase(slug: string): string {
 
 export function mockSpecies(manifest: LayoutManifest, count = 20): Species[] {
   const bases = Object.keys(manifest.masks)
-    .filter((k) => k !== manifest.fallbackKey && !k.endsWith('-2'))
+    .filter((k) => k !== manifest.fallbackKey && !k.endsWith(FLIGHT_SUFFIX))
     .sort()
   const chosen = bases.slice(0, count)
   // If the local manifest has no real art (fallback-only), still show something.

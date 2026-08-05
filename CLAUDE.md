@@ -23,14 +23,33 @@ Saezuri just visualizes recent detections.
   add only what earns its place and keep the tree lean.
 ## Architecture invariants
  
-- The browser only ever talks to Saezuri's own origin. All BirdNET-Go calls go
-  through the nginx `/api/` proxy. This is what avoids CORS and mixed-content and lets
-  the app work against a plain-HTTP LAN BirdNET-Go. Do not make the browser call
-  BirdNET-Go directly.
+- The browser only ever talks to Saezuri's own origin, and reads **only static files
+  Saezuri publishes** (snapshot, layout manifest, species-name dictionaries, e-ink
+  frames, cutouts). BirdNET-Go access is **backend-only**: the Node refresh service is
+  the sole BirdNET-Go client (it holds the detection SSE stream and publishes the
+  static files). nginx serves those static files and does **not** proxy the BirdNET-Go
+  API — exposing the whole API (writes included) to anyone who can reach Saezuri is a
+  real risk when Saezuri is on the internet but BirdNET-Go is not. Never reintroduce a
+  browser→BirdNET-Go path (no `/api/` proxy, no direct calls). This also avoids CORS
+  and mixed-content and lets it work against a plain-HTTP LAN BirdNET-Go.
 - Configuration is by environment variable, never hardcoded hosts. `BIRDNETGO_URL` is
   the one required setting.
 - Keep modules small and well-typed. Favor code that is easy to read and review over
   code that is short or clever.
+## Code style
+ 
+- **Comments explain WHY, not WHAT.** Delete comments that restate what the code already
+  says. Keep comments that explain *why* the code is the way it is — a rationale, an
+  external-system or wire-contract quirk, a security or attribution/licence constraint,
+  cross-file coordination, a non-obvious math invariant, or a deliberate trade-off. When
+  unsure whether a comment is a "why", keep it.
+- **Prefer self-documenting code.** Before writing a comment to explain a piece of code,
+  first try to make the code explain itself: name the constant, extract a helper, rename
+  the symbol.
+- **No magic numbers.** Give tuning values named constants, not inline comments.
+- **State each rationale once.** Don't repeat the same "why" across a type, the hook that
+  wraps it, and the call site — put it in the canonical place and let the others be silent.
+- Never strip licence, security, or wire-contract "why" notes — those are load-bearing.
 ## Reference material (critical rules)
  
 Two read-only clones live under `reference/`. They are for study only.
@@ -66,8 +85,12 @@ Rules:
  
 - `fixtures/` holds real `/api/v2` responses captured from a running instance. Treat
   fixtures as the source of truth for shapes, ahead of anything inferred from source.
-- Consume only public read endpoints: detections and analytics under `/api/v2`. No
-  auth. No writes.
+- Consume only public read endpoints under `/api/v2`: detections and analytics (the
+  species set); the per-locale species-name dictionaries (`/species/dictionary/:locale`)
+  and the public dashboard locale (`/settings/dashboard`, a read only — for the
+  default display language) for browser-language localization. No auth beyond the
+  optional bearer token. No writes. All of these are called **server-side** by the
+  refresh service; the browser reads the republished static files.
 - BirdNET-Go ships as rolling nightlies and its v2 API takes occasional breaking
   changes. Keep the typed client centralized so a shape change is a one-file fix, and
   note in the client which fixture and roughly which BirdNET-Go build it was derived
@@ -75,7 +98,9 @@ Rules:
 ## Out of scope for v1
  
 - Admin or settings control. Saezuri is read-only for now. The BirdNET-Go settings
-  API is a later, separate piece and must not creep into v1.
+  API is a later, separate piece and must not creep into v1. (The one narrow
+  exception is a server-side *read* of the public `/settings/dashboard` locale to pick
+  a default display language — a read, never a write, and never settings control.)
 - Producing the full illustration set. Art is contributed as PRs to the
   `saezuri-illustrations` repo (a flat folder the app auto-downloads per detected
   species); the AvianVisitors cutouts under `public/assets/` remain gitignored dev

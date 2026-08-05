@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { FLIGHT_SUFFIX } from '../domain/asset.ts'
 import { slugify } from '../domain/slug.ts'
 
 // Art queue: turns "this species was heard but has no cutout" into art, via two
@@ -12,10 +13,13 @@ import { slugify } from '../domain/slug.ts'
 // the manifest is rebuilt (so downloaded art is described even with no key) and
 // onGenerated republishes. A no-op when neither source is available.
 
-export interface Species {
+interface ArtRequest {
   sci: string
   com: string
 }
+
+// '' = base (perched) pose, FLIGHT_SUFFIX = flight pose.
+const POSE_SUFFIXES = ['', FLIGHT_SUFFIX]
 
 export interface GeneratorOptions {
   pythonBin: string
@@ -38,8 +42,8 @@ const logErr = (e: unknown) =>
   console.error(`${TAG}: ${e instanceof Error ? e.message : String(e)}`)
 
 export class Generator {
-  private queued = new Map<string, Species>() // slug -> species awaiting generation
-  private inFlight = new Set<string>() // slugs currently being generated
+  private queued = new Map<string, ArtRequest>()
+  private inFlight = new Set<string>()
   private busy = false
 
   constructor(private opts: GeneratorOptions) {}
@@ -54,8 +58,8 @@ export class Generator {
     void this.drain()
   }
 
-  private take(n: number): Species[] {
-    const out: Species[] = []
+  private take(n: number): ArtRequest[] {
+    const out: ArtRequest[] = []
     for (const [slug, sp] of this.queued) {
       this.queued.delete(slug)
       out.push(sp)
@@ -75,7 +79,7 @@ export class Generator {
         try {
           // 1) Free pre-made art first (no key needed). A species is only "done" via
           //    download once BOTH poses are present; a partial pair still needs generation.
-          const needGen: Species[] = []
+          const needGen: ArtRequest[] = []
           let downloadedAny = false
           for (const s of batch) {
             let complete = false
@@ -119,10 +123,10 @@ export class Generator {
   private async downloadArt(slug: string): Promise<{ got: number; complete: boolean }> {
     await mkdir(this.opts.assetsDir, { recursive: true })
     let got = 0
-    for (const suffix of ['', '-2']) {
+    for (const suffix of POSE_SUFFIXES) {
       const name = `${slug}${suffix}.png`
       const dest = join(this.opts.assetsDir, name)
-      if (existsSync(dest)) continue // already have this pose
+      if (existsSync(dest)) continue
       try {
         const res = await fetch(`${this.opts.downloadBaseUrl}/illustrations/${name}`)
         if (!res.ok) continue // 404 == not in the repo; silent, expected for many species
@@ -137,11 +141,11 @@ export class Generator {
     }
     const complete =
       existsSync(join(this.opts.assetsDir, `${slug}.png`)) &&
-      existsSync(join(this.opts.assetsDir, `${slug}-2.png`))
+      existsSync(join(this.opts.assetsDir, `${slug}${FLIGHT_SUFFIX}.png`))
     return { got, complete }
   }
 
-  private spawnGenerate(batch: Species[]): Promise<void> {
+  private spawnGenerate(batch: ArtRequest[]): Promise<void> {
     const args = [
       this.opts.workerScript,
       '--generate',
@@ -154,8 +158,8 @@ export class Generator {
     return this.spawn(args)
   }
 
-  /** Ensure a manifest (and the fallback silhouette) exist without generating —
-   *  run once at startup so the browser always fetches a real manifest file. */
+  /** Ensure a manifest (and the fallback silhouette) exist without generating art,
+   *  so the browser always fetches a real manifest file. */
   rebuildManifest(): Promise<void> {
     return this.spawn([
       this.opts.workerScript,

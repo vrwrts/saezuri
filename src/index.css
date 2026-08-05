@@ -178,7 +178,10 @@ body {
   right: 16px;
   z-index: 6;
 }
-.theme-toggle {
+.menu {
+  position: relative;
+}
+.menu-button {
   display: grid;
   place-items: center;
   width: 34px;
@@ -193,8 +196,66 @@ body {
   cursor: pointer;
   transition: color 140ms ease;
 }
-.theme-toggle:hover {
+.menu-button:hover,
+.menu-button[aria-expanded='true'] {
   color: var(--ink);
+}
+
+/* Settings popover. Right-aligned under the button so it never spills off-screen
+   from the top-right topbar. The base state is hidden and `.is-open` reveals it;
+   SettingsMenu delays unmount until this exit transition finishes, so its
+   PANEL_ANIM_MS must stay in sync with the duration here. */
+.menu-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 244px;
+  padding: 18px;
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: var(--edge-lg);
+  transform-origin: top right;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.97);
+  transition:
+    opacity 160ms ease,
+    transform 160ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.menu-popover.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-popover {
+    transition: none;
+  }
+}
+.menu-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: baseline;
+}
+.menu-label {
+  color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.lang-select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--paper-2);
+  box-shadow: var(--recess);
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
 }
 
 .controls {
@@ -203,7 +264,7 @@ body {
   justify-content: center;
   padding: 4px 16px 10px;
 }
-.window-picker {
+.segmented {
   position: relative;
   display: inline-flex;
   gap: 2px;
@@ -214,10 +275,10 @@ body {
 }
 /* Sliding active pill: a single element that glides under the selected option
    instead of the highlight snapping between buttons. Its left/width are measured
-   from the active option (see WindowPicker) and applied inline; the transition
+   from the active option (see SegmentedControl) and applied inline; the transition
    here does the gliding. It sits behind the labels and never intercepts clicks.
    top/bottom match the 3px track padding so it insets evenly. */
-.window-thumb {
+.segmented-thumb {
   position: absolute;
   top: 3px;
   bottom: 3px;
@@ -231,11 +292,11 @@ body {
     width 260ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 @media (prefers-reduced-motion: reduce) {
-  .window-thumb {
+  .segmented-thumb {
     transition: none;
   }
 }
-.window-option {
+.segmented-option {
   position: relative;
   z-index: 1;
   padding: 6px 14px;
@@ -249,10 +310,10 @@ body {
   cursor: pointer;
   transition: color 140ms ease;
 }
-.window-option:hover {
+.segmented-option:hover {
   color: var(--ink-2);
 }
-.window-option.is-active {
+.segmented-option.is-active {
   color: var(--ink);
 }
 

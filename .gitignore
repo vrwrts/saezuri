@@ -32,10 +32,11 @@ dist-server/
 # locally (pipeline/build_masks.py). The app ships a built-in fallback manifest.
 /public/layout-manifest.json
 
-# Runtime artifacts the refresh service writes (snapshot + e-ink frames). Not
-# source; regenerated on every run.
+# Runtime artifacts the refresh service writes (snapshot + e-ink frames +
+# downloaded species-name dictionaries). Not source; regenerated on every run.
 /public/snapshot.json
 /public/collage/
+/public/species-dict/
 
 # Python venv + caches for the pipeline tooling.
 .venv/

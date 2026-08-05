@@ -1,22 +1,25 @@
+import { useMemo } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Collage } from '../collage/Collage.tsx'
 import { CollageLoading } from '../components/CollageLoading.tsx'
 import { EmptyState } from '../components/EmptyState.tsx'
 import { ErrorBoundary } from '../components/ErrorBoundary.tsx'
 import { Header } from '../components/Header.tsx'
-import { ThemeToggle } from '../components/ThemeToggle.tsx'
+import { SettingsMenu } from '../components/SettingsMenu.tsx'
 import { WindowPicker } from '../components/WindowPicker.tsx'
 import { mockSpecies } from '../dev/mock.ts'
-import type { Species } from '../domain/species.ts'
+import { localizeCommonNames, type Species } from '../domain/species.ts'
 import { pathToPreset, presetToSegment, type WindowPreset } from '../domain/window.ts'
 import { useDelayedFlag } from '../hooks/useDelayedFlag.ts'
+import { useDictionaryIndex } from '../hooks/useDictionaryIndex.ts'
+import { useLanguagePreference } from '../hooks/useLanguagePreference.ts'
 import { useLayoutManifest } from '../hooks/useLayoutManifest.ts'
 import { useRecentSpecies } from '../hooks/useRecentSpecies.ts'
+import { useSpeciesDictionary } from '../hooks/useSpeciesDictionary.ts'
 import { collagePath } from '../routes.ts'
 
-// A fast window switch resolves in well under a second; showing the loading
-// indicator immediately makes it flash jarringly. Hold it back so only a
-// genuinely slow load ever surfaces it.
+// Hold the loading indicator back so a quick window switch doesn't flash it
+// (see useDelayedFlag).
 const LOADING_INDICATOR_DELAY_MS = 1000
 
 // When VITE_MOCK=1, species come from the local manifest instead of a live
@@ -47,16 +50,21 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   const navigate = useNavigate()
   const manifest = useLayoutManifest()
   const live = useRecentSpecies(preset)
-  const species: Species[] = USE_MOCK ? mockSpecies(manifest) : live.species
+  // Localization is a non-blocking overlay on top of the snapshot: a slow or absent
+  // dictionary never gates the collage — names just swap in once it arrives.
+  const { locales, default: defaultLocale } = useDictionaryIndex()
+  const { lang, setLang } = useLanguagePreference(locales, defaultLocale)
+  const dict = useSpeciesDictionary(lang)
+  const baseSpecies: Species[] = USE_MOCK ? mockSpecies(manifest) : live.species
+  const species = useMemo(() => localizeCommonNames(baseSpecies, dict), [baseSpecies, dict])
 
   // The first snapshot fetch shows the loading indicator instead of the empty
   // nest; once loaded, switching windows is instant (one file, all windows), so
   // this stays false. Mock mode synthesizes species synchronously — no loading.
   const loading = USE_MOCK ? false : live.loading
 
-  // Suppress the indicator for the first second of loading — a quick load shows
-  // nothing rather than a jarring flash. `loading` still gates the collage, so
-  // the view stays blank until either the data arrives or the delay elapses.
+  // `loading` gates the collage either way; this only decides whether the
+  // indicator shows during it.
   const showLoadingIndicator = useDelayedFlag(loading, LOADING_INDICATOR_DELAY_MS)
 
   // `species` arrives pre-gated to illustrated-only from the snapshot; `heard`
@@ -81,7 +89,7 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   return (
     <div className="stage">
       <div className="topbar">
-        <ThemeToggle />
+        <SettingsMenu locales={locales} lang={lang} onLang={setLang} />
       </div>
 
       <Header eyebrow="around here" title="recently heard" />

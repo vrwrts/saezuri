@@ -1,8 +1,8 @@
-import { apiGet } from './client.ts'
-import type { DetectionResponse, PaginatedResponse, SpeciesSummary } from './types.ts'
-
-// Endpoint wrappers. Each is a thin, typed call — no business logic. Windowing
-// and aggregation live in the domain layer.
+// Typed request-parameter shapes for the BirdNET-Go /api/v2 endpoints the Node
+// refresh service consumes (see src/server/birdnetDeps.ts, which does the actual
+// fetching, and src/domain/load.ts, which is param-mapped to match). The browser
+// no longer calls BirdNET-Go — it reads Saezuri's published static files — so
+// there are no fetch wrappers here, only the shared query types.
 
 export interface DetectionsQuery {
   /** "hourly" | "species" | "search" | "all" (default path when omitted). */
@@ -27,42 +27,8 @@ export interface DetectionsQuery {
   includeWeather?: boolean
 }
 
-/** GET /api/v2/detections — paginated detection list/search. */
-export function getDetections(
-  query: DetectionsQuery,
-  signal?: AbortSignal,
-): Promise<PaginatedResponse<DetectionResponse>> {
-  return apiGet<PaginatedResponse<DetectionResponse>>(
-    '/detections',
-    {
-      queryType: query.queryType,
-      start_date: query.startDate,
-      end_date: query.endDate,
-      numResults: query.numResults,
-      offset: query.offset,
-      sortBy: query.sortBy,
-      confidence: query.confidence,
-      includeWeather: query.includeWeather,
-    },
-    signal,
-  )
-}
-
 export interface SpeciesSummaryQuery {
   startDate?: string
   endDate?: string
   limit?: number
-}
-
-/** GET /api/v2/analytics/species/summary — top species by count (sorted desc,
- *  false-positives excluded). Omit dates for all-time. */
-export function getSpeciesSummary(
-  query: SpeciesSummaryQuery = {},
-  signal?: AbortSignal,
-): Promise<SpeciesSummary[]> {
-  return apiGet<SpeciesSummary[]>(
-    '/analytics/species/summary',
-    { start_date: query.startDate, end_date: query.endDate, limit: query.limit },
-    signal,
-  )
 }

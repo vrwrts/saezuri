@@ -14,6 +14,10 @@ export const ILLUSTRATIONS_BASE = '/assets/illustrations'
  *  Matches AvianVisitors' FLY_PROB. */
 export const FLY_PROB = 0.15
 
+/** Manifest-key / filename suffix for a species' flight-pose art; the base
+ *  (perched) pose has no suffix. */
+export const FLIGHT_SUFFIX = '-2'
+
 export interface SpeciesArt {
   /** Manifest key for dims/mask lookup (may be a `-2` flight key or fallback). */
   key: string
@@ -42,7 +46,7 @@ export function hasArt(manifest: LayoutManifest, scientificName: string): boolea
  *  so a half-deleted pair regenerates its missing pose. */
 export function isComplete(manifest: LayoutManifest, scientificName: string): boolean {
   const base = slugify(scientificName)
-  return base in manifest.masks && `${base}-2` in manifest.masks
+  return base in manifest.masks && `${base}${FLIGHT_SUFFIX}` in manifest.masks
 }
 
 /** Roll for the flight pose. Injectable RNG keeps callers testable. */
@@ -62,7 +66,7 @@ export function resolveArt(
     return { key, imageUrl: imagePath(key, manifest.ver?.[key]), illustrated: false, pose: 1 }
   }
 
-  const flightKey = `${base}-2`
+  const flightKey = `${base}${FLIGHT_SUFFIX}`
   if (prefersFlight && flightKey in manifest.masks) {
     return {
       key: flightKey,

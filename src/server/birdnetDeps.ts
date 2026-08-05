@@ -1,13 +1,8 @@
-import { buildQuery, type QueryValue } from '../api/client.ts'
+import type { QueryValue } from '../api/client.ts'
 import type { DetectionsQuery, SpeciesSummaryQuery } from '../api/endpoints.ts'
 import type { DetectionResponse, PaginatedResponse, SpeciesSummary } from '../api/types.ts'
 import type { LoadDeps } from '../domain/load.ts'
-
-// Server-side BirdNET-Go fetchers for the refresh service. The browser client
-// (src/api/client.ts) is same-origin and relative through nginx's /api/ proxy;
-// these run in Node and hit ${BIRDNETGO_URL}/api/v2 directly with an optional
-// bearer token — mirroring pipeline/worker.py. The token is passed as a header
-// and never logged.
+import { birdnetFetch } from './birdnet.ts'
 
 async function nodeApiGet<T>(
   baseUrl: string,
@@ -16,10 +11,7 @@ async function nodeApiGet<T>(
   params: Record<string, QueryValue>,
   signal?: AbortSignal,
 ): Promise<T> {
-  const url = `${baseUrl.replace(/\/+$/, '')}/api/v2${path}${buildQuery(params)}`
-  const headers: Record<string, string> = { Accept: 'application/json' }
-  if (token) headers.Authorization = `Bearer ${token}`
-  const res = await fetch(url, { headers, signal })
+  const res = await birdnetFetch(baseUrl, token, path, { params, signal })
   if (!res.ok) throw new Error(`BirdNET-Go ${res.status} ${res.statusText} for ${path}`)
   return (await res.json()) as T
 }

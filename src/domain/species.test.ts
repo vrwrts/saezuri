@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { DetectionResponse } from '../api/types.ts'
-import { aggregateDetections, detectionInstantMs, speciesFromSummary } from './species.ts'
+import {
+  aggregateDetections,
+  detectionInstantMs,
+  localizeCommonNames,
+  type Species,
+  speciesFromSummary,
+} from './species.ts'
 
 function det(over: Partial<DetectionResponse>): DetectionResponse {
   return {
@@ -119,5 +125,40 @@ describe('speciesFromSummary', () => {
     })
     expect(out[0].lastSeenMs).toBe(Date.parse('2026-07-08T11:00:00Z'))
     expect(out[1].lastSeenMs).toBeUndefined()
+  })
+})
+
+describe('localizeCommonNames', () => {
+  const base: Species[] = [
+    { sci: 'Turdus merula', com: 'Common Blackbird', n: 5 },
+    { sci: 'Parus major', com: 'Great Tit', n: 3 },
+  ]
+
+  it('overlays com by scientific name', () => {
+    const dict = new Map([['Turdus merula', 'Amsel']])
+    const out = localizeCommonNames(base, dict)
+    expect(out[0].com).toBe('Amsel')
+    expect(out[0]).toMatchObject({ sci: 'Turdus merula', n: 5 })
+  })
+
+  it('falls back per-species to the original name on a miss', () => {
+    const dict = new Map([['Turdus merula', 'Amsel']])
+    const out = localizeCommonNames(base, dict)
+    // Parus major is absent from the dictionary → keeps its original name…
+    expect(out[1].com).toBe('Great Tit')
+    // …and its object identity, since nothing changed.
+    expect(out[1]).toBe(base[1])
+  })
+
+  it('returns the same array reference for an empty or absent dictionary', () => {
+    expect(localizeCommonNames(base, new Map())).toBe(base)
+    expect(localizeCommonNames(base, null)).toBe(base)
+    expect(localizeCommonNames(base, undefined)).toBe(base)
+  })
+
+  it('does not mutate the input', () => {
+    const dict = new Map([['Turdus merula', 'Amsel']])
+    localizeCommonNames(base, dict)
+    expect(base[0].com).toBe('Common Blackbird')
   })
 })

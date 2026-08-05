@@ -1,6 +1,5 @@
 import useSWR from 'swr'
 import type { Snapshot, WindowSnapshot } from '../domain/snapshot.ts'
-import type { Species } from '../domain/species.ts'
 import { presetToSegment, type WindowPreset } from '../domain/window.ts'
 
 const SNAPSHOT_URL = '/snapshot.json'
@@ -10,15 +9,7 @@ const SNAPSHOT_URL = '/snapshot.json'
 // interval (the fix for the old per-client heuristic-cache skew).
 const SNAPSHOT_POLL_MS = 12_000
 
-export interface RecentSpecies {
-  /** Illustrated species in the window (already gated server-side), by count. */
-  species: Species[]
-  /** True when the source paging hit its cap before covering the window. */
-  truncated: boolean
-  /** Distinct species heard in the window that lack art (withheld from `species`). */
-  notIllustrated: number
-  /** Distinct species heard in the window (illustrated + withheld). */
-  heard: number
+export interface RecentSpecies extends WindowSnapshot {
   error: Error | null
   /** True only on the very first snapshot fetch. One file covers every window,
    *  so switching windows never re-loads. */
