@@ -105,12 +105,48 @@ Rules:
   `saezuri-illustrations` repo (a flat folder the app auto-downloads per detected
   species); the AvianVisitors cutouts under `public/assets/` remain gitignored dev
   placeholders so the UI is testable locally. Growing that set is ongoing, not a v1 gate.
+## Code map
+ 
+Where things live, so a change lands in the right place fast.
+ 
+- **Collage render path:** `src/pages/CollagePage.tsx` fetches the data and renders
+  `src/collage/Collage.tsx`, which measures the viewport, resolves each species to art,
+  packs the tiles, and maps them to `src/collage/BirdTile.tsx` (one absolutely-positioned
+  `<button><img></button>` per bird). Silhouette hover is arbitrated at the container
+  (`hitTest.ts`), not per tile — the tiles are `pointer-events: none`.
+- **Layout / packer:** `src/collage/layout.ts` — `computeLayout(inputs, vp)` is the
+  deterministic, seeded (`src/lib/prng.ts`) count-driven sizing + silhouette packer
+  (`pack.ts`); reimplemented from AvianVisitors, not copied. Same inputs + viewport ⇒ same
+  layout, so polls and resizes don't churn. `layoutSignature(tiles)` fingerprints the
+  arrangement (`sci`/`n`/`key`, viewport-independent) via `src/lib/hash.ts` (`fnv1a`).
+- **Entrance bloom:** the `gtile-in` keyframes in `src/index.css` (`.gtile.entering`),
+  disabled under `prefers-reduced-motion`. It is a **one-shot CSS mount animation** — it
+  replays only when React remounts a tile, i.e. when the tile `key`
+  `` `${blossomKey}:${sig}:${sci}` `` changes: `blossomKey` is the window preset and `sig`
+  is `layoutSignature`. So the bloom fires on load, window switch, and any in-place update
+  (poll / focus revalidation) that yields a genuinely different layout — not on identical
+  polls or plain resizes. There is no positional transition on `.gtile`; tiles that don't
+  remount just snap.
+- **Data hooks (browser reads static files only):** `src/hooks/useRecentSpecies.ts`
+  (`/snapshot.json`, 12s poll) selects the active window; `src/hooks/useLayoutManifest.ts`
+  (`/layout-manifest.json`, 30s poll) supplies per-species masks/dims/versions. Both use
+  SWR's default `revalidateOnFocus`. The dictionary hooks (`useDictionaryIndex.ts`,
+  `useSpeciesDictionary.ts`) deliberately set `revalidateOnFocus: false`. There is no
+  `SWRConfig` provider. User preferences (`useThemePreference.ts`, `useLanguagePreference.ts`)
+  are per-client `localStorage` under `saezuri:*` keys.
+- **Domain (framework-free, shared with the server):** `src/domain/` — `species.ts`
+  (aggregation + localization), `asset.ts` (`resolveArt`, `imagePath` with the `?v=` hash
+  cache-bust), `snapshot.ts`, `manifest.ts`, `slug.ts`.
+- **Refresh service (the sole BirdNET-Go client):** `src/server/` — holds the SSE stream,
+  gates/aggregates species, and publishes `/snapshot.json`, `/layout-manifest.json`, and
+  the e-ink PNG frames (`render.ts`, reusing `computeLayout`). Run it with `npm run refresh:dev`.
+ 
 ## Common commands
  
-To be filled in once the scaffold lands. Expected shape:
- 
-- `npm run dev` for the Vite dev server.
-- `npm run build` for the production bundle.
+- `npm run dev` (Vite dev server) / `npm run dev:mock` (`VITE_MOCK=1`, synthesizes species
+  from the local manifest so the collage runs with no backend).
+- `npm test` (vitest), `npm run typecheck` (`tsc --noEmit`), `npm run check` (Biome).
+- `npm run build` for the production bundle; `npm run refresh:dev` runs the refresh service.
 - `docker compose up --build` to run the container against a configured `BIRDNETGO_URL`.
 ## Git hygiene
  
