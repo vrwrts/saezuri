@@ -12,7 +12,7 @@ import type { Species } from '../domain/species.ts'
 import { BirdTile } from './BirdTile.tsx'
 import { HoverChip } from './HoverChip.tsx'
 import { hitTest } from './hitTest.ts'
-import { computeLayout, type LayoutInput, type Viewport } from './layout.ts'
+import { computeLayout, type LayoutInput, layoutSignature, type Viewport } from './layout.ts'
 import { decodeMaskCached } from './pack.ts'
 
 interface Props {
@@ -20,9 +20,11 @@ interface Props {
   manifest: LayoutManifest
   /** Bloom tiles in on mount (disable for screenshots). */
   animate?: boolean
-  /** Namespaces the tile keys so a change remounts every tile — used to replay
-   *  the entrance bloom when the whole set turns over (e.g. switching windows),
-   *  while a same-key poll still re-blooms only newly-arrived birds. */
+  /** Namespaces the tile keys so a change remounts every tile and replays the
+   *  entrance bloom. Combined here with a signature of the current layout, so the
+   *  bloom also replays when an in-place update (poll / focus revalidation) yields
+   *  a genuinely different arrangement — not only when the window switches. Pass
+   *  the window preset; it keeps windows in separate key namespaces. */
   blossomKey?: string
   /** Rendered when there are no birds in the window. */
   emptyState?: ReactNode
@@ -101,6 +103,12 @@ export function Collage({ species, manifest, animate = true, blossomKey = '', em
     return computeLayout(inputs, vp)
   }, [species, manifest, vp])
 
+  // Fingerprint the arrangement (species / counts / art slots, not pixel coords)
+  // so the tile keys below change — and the bloom replays — exactly when a poll or
+  // focus revalidation lands a genuinely different layout, and never on a plain
+  // resize or an identical poll. Memoized so hover re-renders don't recompute it.
+  const sig = useMemo(() => layoutSignature(tiles), [tiles])
+
   const fallbackUrl = imagePath(manifest.fallbackKey, manifest.ver?.[manifest.fallbackKey])
   const cx = vp.width / 2
   const cy = vp.height / 2
@@ -137,7 +145,7 @@ export function Collage({ species, manifest, animate = true, blossomKey = '', em
             const dist = Math.hypot(t.x + t.w / 2 - cx, t.y + t.h / 2 - cy)
             return (
               <BirdTile
-                key={`${blossomKey}:${t.sci}`}
+                key={`${blossomKey}:${sig}:${t.sci}`}
                 tile={t}
                 animate={animate}
                 delayMs={Math.min(MAX_BLOOM_DELAY_MS, dist * BLOOM_DELAY_PER_PX)}

@@ -1,3 +1,4 @@
+import { fnv1a } from '../lib/hash.ts'
 import { type DecodedMask, isParked, maskPack, type PlaceableTile } from './pack.ts'
 
 // Count-driven sizing + packing, reimplemented from study of AvianVisitors'
@@ -172,4 +173,17 @@ export function computeLayout(inputs: readonly LayoutInput[], vp: Viewport): Lai
     h: t.fullH,
     parked: isParked(t),
   }))
+}
+
+/** A short fingerprint of what makes a layout the layout it is: which species are
+ *  present (`sci`), how loud each is (`n`, which drives tile size), and which art
+ *  slot each resolved to (`key`, which sets the mask + aspect and flips on
+ *  fallback→real-art or perched→flight). Sorted so tile order never matters, and
+ *  deliberately blind to pixel coordinates — so it is stable across viewport
+ *  resizes and identical polls, and changes only when the arrangement genuinely
+ *  differs. The collage feeds it into the tile keys so a changed layout remounts
+ *  the tiles and replays the entrance bloom (see Collage.tsx). */
+export function layoutSignature(tiles: readonly LaidTile[]): string {
+  const parts = tiles.map((t) => `${t.sci}:${t.n}:${t.key}`).sort()
+  return fnv1a(parts.join('|')).toString(36)
 }

@@ -6,6 +6,7 @@ import { decodeMaskCached } from '../collage/pack.ts'
 import { resolveArt, rollFlight } from '../domain/asset.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
 import type { Species } from '../domain/species.ts'
+import { fnv1a } from '../lib/hash.ts'
 import { createPrng } from '../lib/prng.ts'
 
 // Frame compositor: renders a window's gated species into a fixed-size PNG for
@@ -26,18 +27,6 @@ export interface FrameOptions {
 /** Light-theme --tile-shadow: drop-shadow(0 2px 6px rgba(26,22,18,0.1)). */
 const SHADOW = { color: 'rgba(26,22,18,0.1)', blur: 6, offsetY: 2 }
 const DEFAULT_AR = 1.4
-
-const FNV_OFFSET = 0x811c9dc5
-const FNV_PRIME = 0x01000193
-
-function fnv1a(str: string): number {
-  let h = FNV_OFFSET
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i)
-    h = Math.imul(h, FNV_PRIME)
-  }
-  return h >>> 0
-}
 
 /** Stable seed per species so its pose holds across renders (no e-ink churn),
  *  while ~FLY_PROB of the roster still fly. */

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { computeLayout, type LayoutInput, tuning } from './layout.ts'
+import {
+  computeLayout,
+  type LaidTile,
+  type LayoutInput,
+  layoutSignature,
+  tuning,
+} from './layout.ts'
 import type { DecodedMask } from './pack.ts'
 
 function solidMask(w: number, h: number): DecodedMask {
@@ -67,5 +73,40 @@ describe('computeLayout', () => {
     const first = computeLayout(inputs, VP).map((t) => [t.sci, Math.round(t.x), Math.round(t.y)])
     const again = computeLayout(inputs, VP).map((t) => [t.sci, Math.round(t.x), Math.round(t.y)])
     expect(first).toEqual(again)
+  })
+})
+
+function tile(sci: string, n: number, overrides: Partial<LaidTile> = {}): LaidTile {
+  return { ...input(sci, n), x: 0, y: 0, w: 10, h: 10, parked: false, ...overrides }
+}
+
+describe('layoutSignature', () => {
+  const base = [tile('a', 3), tile('b', 1), tile('c', 5)]
+
+  it('is stable for the same species, counts, and art keys', () => {
+    expect(layoutSignature(base)).toBe(layoutSignature([tile('a', 3), tile('b', 1), tile('c', 5)]))
+  })
+
+  it('ignores tile order', () => {
+    expect(layoutSignature(base)).toBe(layoutSignature([tile('c', 5), tile('a', 3), tile('b', 1)]))
+  })
+
+  it('ignores pixel coordinates, so it holds across a resize', () => {
+    const moved = base.map((t) => ({ ...t, x: t.x + 100, y: t.y + 40, w: t.w * 2, h: t.h * 2 }))
+    expect(layoutSignature(moved)).toBe(layoutSignature(base))
+  })
+
+  it('changes when a detection count changes', () => {
+    expect(layoutSignature([tile('a', 3)])).not.toBe(layoutSignature([tile('a', 4)]))
+  })
+
+  it('changes when a species enters or leaves', () => {
+    expect(layoutSignature(base)).not.toBe(layoutSignature([tile('a', 3), tile('b', 1)]))
+  })
+
+  it('changes when the resolved art key changes (fallback→art, perched→flight)', () => {
+    expect(layoutSignature([tile('a', 3, { key: 'a' })])).not.toBe(
+      layoutSignature([tile('a', 3, { key: 'a-2' })]),
+    )
   })
 })
