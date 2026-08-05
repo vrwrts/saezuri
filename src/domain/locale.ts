@@ -29,9 +29,9 @@ export const SUPPORTED_DICT_LOCALES = [
 
 export type DictLocale = (typeof SUPPORTED_DICT_LOCALES)[number]
 
-/** Reduce a BCP-47 tag to its dictionary base code. Lowercased, first subtag only
- *  (`de-DE`->`de`), with Norwegian folded onto `nb`: browsers send `no`
- *  (macrolanguage) or `nn` (Nynorsk), but the dictionary set uses `nb` (Bokmål). */
+/** Reduce a tag to its dictionary base code, folding Norwegian onto `nb`: browsers
+ *  send `no` (macrolanguage) or `nn` (Nynorsk), but the dictionary set uses `nb`
+ *  (Bokmål). */
 function baseSubtag(tag: string): string {
   const base = tag.toLowerCase().split('-')[0]
   if (base === 'no' || base === 'nn') return 'nb'

@@ -4,9 +4,8 @@ import type { DictLocale } from '../domain/locale.ts'
 
 const EMPTY: ReadonlyMap<string, string> = new Map()
 
-// Same immutable-resource config as the index: fetch the chosen locale's dictionary
-// once and cache it (ETag + short max-age handle freshness). NOT `no-store` — the
-// dictionary is safe to cache, and a reload 304-revalidates cheaply.
+// Cacheable like the index (NOT `no-store`): the dictionary is immutable-ish, so the
+// browser's ETag/max-age handling is enough and SWR revalidation stays off below.
 async function fetchDictionary(url: string): Promise<Record<string, string>> {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`dictionary ${res.status}`)

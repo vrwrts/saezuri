@@ -11,11 +11,10 @@ function storedLang(): string | null {
   }
 }
 
-/** Resolve the display language from the published set: a remembered valid choice
- *  wins; else the browser's language if published; else the station default if
- *  published; else English if published; else the first published language. Returns
- *  null only when nothing is published (so the caller hides the control and shows
- *  the station's own names). */
+/** The initial display language when nothing is stored. A stored choice is checked
+ *  first so the preference survives the async arrival of `locales`; English is a
+ *  deliberate universally-legible fallback, ahead of an arbitrary first-published
+ *  locale. Null ⇒ nothing published ⇒ the caller shows the station's own names. */
 export function resolveInitialLang(
   locales: readonly DictLocale[],
   defaultLocale: DictLocale | null,

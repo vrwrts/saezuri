@@ -21,8 +21,8 @@ function storedTheme(): ThemePref {
   return 'auto'
 }
 
-/** Resolve a preference to the concrete theme to render. `auto` consults the OS via
- *  matchMedia (absent in jsdom → light). */
+/** `auto` follows the OS via matchMedia, which is absent in jsdom — so it resolves
+ *  to light there. */
 function resolveTheme(pref: ThemePref): 'light' | 'dark' {
   if (pref === 'auto') {
     return typeof matchMedia !== 'undefined' && matchMedia(DARK_QUERY).matches ? 'dark' : 'light'

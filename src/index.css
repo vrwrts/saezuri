@@ -201,39 +201,56 @@ body {
   color: var(--ink);
 }
 
-/* Settings popover, anchored under the button, right-aligned so it never spills
-   off-screen from the top-right topbar. Stacks each control under a small label. */
+/* Settings popover. Right-aligned under the button so it never spills off-screen
+   from the top-right topbar. The base state is hidden and `.is-open` reveals it;
+   SettingsMenu delays unmount until this exit transition finishes, so its
+   PANEL_ANIM_MS must stay in sync with the duration here. */
 .menu-popover {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 10px);
   right: 0;
   z-index: 7;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  min-width: 210px;
-  padding: 14px;
-  border-radius: 14px;
-  background: var(--paper-2);
-  box-shadow: var(--raised);
+  gap: 16px;
+  min-width: 244px;
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--edge-lg);
+  transform-origin: top right;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.97);
+  transition:
+    opacity 160ms ease,
+    transform 160ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.menu-popover.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-popover {
+    transition: none;
+  }
 }
 .menu-row {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
 }
 .menu-label {
   color: var(--ink-soft);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  letter-spacing: 0.04em;
 }
 .lang-select {
   width: 100%;
-  padding: 7px 10px;
+  padding: 9px 12px;
   border: 0;
-  border-radius: 999px;
-  background: var(--paper);
+  border-radius: 12px;
+  background: var(--paper-2);
   box-shadow: var(--recess);
   color: var(--ink);
   font-size: 12px;

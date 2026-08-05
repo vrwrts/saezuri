@@ -12,11 +12,9 @@ interface Props<T extends string> {
   variant?: 'tabs' | 'radiogroup'
 }
 
-/** Segmented control: a recessed track with a single raised pill that glides under
- *  the active option (matching the AvianVisitors chrome). Generic over the option
- *  set so both the time-window switcher and the theme switcher share one behavior
- *  and one style. The pill's geometry is measured from the active option and driven
- *  inline; the CSS transition does the gliding. */
+/** A segmented control whose sliding pill matches the AvianVisitors chrome. Generic
+ *  over the option set so the time-window switcher and the theme switcher share one
+ *  behavior and style rather than each duplicating the pill-measuring logic. */
 export function SegmentedControl<T extends string>({
   values,
   value,

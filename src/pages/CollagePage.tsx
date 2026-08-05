@@ -50,9 +50,8 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   const navigate = useNavigate()
   const manifest = useLayoutManifest()
   const live = useRecentSpecies(preset)
-  // Display-language localization: the browser reads Saezuri's published dictionary
-  // files and re-labels species by scientific name. Non-blocking — names swap in
-  // when the chosen dictionary arrives; a miss/absent dict keeps the station's name.
+  // Localization is a non-blocking overlay on top of the snapshot: a slow or absent
+  // dictionary never gates the collage — names just swap in once it arrives.
   const { locales, default: defaultLocale } = useDictionaryIndex()
   const { lang, setLang } = useLanguagePreference(locales, defaultLocale)
   const dict = useSpeciesDictionary(lang)
