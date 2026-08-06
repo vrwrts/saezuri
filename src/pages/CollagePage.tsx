@@ -7,9 +7,10 @@ import { ErrorBoundary } from '../components/ErrorBoundary.tsx'
 import { Header } from '../components/Header.tsx'
 import { SettingsMenu } from '../components/SettingsMenu.tsx'
 import { WindowPicker } from '../components/WindowPicker.tsx'
-import { mockSpecies } from '../dev/mock.ts'
+import { mockCallManifest, mockSpecies } from '../dev/mock.ts'
 import { localizeCommonNames, type Species } from '../domain/species.ts'
 import { pathToPreset, presetToSegment, type WindowPreset } from '../domain/window.ts'
+import { useCallManifest } from '../hooks/useCallManifest.ts'
 import { useDelayedFlag } from '../hooks/useDelayedFlag.ts'
 import { useDictionaryIndex } from '../hooks/useDictionaryIndex.ts'
 import { useLanguagePreference } from '../hooks/useLanguagePreference.ts'
@@ -57,6 +58,11 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   const dict = useSpeciesDictionary(lang)
   const baseSpecies: Species[] = USE_MOCK ? mockSpecies(manifest) : live.species
   const species = useMemo(() => localizeCommonNames(baseSpecies, dict), [baseSpecies, dict])
+
+  // Reference calls the refresh service has cached. Absent until it acquires
+  // any, so the card just offers no playback in the meantime.
+  const liveCalls = useCallManifest()
+  const calls = USE_MOCK ? mockCallManifest(species) : liveCalls
 
   // The first snapshot fetch shows the loading indicator instead of the empty
   // nest; once loaded, switching windows is instant (one file, all windows), so
@@ -106,6 +112,7 @@ function CollageView({ preset }: { preset: WindowPreset }) {
             <Collage
               species={species}
               manifest={manifest}
+              calls={calls}
               blossomKey={preset}
               emptyState={emptyState}
             />

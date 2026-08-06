@@ -12,6 +12,10 @@ export interface Species {
   n: number
   /** Most recent detection instant (epoch ms), for tie-breaks / tooltip. */
   lastSeenMs?: number
+  /** Earliest detection instant (epoch ms) *within the window*. The store only
+   *  retains 7 days, so this is "first heard in this window", not first ever —
+   *  only the all-time window's value is a true first. */
+  firstSeenMs?: number
 }
 
 export interface AggregateOptions {
@@ -63,6 +67,7 @@ export function aggregateDetections(
         com: d.commonName,
         n: 1,
         lastSeenMs: instant,
+        firstSeenMs: instant,
       })
       continue
     }
@@ -71,6 +76,7 @@ export function aggregateDetections(
       existing.lastSeenMs = instant
       existing.com = d.commonName
     }
+    if (instant < (existing.firstSeenMs ?? Infinity)) existing.firstSeenMs = instant
   }
 
   return sortSpecies([...byKey.values()])
@@ -81,11 +87,13 @@ export function aggregateDetections(
 export function speciesFromSummary(rows: readonly SpeciesSummary[]): Species[] {
   const mapped = rows.map((r): Species => {
     const lastSeenMs = r.last_heard ? Date.parse(r.last_heard) : NaN
+    const firstSeenMs = r.first_heard ? Date.parse(r.first_heard) : NaN
     return {
       sci: r.scientific_name,
       com: r.common_name,
       n: r.count,
       lastSeenMs: Number.isNaN(lastSeenMs) ? undefined : lastSeenMs,
+      firstSeenMs: Number.isNaN(firstSeenMs) ? undefined : firstSeenMs,
     }
   })
   return sortSpecies(mapped)

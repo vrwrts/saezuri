@@ -21,6 +21,9 @@ Saezuri just visualizes recent detections.
   wheel: reach for a small, well-trusted library when it removes real complexity (e.g.
   SWR for data fetching). Every dependency is still something a reviewer must trust, so
   add only what earns its place and keep the tree lean.
+- Icons come from `lucide-react`, imported per icon so tree-shaking keeps only what is
+  used. Don't hand-roll SVGs and don't use emoji glyphs as icons — emoji render at the
+  mercy of the platform's font, which is what they replaced.
 ## Architecture invariants
  
 - The browser only ever talks to Saezuri's own origin, and reads **only static files
@@ -112,8 +115,12 @@ Where things live, so a change lands in the right place fast.
 - **Collage render path:** `src/pages/CollagePage.tsx` fetches the data and renders
   `src/collage/Collage.tsx`, which measures the viewport, resolves each species to art,
   packs the tiles, and maps them to `src/collage/BirdTile.tsx` (one absolutely-positioned
-  `<button><img></button>` per bird). Silhouette hover is arbitrated at the container
-  (`hitTest.ts`), not per tile — the tiles are `pointer-events: none`.
+  `<button><img></button>` per bird). Silhouette hover **and** selection are arbitrated at
+  the container (`hitTest.ts`), not per tile — the tiles are `pointer-events: none`, so the
+  tile buttons only ever fire from the keyboard. Selecting a bird opens
+  `src/collage/SpeciesCard.tsx` (which replaced the old hover chip) and lifts that bird
+  while the rest of the plate recedes; the three tile states (resting / hover / selected)
+  are deliberately distinct so the card's subject stays obvious once the pointer moves on.
 - **Layout / packer:** `src/collage/layout.ts` — `computeLayout(inputs, vp)` is the
   deterministic, seeded (`src/lib/prng.ts`) count-driven sizing + silhouette packer
   (`pack.ts`); reimplemented from AvianVisitors, not copied. Same inputs + viewport ⇒ same

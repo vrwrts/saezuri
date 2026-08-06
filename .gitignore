@@ -28,6 +28,11 @@ dist-server/
 # the empty state works in built images. See LICENSE and public/assets/README.md for the
 # licensing and attribution that shipping it requires.
 
+# Cached reference-call recordings. Third-party CC-licensed audio fetched at
+# runtime by the refresh service (and synthetic placeholder tones in dev, see
+# src/dev/mockCalls.mjs) — never ours to commit.
+/public/assets/calls/
+
 # Layout manifest is a build artifact derived from whatever art is present
 # locally (pipeline/build_masks.py). The app ships a built-in fallback manifest.
 /public/layout-manifest.json

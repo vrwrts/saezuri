@@ -7,17 +7,26 @@ import {
   useState,
 } from 'react'
 import { imagePath, resolveArt, rollFlight } from '../domain/asset.ts'
+import { type CallManifest, callFor, EMPTY_CALL_MANIFEST } from '../domain/calls.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
 import type { Species } from '../domain/species.ts'
 import { BirdTile } from './BirdTile.tsx'
-import { HoverChip } from './HoverChip.tsx'
 import { hitTest } from './hitTest.ts'
-import { computeLayout, type LayoutInput, layoutSignature, type Viewport } from './layout.ts'
+import {
+  computeLayout,
+  type LaidTile,
+  type LayoutInput,
+  layoutSignature,
+  type Viewport,
+} from './layout.ts'
 import { decodeMaskCached } from './pack.ts'
+import { SpeciesCard } from './SpeciesCard.tsx'
 
 interface Props {
   species: Species[]
   manifest: LayoutManifest
+  /** Cached reference calls, keyed by slug. Absent ⇒ no bird offers playback. */
+  calls?: CallManifest
   /** Bloom tiles in on mount (disable for screenshots). */
   animate?: boolean
   /** Namespaces the tile keys so a change remounts every tile and replays the
@@ -39,13 +48,27 @@ const DEFAULT_ASPECT_RATIO = 1.4
 const BLOOM_DELAY_PER_PX = 0.6
 const MAX_BLOOM_DELAY_MS = 600
 
-export function Collage({ species, manifest, animate = true, blossomKey = '', emptyState }: Props) {
+export function Collage({
+  species,
+  manifest,
+  calls = EMPTY_CALL_MANIFEST,
+  animate = true,
+  blossomKey = '',
+  emptyState,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [vp, setVp] = useState<Viewport>({ width: 0, height: 0 })
   // Scientific name of the bird under the pointer. Kept as a bare id so the chip
   // reads the live count off the current tiles — it stays fresh across polls and
   // clears itself when the bird leaves the window.
   const [hoveredSci, setHoveredSci] = useState<string | null>(null)
+  // The bird whose card is open. Same bare-id treatment as `hoveredSci`, for the
+  // same reason: a species that leaves the window simply stops resolving.
+  // `byKey` records how the selection was made — the card pulls focus only for a
+  // keyboard user, who would otherwise have to tab past every remaining bird to
+  // reach it. Doing it after a press would paint a focus ring nobody asked for.
+  const [selection, setSelection] = useState<{ sci: string; byKey: boolean } | null>(null)
+  const selectedSci = selection?.sci ?? null
   // sci -> prefersFlight, persisted across polls so a bird keeps its pose until
   // it leaves the window (then it re-rolls on return), matching AvianVisitors.
   const poseRef = useRef<Map<string, boolean>>(new Map())
@@ -69,6 +92,20 @@ export function Collage({ species, manifest, animate = true, blossomKey = '', em
       ro.disconnect()
     }
   }, [])
+
+  // A window switch changes what the card describes — its count and times are
+  // window-scoped — so close it rather than silently rewriting it in place.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the window, not on the setter
+  useEffect(() => setSelection(null), [blossomKey])
+
+  useEffect(() => {
+    if (!selectedSci) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelection(null)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [selectedSci])
 
   // Recompute the layout when the species set, viewport, or manifest changes.
   // computeLayout is deterministic (seeded PRNG), so an identical-content poll
@@ -114,30 +151,56 @@ export function Collage({ species, manifest, animate = true, blossomKey = '', em
   const cy = vp.height / 2
 
   const visible = tiles.filter((t) => !t.parked)
-  // Read the hovered bird off the current tiles, so a stale id (bird left the
-  // window) simply yields nothing and the chip disappears.
-  const hovered = hoveredSci ? visible.find((t) => t.sci === hoveredSci) : undefined
+  // The card needs the species record (first/last heard), which the laid tile
+  // doesn't carry — but only for a bird actually on screen, so gate on the tile
+  // first and let a parked or departed species close the card on its own. A
+  // stale id (bird left the window) simply stops resolving.
+  const selected =
+    selectedSci && visible.some((t) => t.sci === selectedSci)
+      ? species.find((s) => s.sci === selectedSci)
+      : undefined
 
   // Silhouette hover, arbitrated at the container: the tiles are pointer-events:
   // none (see index.css), so the boxes never intercept — we hit-test the cursor
   // against each bird's mask and light up only the shape actually under it. The
   // handler closes over the current `visible` each render.
   const onMove = (e: ReactMouseEvent<HTMLDivElement>) => {
-    const el = containerRef.current
-    if (!el) return
-    const b = el.getBoundingClientRect()
-    const hit = hitTest(e.clientX - b.left, e.clientY - b.top, visible)
+    const hit = pick(e)
     const next = hit ? hit.sci : null
     setHoveredSci((cur) => (cur === next ? cur : next))
   }
 
+  // Selection is arbitrated the same way hover is, and for the same reason —
+  // the overlapping boxes mean only a mask test lands on the bird you pressed.
+  const onClick = (e: ReactMouseEvent<HTMLDivElement>) => {
+    // The card is the only pointer-events:auto descendant (tiles are none), so a
+    // press on a bird targets the container itself. Anything else came from
+    // inside the card — pressing play must not re-arbitrate the selection.
+    if (e.target !== e.currentTarget) return
+    const hit = pick(e)
+    setSelection(hit ? { sci: hit.sci, byKey: false } : null)
+  }
+
+  function pick(e: ReactMouseEvent<HTMLDivElement>): LaidTile | null {
+    const el = containerRef.current
+    if (!el) return null
+    const b = el.getBoundingClientRect()
+    return hitTest(e.clientX - b.left, e.clientY - b.top, visible)
+  }
+
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: read-only display; these handlers only track the pointer to highlight a silhouette (decorative, no click/keyboard equivalent). Accessible names live on the child bird buttons.
+    // biome-ignore lint/a11y/noStaticElementInteractions: the pointer must be arbitrated here rather than per tile (the tiles are pointer-events:none so their boxes never intercept); the keyboard equivalent lives on the child bird buttons, which carry the accessible names.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: this container is not focusable, so a key handler here would never fire — Enter/Space on a bird is handled by its own tile button, which is the real tab stop.
     <div
-      className="gcollage"
+      // Lets the stylesheet fade back the birds that aren't the subject; a
+      // container class rather than `:has(.is-selected)` because hover toggles a
+      // descendant class on every pointer move, and :has would put the parent's
+      // style recalc on that path.
+      className={`gcollage${selected ? ' has-selection' : ''}`}
       ref={containerRef}
       onMouseMove={onMove}
       onMouseLeave={() => setHoveredSci(null)}
+      onClick={onClick}
     >
       {species.length === 0
         ? emptyState
@@ -151,10 +214,27 @@ export function Collage({ species, manifest, animate = true, blossomKey = '', em
                 delayMs={Math.min(MAX_BLOOM_DELAY_MS, dist * BLOOM_DELAY_PER_PX)}
                 fallbackUrl={fallbackUrl}
                 hovered={t.sci === hoveredSci}
+                selected={t.sci === selectedSci}
+                onSelect={(sci) => setSelection({ sci, byKey: true })}
               />
             )
           })}
-      {hovered && <HoverChip com={hovered.com} n={hovered.n} />}
+      {selected && (
+        // Deliberately unkeyed: keying by species would remount the card on every
+        // switch, replaying its entrance animation even though the card never
+        // left the screen — which reads as the new content flashing. Reusing the
+        // element swaps the content in place and animates only on a real entrance.
+        <SpeciesCard
+          sci={selected.sci}
+          com={selected.com}
+          n={selected.n}
+          firstSeenMs={selected.firstSeenMs}
+          lastSeenMs={selected.lastSeenMs}
+          call={callFor(calls, selected.sci)}
+          autoFocus={selection?.byKey ?? false}
+          onClose={() => setSelection(null)}
+        />
+      )}
     </div>
   )
 }
