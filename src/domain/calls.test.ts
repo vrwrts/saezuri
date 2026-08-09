@@ -4,10 +4,10 @@ import { type CallManifest, type CallRecord, callFor, callPath } from './calls.t
 const REC: CallRecord = {
   ext: 'mp3',
   ver: 'a1b2c3',
-  by: 'A. Recordist',
-  lic: 'CC BY-SA 4.0',
-  src: 'https://commons.wikimedia.org/wiki/File:Example.mp3',
-  srcName: 'Wikimedia Commons',
+  recordist: 'A. Recordist',
+  license: 'CC BY-SA 4.0',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:Example.mp3',
+  sourceName: 'Wikimedia Commons',
 }
 
 describe('callPath', () => {

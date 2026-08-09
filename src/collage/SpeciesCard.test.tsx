@@ -62,10 +62,10 @@ describe('formatHeard', () => {
 const REC: CallRecord = {
   ext: 'wav',
   ver: 'v1',
-  by: 'A. Recordist',
-  lic: 'CC BY-SA 4.0',
-  src: 'https://commons.wikimedia.org/wiki/File:Example.wav',
-  srcName: 'Wikimedia Commons',
+  recordist: 'A. Recordist',
+  license: 'CC BY-SA 4.0',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:Example.wav',
+  sourceName: 'Wikimedia Commons',
 }
 
 function renderCard(call: CallRecord | null, com = 'Eurasian Blackbird') {
@@ -116,11 +116,14 @@ describe('SpeciesCard', () => {
     expect(screen.getByRole('button', { name: /play/i })).toBeInTheDocument()
     // The CC licences require the recordist be named wherever the call plays.
     expect(screen.getByText(/A\. Recordist · CC BY-SA 4\.0/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Wikimedia Commons' })).toHaveAttribute('href', REC.src)
+    expect(screen.getByRole('link', { name: 'Wikimedia Commons' })).toHaveAttribute(
+      'href',
+      REC.sourceUrl,
+    )
   })
 
   it('still credits licence and source when the archive names no recordist', () => {
-    renderCard({ ...REC, by: '' })
+    renderCard({ ...REC, recordist: '' })
     expect(screen.getByText(/CC BY-SA 4\.0/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Wikimedia Commons' })).toBeInTheDocument()
   })

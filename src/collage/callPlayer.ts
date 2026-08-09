@@ -1,10 +1,9 @@
 import { useSyncExternalStore } from 'react'
 
-// Reference-call playback. One <audio> element for the whole app, held at module
-// scope: only one bird should ever be singing, so starting a second call must
-// stop the first — sharing the element makes that the default rather than
-// something every caller has to remember. State is published through
-// useSyncExternalStore so the card re-renders on the media events.
+// One <audio> element for the whole app, held at module scope: only one bird
+// should ever be singing, so starting a second call must stop the first —
+// sharing the element makes that the default rather than something every caller
+// has to remember.
 //
 // Nothing here plays on its own. Playback is only ever reached through an
 // explicit press on the species card, which is what keeps an unattended display
@@ -13,7 +12,6 @@ import { useSyncExternalStore } from 'react'
 export type PlaybackState = 'idle' | 'loading' | 'playing' | 'error'
 
 export interface Playback {
-  /** URL of the call being played, or null when nothing is. */
   url: string | null
   state: PlaybackState
 }
@@ -51,7 +49,6 @@ function element(): HTMLAudioElement {
   return el
 }
 
-/** Start `url`, or stop it if it is already the one playing. */
 export function toggleCall(url: string): void {
   if (current.url === url && current.state !== 'idle') {
     stopCall()

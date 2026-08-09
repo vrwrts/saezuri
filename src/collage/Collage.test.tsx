@@ -42,10 +42,10 @@ const CALLS: CallManifest = {
     'turdus-merula': {
       ext: 'wav',
       ver: 'v1',
-      by: 'A. Recordist',
-      lic: 'CC0 1.0',
-      src: 'https://example.invalid/rec',
-      srcName: 'Wikimedia Commons',
+      recordist: 'A. Recordist',
+      license: 'CC0 1.0',
+      sourceUrl: 'https://example.invalid/rec',
+      sourceName: 'Wikimedia Commons',
     },
   },
 }

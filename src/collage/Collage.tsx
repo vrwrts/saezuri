@@ -25,7 +25,7 @@ import { SpeciesCard } from './SpeciesCard.tsx'
 interface Props {
   species: Species[]
   manifest: LayoutManifest
-  /** Cached reference calls, keyed by slug. Absent ⇒ no bird offers playback. */
+  /** Absent ⇒ no bird offers playback. */
   calls?: CallManifest
   /** Bloom tiles in on mount (disable for screenshots). */
   animate?: boolean
@@ -153,8 +153,7 @@ export function Collage({
   const visible = tiles.filter((t) => !t.parked)
   // The card needs the species record (first/last heard), which the laid tile
   // doesn't carry — but only for a bird actually on screen, so gate on the tile
-  // first and let a parked or departed species close the card on its own. A
-  // stale id (bird left the window) simply stops resolving.
+  // first and let a parked or departed species close the card on its own.
   const selected =
     selectedSci && visible.some((t) => t.sci === selectedSci)
       ? species.find((s) => s.sci === selectedSci)
@@ -192,8 +191,7 @@ export function Collage({
     // biome-ignore lint/a11y/noStaticElementInteractions: the pointer must be arbitrated here rather than per tile (the tiles are pointer-events:none so their boxes never intercept); the keyboard equivalent lives on the child bird buttons, which carry the accessible names.
     // biome-ignore lint/a11y/useKeyWithClickEvents: this container is not focusable, so a key handler here would never fire — Enter/Space on a bird is handled by its own tile button, which is the real tab stop.
     <div
-      // Lets the stylesheet fade back the birds that aren't the subject; a
-      // container class rather than `:has(.is-selected)` because hover toggles a
+      // A container class rather than `:has(.is-selected)`: hover toggles a
       // descendant class on every pointer move, and :has would put the parent's
       // style recalc on that path.
       className={`gcollage${selected ? ' has-selection' : ''}`}

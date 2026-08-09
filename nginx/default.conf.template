@@ -32,6 +32,15 @@ server {
         add_header Cache-Control "no-cache";
         try_files $uri =404;
     }
+    # Cached reference calls are described here; the audio itself lives under
+    # /assets/calls/ and is covered by the immutable block above (its URLs carry
+    # a ?v= content hash). Without this exact-match block a deployment that has
+    # acquired nothing yet would fall through to the SPA index.html instead of
+    # 404ing, and the browser would parse HTML as JSON.
+    location = /calls-manifest.json {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
 
     # Published species-name dictionaries (index.json + one <locale>.json each). The
     # browser reads these to localize display names. `no-cache` = revalidate (cheap

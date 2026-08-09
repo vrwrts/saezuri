@@ -60,9 +60,12 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   const species = useMemo(() => localizeCommonNames(baseSpecies, dict), [baseSpecies, dict])
 
   // Reference calls the refresh service has cached. Absent until it acquires
-  // any, so the card just offers no playback in the meantime.
+  // any, so the card just offers no playback in the meantime. Mock mode falls
+  // back to placeholder tones only when no real manifest has been published —
+  // point the refresh service at ./public and a mock run plays actual birds.
   const liveCalls = useCallManifest()
-  const calls = USE_MOCK ? mockCallManifest(species) : liveCalls
+  const calls =
+    USE_MOCK && Object.keys(liveCalls.calls).length === 0 ? mockCallManifest(species) : liveCalls
 
   // The first snapshot fetch shows the loading indicator instead of the empty
   // nest; once loaded, switching windows is instant (one file, all windows), so

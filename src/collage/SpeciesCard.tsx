@@ -11,8 +11,7 @@ const PLAY_ICON_PX = 15
 const STOP_ICON_PX = 12
 const CLOSE_ICON_PX = 15
 
-/** Human label for a species' call count: "1 call" / "756 calls" / "1,234 calls".
- *  The count already reflects the active window, so no timeframe is spelled out. */
+/** The count already reflects the active window, so no timeframe is spelled out. */
 export function formatCalls(n: number): string {
   return `${n.toLocaleString()} call${n === 1 ? '' : 's'}`
 }
@@ -38,9 +37,8 @@ function sameDay(a: Date, b: Date): boolean {
   )
 }
 
-/** When the species was heard, across the active window. Times alone while the
- *  span sits inside one day; anything longer gets dates, so "21:40 – 06:12"
- *  can't be misread as a same-day range. Null when nothing is known. */
+/** Times alone while the span sits inside one day; anything longer gets dates, so
+ *  "21:40 – 06:12" can't be misread as a same-day range. */
 export function formatHeard(firstMs?: number, lastMs?: number): string | null {
   if (lastMs === undefined) return null
   const last = new Date(lastMs)
@@ -51,25 +49,18 @@ export function formatHeard(firstMs?: number, lastMs?: number): string | null {
 }
 
 interface Props {
-  /** Scientific name — keys the recording and is shown under the common name. */
   sci: string
-  /** Localized common name. */
+  /** Already localized; see localizeCommonNames. */
   com: string
-  /** Detection count in the active window. */
   n: number
   firstSeenMs?: number
   lastSeenMs?: number
-  /** The species' cached recording, or null when none exists. */
   call: CallRecord | null
-  /** Pull focus to the card's primary control on open. See Collage — only for a
-   *  keyboard selection, so a press never paints an unrequested focus ring. */
+  /** Only ever set for a keyboard selection; see Collage for why. */
   autoFocus?: boolean
   onClose: () => void
 }
 
-/** Detail card for the selected bird, floating bottom-center over the collage.
- *  Unlike the hover chip it replaced, this is interactive — the collage's click
- *  arbitration deliberately ignores events originating inside it. */
 export function SpeciesCard({
   sci,
   com,
@@ -93,7 +84,7 @@ export function SpeciesCard({
   const url = call ? callPath(sci, call) : null
   const state = url && playback.url === url ? playback.state : 'idle'
   const heard = formatHeard(firstSeenMs, lastSeenMs)
-  const credit = call ? [call.by, call.lic].filter(Boolean).join(' · ') : null
+  const credit = call ? [call.recordist, call.license].filter(Boolean).join(' · ') : null
   // The binomial rides behind the common name as a secondary label. With no
   // localized name to show, the primary already *is* the binomial — repeating it
   // would just be the same words twice.
@@ -142,8 +133,8 @@ export function SpeciesCard({
           {call && (
             <span className="card-credit mono">
               {credit && `${credit} · `}
-              <a href={call.src} target="_blank" rel="noreferrer">
-                {call.srcName}
+              <a href={call.sourceUrl} target="_blank" rel="noreferrer">
+                {call.sourceName}
               </a>
             </span>
           )}

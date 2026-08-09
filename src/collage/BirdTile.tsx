@@ -11,13 +11,10 @@ interface Props {
   /** Cursor is over this bird's silhouette — hit-tested by the collage container,
    *  not by this tile (it's pointer-events:none). Drives the scale. */
   hovered?: boolean
-  /** This bird's card is open. Highlighted like hover, so it stays obvious which
-   *  bird the card describes once the pointer moves away. */
   selected?: boolean
-  /** Open this bird's card. Unreachable by pointer — the tile is
-   *  pointer-events:none and the container arbitrates presses against the
-   *  silhouette — but it still fires on Enter/Space, which is what gives keyboard
-   *  and screen-reader users the same path without disturbing that arbitration. */
+  /** Unreachable by pointer — the tile is pointer-events:none — but it still
+   *  fires on Enter/Space, which is what gives keyboard and screen-reader users
+   *  a way in without disturbing the container's silhouette arbitration. */
   onSelect?: (sci: string) => void
 }
 

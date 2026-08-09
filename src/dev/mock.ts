@@ -1,5 +1,5 @@
 import { FLIGHT_SUFFIX } from '../domain/asset.ts'
-import type { CallManifest } from '../domain/calls.ts'
+import type { CallManifest, CallRecord } from '../domain/calls.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
 import { slugify } from '../domain/slug.ts'
 import type { Species } from '../domain/species.ts'
@@ -9,10 +9,8 @@ import type { Species } from '../domain/species.ts'
 // BirdNET-Go. Enabled via the VITE_MOCK env flag (see App). Counts follow a
 // Zipf-ish curve so the size hierarchy is visible.
 
-/** Slug back to the binomial it was made from: genus capitalized, epithet(s)
- *  lower — "accipiter-gentilis" -> "Accipiter gentilis". The manifest keys are
- *  slugified scientific names, so this recovers real-shaped `sci` values instead
- *  of leaking the slug into the UI. */
+/** Manifest keys are slugified scientific names, so this recovers real-shaped
+ *  `sci` values instead of leaking the slug into the UI. */
 function binomial(slug: string): string {
   const [genus, ...epithets] = slug.split('-')
   return [genus.charAt(0).toUpperCase() + genus.slice(1), ...epithets].join(' ')
@@ -76,36 +74,34 @@ export function mockSpecies(manifest: LayoutManifest, count = 20): Species[] {
 const MOCK_CALL_COUNT = 3
 
 const MOCK_CREDITS: readonly Pick<
-  CallManifest['calls'][string],
-  'by' | 'lic' | 'licUrl' | 'src' | 'srcName'
+  CallRecord,
+  'recordist' | 'license' | 'licenseUrl' | 'sourceUrl' | 'sourceName'
 >[] = [
   {
-    by: 'A. Recordist',
-    lic: 'CC BY-SA 4.0',
-    licUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
-    src: 'https://commons.wikimedia.org/wiki/Main_Page',
-    srcName: 'Wikimedia Commons',
+    recordist: 'A. Recordist',
+    license: 'CC BY-SA 4.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/Main_Page',
+    sourceName: 'Wikimedia Commons',
   },
   {
-    by: 'B. Fieldworker',
-    lic: 'CC BY 4.0',
-    licUrl: 'https://creativecommons.org/licenses/by/4.0/',
-    src: 'https://commons.wikimedia.org/wiki/Main_Page',
-    srcName: 'Wikimedia Commons',
+    recordist: 'B. Fieldworker',
+    license: 'CC BY 4.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/Main_Page',
+    sourceName: 'Wikimedia Commons',
   },
   // No recordist: Commons' extmetadata sometimes carries no Artist, and the
   // credit line has to stay sensible without one.
   {
-    by: '',
-    lic: 'CC0 1.0',
-    licUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
-    src: 'https://commons.wikimedia.org/wiki/Main_Page',
-    srcName: 'Wikimedia Commons',
+    recordist: '',
+    license: 'CC0 1.0',
+    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/Main_Page',
+    sourceName: 'Wikimedia Commons',
   },
 ]
 
-/** Synthesize a call manifest covering the first few mock species. Pairs with
- *  the placeholder audio written by `node src/dev/mockCalls.mjs`. */
 export function mockCallManifest(species: readonly Species[]): CallManifest {
   const calls: CallManifest['calls'] = {}
   species.slice(0, MOCK_CALL_COUNT).forEach((s, i) => {

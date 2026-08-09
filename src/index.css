@@ -106,7 +106,6 @@ body {
     filter 160ms ease,
     opacity 160ms ease;
 }
-/* Hover: a passing acknowledgement of whichever bird is under the pointer. */
 .gtile.is-hover {
   z-index: 3;
 }
@@ -114,10 +113,9 @@ body {
   transform: scale(1.04);
   filter: var(--tile-shadow-hover);
 }
-/* Selected: the bird the card is describing. It has to stay obvious after the
-   pointer has moved on, so it lifts further than hover and holds there, and the
-   rest of the plate recedes behind it. Declared after hover so a bird that is
-   both reads as selected. */
+/* The selected bird has to stay obvious after the pointer has moved on, so it
+   lifts further than hover and holds there while the rest of the plate recedes.
+   Declared after hover so a bird that is both reads as selected. */
 .gtile.is-selected {
   z-index: 4;
 }
@@ -149,18 +147,17 @@ body {
   }
 }
 
-/* Species card: opens on selecting a bird, anchored bottom-center over the
-   collage (right above the footer count). Tokens mirror the time picker's active
-   pill; a larger drop shadow lets it float over the plate. Unlike the hover chip
-   it replaced this one is interactive, so it keeps pointer events — the collage's
-   click handler ignores anything targeting inside it (see Collage.tsx). */
+/* Tokens mirror the time picker's active pill; a larger drop shadow lets it float
+   over the plate. Unlike the hover chip it replaced this one is interactive, so it
+   keeps pointer events — the collage's click handler ignores anything targeting
+   inside it (see Collage.tsx). */
 .species-card {
+  --card-gap: 13px;
   position: absolute;
   /* Centred by pinning both edges and letting auto margins do the work, rather
      than `left: 50%` + a translate: an absolutely-positioned box offset from one
      edge shrink-wraps against only the space that remains, which capped the card
      at half the collage width and made it wrap far sooner than it needed to. */
-  --card-gap: 13px;
   left: 0;
   right: 0;
   bottom: 4px;
@@ -190,10 +187,9 @@ body {
   }
 }
 
-/* Everything that changes from bird to bird. Remounted on each switch (see
-   SpeciesCard) so this one-shot animation replays, giving the swap some motion
-   instead of the content changing under you. It starts from transparent and
-   rises, so the incoming content is never briefly visible before it animates. */
+/* Remounted on each switch (see SpeciesCard) so this one-shot animation replays,
+   giving the swap some motion instead of the content changing under you. It starts
+   from transparent, so incoming content is never briefly visible before animating. */
 .card-body {
   display: flex;
   align-items: center;
@@ -216,8 +212,8 @@ body {
   }
 }
 
-/* Play control. Shape and tokens match the topbar settings button, so the two
-   read as the same family of affordance. */
+/* Shape and tokens match the topbar settings button, so the two read as the same
+   family of affordance. */
 .card-play {
   flex: 0 0 auto;
   display: grid;

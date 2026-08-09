@@ -40,6 +40,7 @@ dist-server/
 # Runtime artifacts the refresh service writes (snapshot + e-ink frames +
 # downloaded species-name dictionaries). Not source; regenerated on every run.
 /public/snapshot.json
+/public/calls-manifest.json
 /public/collage/
 /public/species-dict/
 

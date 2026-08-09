@@ -28,9 +28,11 @@ Saezuri just visualizes recent detections.
  
 - The browser only ever talks to Saezuri's own origin, and reads **only static files
   Saezuri publishes** (snapshot, layout manifest, species-name dictionaries, e-ink
-  frames, cutouts). BirdNET-Go access is **backend-only**: the Node refresh service is
-  the sole BirdNET-Go client (it holds the detection SSE stream and publishes the
-  static files). nginx serves those static files and does **not** proxy the BirdNET-Go
+  frames, cutouts, cached reference calls). All outbound access is **backend-only**:
+  the Node refresh service is the sole BirdNET-Go client (it holds the detection SSE
+  stream and publishes the static files) and the only thing that reaches third-party
+  archives for call audio — it caches what it fetches and re-serves it from this
+  origin. nginx serves those static files and does **not** proxy the BirdNET-Go
   API — exposing the whole API (writes included) to anyone who can reach Saezuri is a
   real risk when Saezuri is on the internet but BirdNET-Go is not. Never reintroduce a
   browser→BirdNET-Go path (no `/api/` proxy, no direct calls). This also avoids CORS
@@ -145,8 +147,17 @@ Where things live, so a change lands in the right place fast.
   (aggregation + localization), `asset.ts` (`resolveArt`, `imagePath` with the `?v=` hash
   cache-bust), `snapshot.ts`, `manifest.ts`, `slug.ts`.
 - **Refresh service (the sole BirdNET-Go client):** `src/server/` — holds the SSE stream,
-  gates/aggregates species, and publishes `/snapshot.json`, `/layout-manifest.json`, and
-  the e-ink PNG frames (`render.ts`, reusing `computeLayout`). Run it with `npm run refresh:dev`.
+  gates/aggregates species, and publishes `/snapshot.json`, `/layout-manifest.json`,
+  `/calls-manifest.json`, and the e-ink PNG frames (`render.ts`, reusing `computeLayout`).
+  Run it with `npm run refresh:dev`.
+- **Reference calls:** `src/server/calls.ts` (`CallLibrary`) queues a lookup per newly-heard
+  species, mirroring `generate.ts`; `callProviders/` holds one provider per archive behind a
+  common interface — `find()` resolves null for "nothing here" (cacheable) and **throws** for
+  anything transient, so a rate limit is retried rather than written off. Audio lands in
+  `assets/calls/<slug>.<ext>` beside a `<slug>.json` sidecar holding its `CallRecord`; the
+  sidecar sits there, not in `cacheDir`, because the credit is a licence obligation and has to
+  travel in the same volume as the file it credits. A recording with no sidecar (or vice versa)
+  is never published — no credit, no playback.
  
 ## Common commands
  

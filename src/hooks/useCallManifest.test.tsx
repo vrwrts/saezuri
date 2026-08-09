@@ -11,10 +11,10 @@ const MANIFEST: CallManifest = {
     'turdus-merula': {
       ext: 'mp3',
       ver: 'a1',
-      by: 'A. Recordist',
-      lic: 'CC BY-SA 4.0',
-      src: 'https://commons.wikimedia.org/wiki/File:Example.mp3',
-      srcName: 'Wikimedia Commons',
+      recordist: 'A. Recordist',
+      license: 'CC BY-SA 4.0',
+      sourceUrl: 'https://commons.wikimedia.org/wiki/File:Example.mp3',
+      sourceName: 'Wikimedia Commons',
     },
   },
 }

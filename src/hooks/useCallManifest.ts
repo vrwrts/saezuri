@@ -7,12 +7,10 @@ const CALL_MANIFEST_URL = '/calls-manifest.json'
 // refresh service acquires on the fly should become playable without a reload.
 const CALL_MANIFEST_POLL_MS = 30_000
 
-// No recordings is a steady state, not a failure: a deployment may have acquired
-// none yet, or have acquisition switched off entirely. So a missing or unreadable
-// file resolves to the empty manifest rather than rejecting — otherwise SWR would
-// treat the normal case as an error and retry it on a backoff forever. (This is
-// why it differs from useLayoutManifest, where a malformed manifest really is
-// broken and worth retrying.)
+// No recordings is a steady state, not a failure — a deployment may have acquired
+// none yet, or have acquisition switched off. Resolving rather than rejecting keeps
+// SWR from treating that normal case as an error and retrying it forever. (Hence the
+// difference from useLayoutManifest, where a malformed manifest really is broken.)
 async function fetchCallManifest(url: string): Promise<CallManifest> {
   // `cache: 'no-store'` for the reason spelled out in useLayoutManifest.
   const res = await fetch(url, { cache: 'no-store' })
@@ -30,9 +28,6 @@ async function fetchCallManifest(url: string): Promise<CallManifest> {
   }
 }
 
-/** Fetches /calls-manifest.json and re-polls it (see CALL_MANIFEST_POLL_MS), so a
- *  recording the refresh service acquires appears without a reload. Absent ⇒ the
- *  empty manifest, and the UI simply offers no playback. */
 export function useCallManifest(): CallManifest {
   const { data } = useSWR(CALL_MANIFEST_URL, fetchCallManifest, {
     fallbackData: EMPTY_CALL_MANIFEST,
