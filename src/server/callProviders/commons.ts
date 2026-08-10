@@ -47,6 +47,7 @@ interface Page {
   imageinfo?: ImageInfo[]
 }
 interface CommonsResponse {
+  batchcomplete?: boolean
   query?: { pages?: Page[] }
 }
 

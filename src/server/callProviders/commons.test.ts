@@ -1,13 +1,9 @@
-import { readFile } from 'node:fs/promises'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { commonsProvider, plainText, selectCandidate, titleMatches } from './commons.ts'
 
-// Captured from the live API (see fixtures/README.md), so these pin the real
-// response shape rather than an assumed one.
-const searchFixture = JSON.parse(
-  await readFile('fixtures/commons-audio-search.json', 'utf8'),
-) as never
-const emptyFixture = JSON.parse(await readFile('fixtures/commons-audio-none.json', 'utf8')) as never
+/** A search with no hits omits `query` altogether rather than returning an empty
+ *  list — the whole body really is just this. */
+const NO_HITS = { batchcomplete: true }
 
 const fetchMock = vi.fn()
 beforeEach(() => {
@@ -52,18 +48,42 @@ describe('titleMatches', () => {
 })
 
 describe('selectCandidate', () => {
-  it('picks the best-ranked usable recording and carries its credit', () => {
-    const found = selectCandidate(searchFixture, 'Turdus merula')
-    expect(found).not.toBeNull()
-    expect(found?.sourceName).toBe('Wikimedia Commons')
-    expect(found?.sourceUrl).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/)
-    expect(found?.license).toBeTruthy()
-    // .ogg is served as application/ogg, which still has to be recognised as audio.
-    expect(['ogg', 'mp3', 'oga', 'opus', 'wav', 'flac', 'm4a']).toContain(found?.ext)
+  it('maps a Commons hit to a fully credited candidate', () => {
+    // Modelled on File:Turdus merula 2.ogg: an .ogg served as application/ogg,
+    // with the recordist wrapped in a wiki user link.
+    const pages = [
+      {
+        title: 'File:Turdus merula 2.ogg',
+        index: 1,
+        imageinfo: [
+          {
+            url: 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Turdus_merula_2.ogg',
+            mime: 'application/ogg',
+            size: 314_123,
+            duration: 24.8,
+            descriptionurl: 'https://commons.wikimedia.org/wiki/File:Turdus_merula_2.ogg',
+            extmetadata: {
+              Artist: { value: 'Oona Räisänen (<a href="https://example.invalid">Mysid</a>)' },
+              LicenseShortName: { value: 'Public domain' },
+            },
+          },
+        ],
+      },
+    ]
+
+    expect(selectCandidate({ query: { pages } }, 'Turdus merula')).toEqual({
+      audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Turdus_merula_2.ogg',
+      ext: 'ogg',
+      recordist: 'Oona Räisänen (Mysid)',
+      license: 'Public domain',
+      licenseUrl: undefined,
+      sourceUrl: 'https://commons.wikimedia.org/wiki/File:Turdus_merula_2.ogg',
+      sourceName: 'Wikimedia Commons',
+    })
   })
 
-  it('returns null for a search with no hits (the response omits `query`)', () => {
-    expect(selectCandidate(emptyFixture, 'Zosterops nehrkorni')).toBeNull()
+  it('returns null for a search with no hits', () => {
+    expect(selectCandidate(NO_HITS, 'Zosterops nehrkorni')).toBeNull()
   })
 
   it('honours search rank rather than array order', () => {
@@ -131,7 +151,7 @@ describe('selectCandidate', () => {
 
 describe('commonsProvider.find', () => {
   it('identifies itself per Wikimedia policy', async () => {
-    fetchMock.mockResolvedValue(respond(emptyFixture))
+    fetchMock.mockResolvedValue(respond(NO_HITS))
     await commonsProvider().find('Turdus merula')
     const [, opts] = fetchMock.mock.calls[0]
     // A generic or absent agent is answered with 403.
@@ -156,7 +176,6 @@ describe('commonsProvider.find', () => {
   })
 })
 
-/** A minimal imageinfo entry shaped like the live API's. */
 function info(
   file: string,
   over: {
