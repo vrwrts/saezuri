@@ -118,6 +118,34 @@ How it behaves:
 Want to contribute art for more species? Generate them with your key and open a PR — see the
 [saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) repo.
 
+## Reference calls
+
+**On by default.** When a species is heard, the refresh service looks up a freely-licensed
+recording of its call, caches it in a volume, and publishes it — so clicking a bird on the
+collage plays what it sounds like. Mount the volume so it persists:
+
+```bash
+docker run -d -p 8080:80 \
+  -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
+  -v saezuri-calls:/usr/share/nginx/html/assets/calls \
+  ghcr.io/vrwrts/saezuri:latest
+```
+
+How it behaves:
+
+- **The browser never talks to the archives.** Only the refresh service does; clients play the
+  cached copy from Saezuri's own origin, like every other asset.
+- **Per species, once.** A lookup happens the first time a species is heard. Species with no
+  recording are remembered so they aren't re-queried every cycle, and retried after a week.
+- **Source: [Wikimedia Commons](https://commons.wikimedia.org/)** — no account or API key.
+  Commons only hosts free licences (CC0 / CC BY / CC BY-SA), so everything it yields is safe to
+  cache and re-serve provided the recordist is credited, which the species card does.
+- **Matched on the binomial**, not on free text, so a recording of a different bird that merely
+  mentions the species is never picked. Playing the wrong call is worse than playing none.
+- **Disable** with `CALL_PROVIDERS=` (empty) to stop all outbound archive lookups.
+
+Not every species has a recording, and that's expected — the card simply offers no playback.
+
 ## Develop
 
 Uses [pnpm](https://pnpm.io) (via Corepack — `corepack enable`).
@@ -184,6 +212,12 @@ into the Docker image.
   **BirdNET-Lite** from the K. Lisa Yang Center for Conservation Bioacoustics, Cornell Lab
   of Ornithology, Cornell University.
 - Detections come from **[BirdNET-Go](https://github.com/tphakala/birdnet-go)** by Tomi Phakala.
+- Reference calls come from **[Wikimedia Commons](https://commons.wikimedia.org/)** and the
+  recordists who contributed them — much of the bird audio there originates from
+  **[xeno-canto](https://xeno-canto.org/)**. Each recording is cached per deployment and is
+  individually licensed (CC0 / CC BY / CC BY-SA); the recordist, licence, and a link back are
+  shown on the species card whenever a call can be played. These recordings are **not**
+  redistributed by this repo or bundled into the image — each deployment fetches its own.
 
 The reused illustrations and pipeline carry the **CC-BY-NC-SA-4.0** license inherited from
 BirdNET-Pi — **non-commercial use only**. In this repo that covers the empty-state nest

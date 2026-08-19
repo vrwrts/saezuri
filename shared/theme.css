@@ -29,6 +29,9 @@
   --tile-shadow: drop-shadow(0 2px 6px rgba(26, 22, 18, 0.1));
   /* Hover: a deeper shadow + a touch of saturation lifts the bird off the plate. */
   --tile-shadow-hover: drop-shadow(0 3px 10px rgba(26, 22, 18, 0.26)) saturate(1.1);
+  /* Selected: lifted further still, and it stays there — a held state rather
+     than the passing acknowledgement hover gives. */
+  --tile-shadow-selected: drop-shadow(0 7px 20px rgba(26, 22, 18, 0.34)) saturate(1.14);
 
   /* System font stacks (no bundled fonts). */
   --font-serif: ui-serif, 'Iowan Old Style', 'Apple Garamond', Georgia, serif;
@@ -60,4 +63,5 @@
     0 1px 2px rgba(0, 0, 0, 0.5);
   --tile-shadow: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.5));
   --tile-shadow-hover: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.6)) saturate(1.1);
+  --tile-shadow-selected: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.75)) saturate(1.14);
 }

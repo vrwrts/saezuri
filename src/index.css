@@ -20,6 +20,12 @@ body {
 }
 
 /* ============ Stage / layout ============ */
+:root {
+  /* Horizontal gutter of the stage's content column. Named because the mobile
+     species card leaves the collage's box to overlap the footer and has to line
+     itself back up with the column by hand. */
+  --stage-gutter: 48px;
+}
 .stage {
   position: fixed;
   inset: 0;
@@ -51,14 +57,17 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   position: relative;
-  padding: 8px 48px 48px;
+  padding: 8px var(--stage-gutter) 48px;
 }
 @media (max-width: 700px) {
+  :root {
+    --stage-gutter: 20px;
+  }
   .static-head {
     padding: 32px 18px 8px;
   }
   .view {
-    padding: 8px 20px 28px;
+    padding-bottom: 28px;
   }
 }
 
@@ -94,7 +103,8 @@ body {
   -webkit-user-drag: none;
   transition:
     transform 160ms ease,
-    filter 160ms ease;
+    filter 160ms ease,
+    opacity 160ms ease;
 }
 .gtile.is-hover {
   z-index: 3;
@@ -102,6 +112,21 @@ body {
 .gtile.is-hover img {
   transform: scale(1.04);
   filter: var(--tile-shadow-hover);
+}
+/* The selected bird has to stay obvious after the pointer has moved on, so it
+   lifts further than hover and holds there while the rest of the plate recedes.
+   Declared after hover so a bird that is both reads as selected. */
+.gtile.is-selected {
+  z-index: 4;
+}
+.gtile.is-selected img {
+  transform: scale(1.09);
+  filter: var(--tile-shadow-selected);
+}
+/* The hovered bird is exempt from the recede, so sweeping the plate still shows
+   what you would be selecting instead. */
+.gcollage.has-selection .gtile:not(.is-selected):not(.is-hover) img {
+  opacity: 0.4;
 }
 .gtile.entering {
   animation: gtile-in 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
@@ -122,47 +147,200 @@ body {
   }
 }
 
-/* Hover chip: names the bird under the pointer, anchored bottom-center over the
-   collage (right above the footer count). Shape and tokens mirror the time
-   picker's active pill; a larger drop shadow lets it float over the plate.
-   pointer-events:none so it never steals hover from the bird beneath it. */
-.hover-chip {
+/* Tokens mirror the time picker's active pill; a larger drop shadow lets it float
+   over the plate. Unlike the hover chip it replaced this one is interactive, so it
+   keeps pointer events — the collage's click handler ignores anything targeting
+   inside it (see Collage.tsx). */
+.species-card {
+  --card-gap: 13px;
   position: absolute;
-  left: 50%;
+  /* Centred by pinning both edges and letting auto margins do the work, rather
+     than `left: 50%` + a translate: an absolutely-positioned box offset from one
+     edge shrink-wraps against only the space that remains, which capped the card
+     at half the collage width and made it wrap far sooner than it needed to. */
+  left: 0;
+  right: 0;
   bottom: 4px;
-  transform: translateX(-50%);
+  width: fit-content;
+  max-width: min(94%, 560px);
+  margin-inline: auto;
   z-index: 5;
-  padding: 8px 18px;
-  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: var(--card-gap);
+  padding: 11px 12px;
+  border-radius: 16px;
   background: var(--pill);
   box-shadow: var(--edge-lg);
   color: var(--ink);
   font-family: var(--font-serif);
-  font-size: clamp(14px, 1.4vw, 18px);
-  white-space: nowrap;
-  pointer-events: none;
-  animation: chip-in 140ms ease both;
+  animation: card-in 140ms ease both;
 }
-.hover-chip strong {
-  font-weight: 700;
-}
-.hover-chip .hover-chip-calls {
-  color: var(--ink-soft);
-  font-style: italic;
-}
-@keyframes chip-in {
+@keyframes card-in {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(4px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
   }
 }
+
+/* Remounted on each switch (see SpeciesCard) so this one-shot animation replays,
+   giving the swap some motion instead of the content changing under you. It starts
+   from transparent, so incoming content is never briefly visible before animating. */
+.card-body {
+  display: flex;
+  align-items: center;
+  gap: var(--card-gap);
+  /* Claim the slack so the close button rides the card's right edge instead of
+     sitting snug against the title. No effect when the card shrink-wraps to its
+     content (there is no slack then) — it matters once it spans the collage. */
+  flex: 1 1 auto;
+  min-width: 0;
+  animation: card-swap 200ms ease both;
+}
+@keyframes card-swap {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Shape and tokens match the topbar settings button, so the two read as the same
+   family of affordance. */
+.card-play {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--paper-2);
+  box-shadow: var(--raised);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+/* A right-pointing triangle carries its mass to the left of its bounding box, so
+   centring it geometrically makes it read as sitting too far left. Nudge it back
+   toward the optical centre — the square needs no such correction. */
+.card-play .icon-play {
+  transform: translateX(1px);
+}
+.card-play:hover:not(:disabled) {
+  color: var(--ink);
+}
+.card-play:disabled {
+  cursor: default;
+  color: var(--ink-soft);
+}
+/* Fetching the recording: the archives are slow and the files are not small, so
+   the press needs an acknowledgement before the first sound arrives. */
+.card-play.is-loading {
+  animation: card-play-pulse 900ms ease-in-out infinite;
+}
+@keyframes card-play-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.card-title {
+  font-size: clamp(14px, 1.4vw, 18px);
+  line-height: 1.25;
+}
+.card-title strong {
+  font-weight: 700;
+}
+.card-title em {
+  margin-left: 7px;
+  color: var(--ink-soft);
+  font-size: 0.82em;
+}
+.card-meta {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+/* Licence credit. Not decoration — the CC licences these recordings carry
+   require the recordist be named wherever the recording plays. */
+.card-credit {
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--ink-soft);
+}
+.card-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.card-credit a:hover {
+  color: var(--ink-2);
+}
+
+.card-close {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin: -3px -2px 0 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+.card-close:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 700px) {
+  /* Bottom sheet: at this width a shrink-wrapped card is more wrapping than
+     content, so it spans the full width instead. Pinned to the viewport rather
+     than to the collage, so it rides over the footer instead of being boxed in
+     above it — screen space is scarce here and the footer is the least of what
+     the card would otherwise cover. */
+  .species-card {
+    --card-gap: 11px;
+    position: fixed;
+    inset-inline: var(--stage-gutter);
+    bottom: 12px;
+    width: auto;
+    max-width: none;
+    margin-inline: 0;
+    padding: 11px 12px;
+  }
+  .card-play {
+    width: 34px;
+    height: 34px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .hover-chip {
+  .species-card,
+  .card-body {
     animation: none;
+  }
+  .card-play.is-loading {
+    animation: none;
+    opacity: 0.6;
   }
 }
 
@@ -191,8 +369,6 @@ body {
   background: var(--paper-2);
   box-shadow: var(--raised);
   color: var(--ink-2);
-  font-size: 15px;
-  line-height: 1;
   cursor: pointer;
   transition: color 140ms ease;
 }

@@ -9,6 +9,9 @@ import type { Snapshot } from '../domain/snapshot.ts'
 import type { Species } from '../domain/species.ts'
 import { type RangeWindow, resolveWindow, type WindowSegment } from '../domain/window.ts'
 import { makeNodeDeps } from './birdnetDeps.ts'
+import { commonsProvider } from './callProviders/commons.ts'
+import type { CallProvider } from './callProviders/types.ts'
+import { CallLibrary, publishCallManifest } from './calls.ts'
 import { publishDictionaries } from './dictionaries.ts'
 import { Generator } from './generate.ts'
 import { buildSnapshot, loadManifest, writeSnapshot } from './publish.ts'
@@ -18,6 +21,14 @@ import { runDetectionStream } from './stream.ts'
 import { watchAssetRemovals } from './watchAssets.ts'
 
 const ALL_SEGMENTS: readonly WindowSegment[] = ['1h', '12h', '24h', '7d', 'all']
+
+/** Reference-call sources, in the order they are tried. */
+const ALL_CALL_PROVIDERS = ['commons'] as const
+type CallProviderName = (typeof ALL_CALL_PROVIDERS)[number]
+
+const CALL_PROVIDER_FACTORIES: Record<CallProviderName, () => CallProvider> = {
+  commons: commonsProvider,
+}
 
 // Coalesce a burst of cutout removals (e.g. `rm *.png`) into a single heal, and
 // how long to wait before re-arming the watcher after an error / a not-yet-created
@@ -57,8 +68,11 @@ interface Config {
   pythonBin: string
   workerScript: string
   assetsDir: string
+  callsDir: string
   cacheDir: string
   maxPerCycle: number
+  callProviders: CallProviderName[]
+  callsMaxPerCycle: number
   frameWidth: number
   frameHeight: number
   frameBg: string
@@ -103,8 +117,17 @@ function readConfig(): Config {
     pythonBin: (process.env.PYTHON_BIN ?? 'python3').trim(),
     workerScript: (process.env.WORKER_SCRIPT ?? '/opt/saezuri/pipeline/worker.py').trim(),
     assetsDir: join(htmlDir, 'assets', 'illustrations'),
+    callsDir: join(htmlDir, 'assets', 'calls'),
     cacheDir: (process.env.CACHE_DIR ?? '/var/cache/saezuri').trim(),
     maxPerCycle: intEnv('GENERATE_MAX_PER_CYCLE', 4),
+    // Unlike the other CSV settings, an explicitly empty CALL_PROVIDERS means
+    // "off" rather than "all" — it is the way to stop the service reaching out
+    // to third-party archives at all.
+    callProviders:
+      (process.env.CALL_PROVIDERS ?? '').trim() === '' && process.env.CALL_PROVIDERS !== undefined
+        ? []
+        : parseCsvSubset(process.env.CALL_PROVIDERS, ALL_CALL_PROVIDERS),
+    callsMaxPerCycle: intEnv('CALLS_MAX_PER_CYCLE', 4),
     frameWidth: intEnv('FRAME_WIDTH', 800),
     frameHeight: intEnv('FRAME_HEIGHT', 480),
     frameBg: (process.env.FRAME_BG ?? '#fcfcfb').trim(),
@@ -122,6 +145,7 @@ class Refresher {
   private lastSummaryMs = 0
   private pendingPublish?: ReturnType<typeof setTimeout>
   private generator: Generator
+  private callLibrary: CallLibrary
   private lastFrameSig = new Map<WindowSegment, string>()
   private publishing = false
   private publishQueued = false
@@ -140,6 +164,12 @@ class Refresher {
       downloadBaseUrl: cfg.downloadBaseUrl,
       // Reload the manifest + republish so the freshly-acquired art appears.
       onGenerated: () => this.safe('publish', () => this.publish()),
+    })
+    this.callLibrary = new CallLibrary({
+      callsDir: cfg.callsDir,
+      providers: cfg.callProviders.map((name) => CALL_PROVIDER_FACTORIES[name]()),
+      maxPerCycle: cfg.callsMaxPerCycle,
+      onAcquired: () => this.safe('publish', () => this.publish()),
     })
   }
 
@@ -200,27 +230,33 @@ class Refresher {
       }
     }
     this.manifest = await loadManifest(this.cfg.htmlDir)
-    this.enqueueMissingArt(now)
+    this.enqueueMissingAssets(now)
     const snapshot = buildSnapshot({
       store: this.store,
       allSpecies: this.allSpecies,
       manifest: this.manifest,
       now,
     })
-    // Manifest first, then the snapshot, then the frames — a client (or the
-    // frame) never references art the manifest doesn't yet describe.
+    // Manifests first, then the snapshot, then the frames — a client (or the
+    // frame) never references art or audio the manifests don't yet describe.
+    await this.safe('call-manifest', async () => {
+      await publishCallManifest(this.cfg.htmlDir, this.cfg.callsDir)
+    })
     await writeSnapshot(this.cfg.htmlDir, snapshot)
     await this.renderFrames(snapshot)
   }
 
-  /** Enqueue any recently-heard species missing a complete illustration pair, so gaps
-   *  fill on startup / after art is deleted — not only when a species is next heard
-   *  live (onDetection). Cheap + idempotent: the generator dedupes in-flight/queued
-   *  slugs and `isComplete` skips species that already have both poses. */
-  private enqueueMissingArt(now: number): void {
+  /** Enqueue any recently-heard species missing art or a reference call, so gaps
+   *  fill on startup / after assets are deleted — not only when a species is next
+   *  heard live (onDetection). Cheap + idempotent: both queues dedupe in-flight
+   *  and queued slugs, `isComplete` skips species that already have both poses,
+   *  and the call library short-circuits on files already present or recently
+   *  looked up, so re-running this every publish costs no network. */
+  private enqueueMissingAssets(now: number): void {
     const since = (resolveWindow('7D', now) as RangeWindow).sinceMs
     for (const s of this.store.aggregate(since)) {
       if (!isComplete(this.manifest, s.sci)) this.generator.enqueue(s.sci, s.com)
+      this.callLibrary.enqueue(s.sci)
     }
   }
 
@@ -279,7 +315,10 @@ class Refresher {
       [this.cfg.downloadBaseUrl && 'download', this.cfg.geminiEnabled && 'generate']
         .filter(Boolean)
         .join('+') || 'none'
-    log(`starting; publishing to ${this.cfg.htmlDir} (art source: ${artSource})`)
+    const callSource = this.cfg.callProviders.join('+') || 'none'
+    log(
+      `starting; publishing to ${this.cfg.htmlDir} (art source: ${artSource}, call source: ${callSource})`,
+    )
     await this.safe('rebuild', () => this.generator.rebuildManifest())
     await this.safe('summary', () => this.refreshSummary())
     // Refresh the dictionaries on the slow summary cadence so a backend upgrade is
@@ -320,6 +359,7 @@ class Refresher {
           if (!isComplete(this.manifest, row.scientificName)) {
             this.generator.enqueue(row.scientificName, row.commonName)
           }
+          this.callLibrary.enqueue(row.scientificName)
         },
         // The server closes the stream every ~30 min (and any blip drops it);
         // undici surfaces that as `terminated`. It's expected and self-healing —

@@ -99,6 +99,20 @@ describe('aggregateDetections', () => {
     expect(out[0].sci).toBe('Turdus merula')
   })
 
+  it('spans the window from the earliest to the latest kept detection', () => {
+    const merula = aggregateDetections(rows, { sinceMs: since }).find(
+      (s) => s.sci === 'Turdus merula',
+    )
+    // id 4 (10:00) falls before the cutoff, so the span starts at id 2 (11:40).
+    expect(merula?.firstSeenMs).toBe(Date.parse('2026-07-08T11:40:00Z'))
+    expect(merula?.lastSeenMs).toBe(Date.parse('2026-07-08T11:55:00Z'))
+  })
+
+  it('collapses the span to one instant for a single detection', () => {
+    const tit = aggregateDetections(rows, { sinceMs: since }).find((s) => s.sci === 'Parus major')
+    expect(tit?.firstSeenMs).toBe(tit?.lastSeenMs)
+  })
+
   it('can apply a confidence floor', () => {
     const out = aggregateDetections(rows, { sinceMs: since, minConfidence: 0.85 })
     expect(out.find((s) => s.sci === 'Turdus merula')?.n).toBe(1) // only the 0.9 row
@@ -114,6 +128,7 @@ describe('speciesFromSummary', () => {
         common_name: 'Blackbird',
         count: 42,
         max_confidence: 0.99,
+        first_heard: '2026-01-02T07:30:00Z',
         last_heard: '2026-07-08T11:00:00Z',
       },
       { scientific_name: 'Parus major', common_name: 'Great Tit', count: 10 },
@@ -124,7 +139,10 @@ describe('speciesFromSummary', () => {
       n: 42,
     })
     expect(out[0].lastSeenMs).toBe(Date.parse('2026-07-08T11:00:00Z'))
+    // Only on the all-time window is this a true first-ever; see Species.firstSeenMs.
+    expect(out[0].firstSeenMs).toBe(Date.parse('2026-01-02T07:30:00Z'))
     expect(out[1].lastSeenMs).toBeUndefined()
+    expect(out[1].firstSeenMs).toBeUndefined()
   })
 })
 

@@ -1,3 +1,4 @@
+import { Settings } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { DictLocale } from '../domain/locale.ts'
 import { type ThemePref, useThemePreference } from '../hooks/useThemePreference.ts'
@@ -5,6 +6,8 @@ import { LanguageSelect } from './LanguageSelect.tsx'
 import { SegmentedControl } from './SegmentedControl.tsx'
 
 const THEMES: readonly ThemePref[] = ['light', 'dark', 'auto']
+
+const MENU_ICON_PX = 16
 const themeLabel = (t: ThemePref) => t.charAt(0).toUpperCase() + t.slice(1)
 
 // Popover enter/exit duration; must stay in sync with the .menu-popover transition
@@ -98,7 +101,7 @@ export function SettingsMenu({ locales, lang, onLang }: Props) {
         title="Settings"
         onClick={() => setOpen((o) => !o)}
       >
-        ⚙
+        <Settings size={MENU_ICON_PX} />
       </button>
       {mounted && (
         <div className={`menu-popover${shown ? ' is-open' : ''}`} role="menu">

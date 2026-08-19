@@ -26,6 +26,13 @@ services:
       # on; set ILLUSTRATIONS_REPO empty to disable. Composes with on-demand generation.
       ILLUSTRATIONS_REPO: ${ILLUSTRATIONS_REPO-vrwrts/saezuri-illustrations}
       ILLUSTRATIONS_REF: ${ILLUSTRATIONS_REF:-main}
+      # --- Reference calls (see .env.example) ---
+      # Per detected species, the refresh service looks up a freely-licensed
+      # recording and caches it so the browser can play it from this origin.
+      # Defaults on (Wikimedia Commons needs no key); set empty to disable all
+      # outbound archive lookups.
+      CALL_PROVIDERS: ${CALL_PROVIDERS-commons}
+      CALLS_MAX_PER_CYCLE: ${CALLS_MAX_PER_CYCLE:-4}
       # --- e-ink frame (/<window>.png) size + look; set to your panel ---
       FRAME_WIDTH: ${FRAME_WIDTH:-800}
       FRAME_HEIGHT: ${FRAME_HEIGHT:-480}
@@ -36,6 +43,10 @@ services:
     # (snapshot.json + /<window>.png frames live outside the volume — regenerated at start.)
     volumes:
       - saezuri-illustrations:/usr/share/nginx/html/assets/illustrations
+      # Cached recordings + their attribution sidecars. Separate volume because
+      # the mount above is on the illustrations dir specifically; without this
+      # every upgrade would wipe the audio and re-fetch it from the archives.
+      - saezuri-calls:/usr/share/nginx/html/assets/calls
     restart: unless-stopped
 
     # --- If BirdNET-Go also runs in Docker on this host (recommended) ---
@@ -60,3 +71,4 @@ services:
 #     name: birdnet-go_default   # the network BirdNET-Go's compose created
 volumes:
   saezuri-illustrations:
+  saezuri-calls:
