@@ -339,6 +339,44 @@ a {
   overflow-wrap: anywhere;
 }
 
+/* Advanced settings disclosure: the full env table is reference material, so it
+   stays folded away from the one-command install path. */
+.advanced {
+  margin-top: 24px;
+  border-top: 1px solid var(--hairline);
+  padding-top: 16px;
+}
+.advanced > summary {
+  cursor: pointer;
+  color: var(--ink-2);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.advanced > summary:hover {
+  color: var(--ink);
+}
+.advanced h3 {
+  margin-top: 24px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+/* The variable and default columns must not break mid-word — .table-scroll already
+   lets a wide table scroll instead. */
+.advanced .envtable td:nth-child(-n + 2),
+.advanced .envtable th:nth-child(-n + 2) {
+  white-space: nowrap;
+}
+.advanced .envtable td:nth-child(-n + 2) code {
+  overflow-wrap: normal;
+}
+.advanced-note {
+  margin-top: 12px;
+  color: var(--ink-2);
+  font-size: 15px;
+}
+
 /* ---- Footer ---- */
 .footer {
   padding-block: 48px 72px;

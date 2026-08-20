@@ -21,10 +21,11 @@ pnpm check      # astro type-check
 ## Hero images
 
 `public/hero-light.webp` / `public/hero-dark.webp` are product screenshots of the running
-app (captured from `pnpm dev:mock` at the repo root). To refresh them, re-capture the app
-in each theme, export ~1400px-wide webp, and drop them in `public/`. They are the only
-place the borrowed AvianVisitors art appears; the footer carries the required
-CC-BY-NC-SA attribution.
+app (captured from `pnpm dev:mock` at the repo root) at a 1400×1288 viewport, webp quality
+80. To refresh them, re-capture both themes from the *same* page load — the packer places
+the plate differently on each load, and a mismatched pair is obvious when the theme
+toggle swaps them. They are the only place the borrowed AvianVisitors art appears; the
+footer carries the required CC-BY-NC-SA attribution.
 
 ## Deploy — Cloudflare Pages (Git integration)
 

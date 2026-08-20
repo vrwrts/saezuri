@@ -21,36 +21,126 @@ grows the birds you hear most.
   means a Saezuri exposed to the internet never exposes the BirdNET-Go API, and it still
   works against a plain-HTTP LAN BirdNET-Go with no CORS or mixed-content.
 
+## What you see
+
+- **A collage of the species heard recently**, each bird sized by how often it called in the
+  chosen window. Only illustrated species are drawn; the rest are counted in the status line
+  until their art arrives.
+- **Five time windows**, each its own shareable URL: `/1h`, `/12h`, `/24h`, `/7d`, `/all`.
+  Anything else redirects to `/24h`.
+- **Click or tab to a bird** for a species card: local and scientific name, how many times it
+  was heard, the first and last time it called in the window, and — when a recording was found —
+  a play button with the recordist and licence credited.
+- **Light, dark, or follow-the-OS**, and a display language for species names, both in the
+  settings menu. Both are per-browser, remembered in `localStorage` under `saezuri:theme` and
+  `saezuri:lang`.
+- **An e-ink frame** of every window at `/1h.png`, `/12h.png`, `/24h.png`, `/7d.png`, `/all.png` —
+  the same collage with no chrome, rendered server-side at a fixed pixel size for a panel to
+  fetch. Sized with the `FRAME_*` settings below.
+- **Honest empty states**: a nest when nothing has been heard, a distinct message when species
+  were heard but none are illustrated yet, and a loading indicator that only appears if the
+  first load is actually slow.
+
+Data stays fresh without a reload: the browser re-reads the snapshot every 12 seconds and the
+manifests every 30, revalidates the moment a tab regains focus, and stops polling while hidden.
+Nothing is cached staler than that, so two screens on the same deployment always agree.
+
 ## Configuration
 
-One required setting; the rest are optional (see [`.env.example`](.env.example)):
+Everything is configured by environment variable; no hosts are hardcoded. `BIRDNETGO_URL` is
+the only required one — the rest have working defaults. [`.env.example`](.env.example) has an
+annotated copy of every setting.
 
-| Variable            | Required | Description                                                             |
-| ------------------- | -------- | ----------------------------------------------------------------------- |
-| `BIRDNETGO_URL`     | yes      | Base URL of your BirdNET-Go instance, e.g. `http://192.168.1.10:8080`.  |
-| `BIRDNETGO_TOKEN`   | no       | Auth token for a `PrivateMode` instance; nginx injects it, never the browser. |
-| `GEMINI_API_KEY`    | no       | Google AI (Gemini) key. Set it to *also* generate art for species the repo lacks (see below); unset relies on downloads only. |
-| `GENERATE_SLEEP`    | no       | Seconds between image-API calls, to stay under the Gemini free tier. Default `6` (matches the pipeline). |
-| `ILLUSTRATIONS_REPO`| no       | Source repo for free pre-made cutouts, auto-downloaded per detected species (default `vrwrts/saezuri-illustrations`; empty disables — see below). |
-| `SPECIES_DICT_LOCALES`| no     | Comma-list of display languages to publish for browser localization (default: all 16 BirdNET-Go dictionary locales). Narrow it to save disk/bandwidth, e.g. `de,nl,en`. |
+### Core
+
+| Variable          | Default | Description                                                                                                                              |
+| ----------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `BIRDNETGO_URL`   | —       | **Required.** Base URL of your BirdNET-Go instance, e.g. `http://192.168.1.10:8080`.                                                     |
+| `BIRDNETGO_TOKEN` | unset   | Auth token for an instance running with `Security.PrivateMode`. Used only by the refresh service, for the API and the SSE detection stream; it never reaches the browser. |
+
+### Illustrations
+
+| Variable                 | Default                       | Description                                                                                                                    |
+| ------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `ILLUSTRATIONS_REPO`     | `vrwrts/saezuri-illustrations` | Source repo for the free pre-made cutouts, downloaded per detected species. Set it **empty** to turn downloading off entirely. |
+| `ILLUSTRATIONS_REF`      | `main`                        | Branch or release tag to pull art from. Pin a tag for a fixed art set.                                                         |
+| `ILLUSTRATIONS_BASE_URL` | derived jsDelivr URL          | Overrides the whole download base URL, and wins over the two above. For testing against a local file server.                   |
+| `GEMINI_API_KEY`         | unset                         | Google AI (Gemini) key. Set it to *also* generate art for species the repo lacks (see below); unset relies on downloads only.   |
+| `GENERATE_MAX_PER_CYCLE` | `4`                           | Cap on species generated per pipeline run.                                                                                     |
+| `GENERATE_SLEEP`         | pipeline default (`6`)        | Seconds between image-API calls, to stay under the Gemini free tier. Read by the vendored pipeline, not by Saezuri — the default lives there. |
+
+### Reference calls
+
+| Variable              | Default   | Description                                                                                                                     |
+| --------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `CALL_PROVIDERS`      | `commons` | Comma-list of archives to look recordings up in, tried in order. Only `commons` exists today. Set it **empty** to disable all outbound archive lookups — unlike the other comma-lists, empty here means *off*, not *all*. |
+| `CALLS_MAX_PER_CYCLE` | `4`       | Cap on species looked up per batch.                                                                                             |
+
+### e-ink frames
+
+| Variable       | Default            | Description                                                                                                  |
+| -------------- | ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `FRAME_WIDTH`  | `800`              | Frame width in device pixels. Set it to your panel (a Waveshare 7.3" 7-colour is `800`×`480`). A width of 700 or less switches to portrait packing. |
+| `FRAME_HEIGHT` | `480`              | Frame height in device pixels.                                                                               |
+| `FRAME_BG`     | `#fcfcfb`          | Background fill. Use something like `#17181c` for a dark panel.                                              |
+| `FRAME_SHADOW` | `1`                | Per-tile drop shadow; `0` disables it (some quantized panels muddy it).                                      |
+| `FRAME_WINDOWS`| all five           | Comma-list of `1h,12h,24h,7d,all` to render. Narrow it if the panel only ever shows one.                     |
+
+### Display languages
+
+| Variable                | Default   | Description                                                                                                                    |
+| ----------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `SPECIES_DICT_LOCALES`  | all 16    | Comma-list of the BirdNET-Go dictionary locales to publish for browser localization (`cs,da,de,en,es,fi,fr,hu,it,lv,nb,nl,pl,pt,sk,sv`). Narrow it to save disk and bandwidth, e.g. `de,nl,en`. |
+
+### Refresh cadence (rarely needs tuning)
+
+| Variable              | Default             | Description                                                              |
+| --------------------- | ------------------- | ------------------------------------------------------------------------ |
+| `PUBLISH_DEBOUNCE_MS` | `20000`             | Minimum gap between publishes triggered by new detections.               |
+| `AGING_INTERVAL_MS`   | `120000`            | Periodic republish, so bounded windows shed detections that aged out.    |
+| `SUMMARY_INTERVAL_MS` | `1800000`           | How often the all-time species summary — the one expensive call — is refreshed. |
+
+### Paths (advanced)
+
+| Variable         | Default                            | Description                                                                     |
+| ---------------- | ---------------------------------- | ------------------------------------------------------------------------------- |
+| `FRAME_HTML_DIR` | `/usr/share/nginx/html`            | Root the service publishes into. Set it to `./public` to run the service in dev. |
+| `CACHE_DIR`      | `/var/cache/saezuri`               | Scratch directory for the illustration pipeline.                                 |
+| `PYTHON_BIN`     | `python3`                          | Interpreter used to run the pipeline.                                            |
+| `WORKER_SCRIPT`  | `/opt/saezuri/pipeline/worker.py`  | Pipeline entry script.                                                           |
+
+Two parsing quirks worth knowing, because neither fails loudly: a numeric setting that isn't a
+number greater than zero falls back to its default, and a comma-list that names nothing valid
+falls back to the full set — so `FRAME_WINDOWS=6h` renders *every* window rather than erroring.
+`CALL_PROVIDERS` is the documented exception: empty means off.
 
 `BIRDNETGO_URL` must be reachable **from inside the container**, and its host is forwarded
-upstream as the `Host` header (and SNI, for `https`). A LAN IP is simplest; a hostname works
-too, including one behind a reverse proxy or Cloudflare Tunnel that routes by Host. When
-BirdNET-Go also runs in Docker on the same host, the cleanest option is to put Saezuri on its
-Docker network and point `BIRDNETGO_URL` at the service name + internal port (e.g.
+upstream by the refresh service as the `Host` header (and SNI, for `https`). A LAN IP is simplest;
+a hostname works too, including one behind a reverse proxy or Cloudflare Tunnel that routes by
+Host. When BirdNET-Go also runs in Docker on the same host, the cleanest option is to put Saezuri
+on its Docker network and point `BIRDNETGO_URL` at the service name + internal port (e.g.
 `http://birdnet-go:8080`) so traffic stays on the local network — see
 [`docker-compose.yml`](docker-compose.yml).
 
 ## Run the published image
 
 ```bash
-docker run -d -p 8080:80 -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
+docker run -d -p 8080:80 \
+  -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
+  -v saezuri-illustrations:/data/illustrations \
+  -v saezuri-calls:/data/calls \
   ghcr.io/vrwrts/saezuri:latest
 ```
 
 Then open <http://localhost:8080>. Images are published multi-arch (amd64 + arm64), so
-they run on a Raspberry Pi as well as an x86 host.
+they run on a Raspberry Pi as well as an x86 host. The two volumes keep the illustrations
+and reference recordings it collects, so replacing the container doesn't start it over —
+both sections below explain what lands in them.
+
+`/data/illustrations` and `/data/calls` are symlinks to where the files actually live,
+`/usr/share/nginx/html/assets/illustrations` and `.../assets/calls`. Docker resolves a symlinked
+mount destination, so both spellings mount the same directory: the short one is just less to
+type, and an existing deployment mounted on the long path keeps working unchanged.
 
 ## On-demand generation (optional)
 
@@ -61,7 +151,7 @@ anything the repo doesn't have — generated fresh in the same kachō-e style �
 docker run -d -p 8080:80 \
   -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
   -e GEMINI_API_KEY=<your-google-ai-key> \
-  -v saezuri-illustrations:/usr/share/nginx/html/assets/illustrations \
+  -v saezuri-illustrations:/data/illustrations \
   ghcr.io/vrwrts/saezuri:latest
 ```
 
@@ -96,14 +186,15 @@ CDN) — no API key needed. Just mount the volume so it persists:
 ```bash
 docker run -d -p 8080:80 \
   -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
-  -v saezuri-illustrations:/usr/share/nginx/html/assets/illustrations \
+  -v saezuri-illustrations:/data/illustrations \
   ghcr.io/vrwrts/saezuri:latest
 ```
 
 How it behaves:
 
-- **Per detected species, once.** Each species' cutout is fetched when first heard and kept in
-  the volume, so a restart re-downloads nothing. A fresh display fills in over the first hours
+- **Per detected species, once.** Both of a species' cutouts (perched + flight) are fetched when
+  it is first heard and kept in the volume, so a restart re-downloads nothing. A species only
+  appears once it has both. A fresh display fills in over the first hours
   as birds are heard (not all at t=0).
 - **Composes with on-demand generation.** Download is tried first (free); if `GEMINI_API_KEY`
   is set, a species the repo *doesn't* have still falls back to Gemini generation.
@@ -112,6 +203,8 @@ How it behaves:
 - **Offline-safe / disable.** A failed fetch is non-fatal (silhouette until art exists). Set
   `ILLUSTRATIONS_REPO=` (empty) to turn downloading off entirely; pin `ILLUSTRATIONS_REF` to a
   release tag instead of `main` for a fixed art set.
+- **Self-healing.** Delete a cutout from the volume and the service notices, re-downloads it (or
+  regenerates it), and rebuilds the manifest — which is also how you replace art you don't like.
 - **Licensing.** The illustrations (and the generation pipeline the image bundles) are
   **CC-BY-NC-SA-4.0** — non-commercial. See the illustrations repo and *Credits and licensing* below.
 
@@ -121,13 +214,13 @@ Want to contribute art for more species? Generate them with your key and open a 
 ## Reference calls
 
 **On by default.** When a species is heard, the refresh service looks up a freely-licensed
-recording of its call, caches it in a volume, and publishes it — so clicking a bird on the
-collage plays what it sounds like. Mount the volume so it persists:
+recording of its call, caches it in a volume, and publishes it — so selecting a bird on the
+collage offers a play button for what it sounds like. Mount the volume so it persists:
 
 ```bash
 docker run -d -p 8080:80 \
   -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
-  -v saezuri-calls:/usr/share/nginx/html/assets/calls \
+  -v saezuri-calls:/data/calls \
   ghcr.io/vrwrts/saezuri:latest
 ```
 
@@ -151,15 +244,32 @@ Not every species has a recording, and that's expected — the card simply offer
 Uses [pnpm](https://pnpm.io) (via Corepack — `corepack enable`).
 
 ```bash
-cp .env.example .env.local          # set BIRDNETGO_URL to your instance
 pnpm install
 pnpm dev                            # Vite dev server (serves the app + static files from ./public)
 pnpm dev:mock                       # no backend needed — species synthesized from the manifest
-FRAME_HTML_DIR=./public pnpm refresh:dev   # backend: publish snapshot + dictionaries into ./public
-pnpm test                           # unit tests (Vitest)
+pnpm test                           # unit tests (Vitest); test:watch to watch
+pnpm typecheck                      # tsc --noEmit
 pnpm check                          # lint + format check (Biome); check:fix to autofix
 pnpm build                          # type-check + production bundle
+pnpm preview                        # serve the built bundle
 ```
+
+To run the backend against a real instance, give it the settings in the environment — nothing in
+this repo reads a dotenv file:
+
+```bash
+BIRDNETGO_URL=http://<birdnet-go-host>:8080 FRAME_HTML_DIR=./public pnpm refresh:dev
+```
+
+That publishes the snapshot, the layout and call manifests, the name dictionaries and the e-ink
+frames into `./public`, and downloads (or generates) art as species come in — the same work it
+does in the container. `refresh:dev` bundles the service first via `build:server`. Copying
+[`.env.example`](.env.example) is still a useful reference for what to set, but it is not loaded
+automatically; `node --env-file=.env.local dist-server/refresh.mjs` works if you'd rather keep the
+values in a file.
+
+In `dev:mock` there is no backend and so no real recordings; `node src/dev/mockCalls.mjs` writes
+short synthetic tones and a matching call manifest into `./public` so playback can be exercised.
 
 ## Build and run with Docker
 
@@ -180,8 +290,14 @@ image, and deploys to Cloudflare Pages — see [`site/README.md`](site/README.md
   format), type-check, tests, and a production build on every push to `main` and every
   pull request.
 - **Docker build** ([`.github/workflows/docker.yml`](.github/workflows/docker.yml))
-  builds the runtime image on pull requests to prove the Dockerfile still works. It never
-  pushes.
+  builds the runtime image on **fork** pull requests to prove the Dockerfile still works. It
+  never pushes. Same-repo branches are covered by the preview build instead, so the heavy image
+  isn't built twice per PR.
+- **Preview image** ([`.github/workflows/preview.yml`](.github/workflows/preview.yml)) builds a
+  throwaway multi-arch image on every push to a branch other than `main` and pushes it to
+  `ghcr.io/vrwrts/saezuri:<branch>`, so a change can be installed on a real device before it
+  merges. The package is private, so pulling it needs `docker login ghcr.io`. Both this and the
+  Docker build skip pushes that only touch `site/`, `fixtures/`, or Markdown.
 - **Release** ([`.github/workflows/release.yml`](.github/workflows/release.yml)) is
   continuous and semver-based: on every push to `main` that touches app code,
   [semantic-release](https://semantic-release.gitbook.io/) reads the

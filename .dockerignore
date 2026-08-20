@@ -16,11 +16,16 @@ site
 public/assets/illustrations/*
 !public/assets/illustrations/_fallback.png
 
+# Reference recordings a local run happened to cache. Each deployment fetches
+# (and credits) its own; the image must never redistribute someone else's.
+public/assets/calls
+
 # Generated locally; the app ships a built-in fallback manifest instead.
 public/layout-manifest.json
 
 # Runtime artifacts written by the refresh service — never bake stale copies in.
 public/snapshot.json
+public/calls-manifest.json
 public/collage
 
 # Local env (real hosts/tokens)
