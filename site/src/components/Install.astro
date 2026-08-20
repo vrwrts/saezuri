@@ -10,8 +10,10 @@
   <p class="step">Run the container (use your instance&rsquo;s address):</p>
   <div class="code">
     <button class="copy-btn" type="button" aria-label="Copy command">copy</button>
-    <pre>docker run -d -p 8080:80 \
+    <pre>docker run -d -p 8090:80 \
   -e BIRDNETGO_URL=http://192.168.1.10:8080 \
+  -v saezuri-illustrations:/data/illustrations \
+  -v saezuri-calls:/data/calls \
   ghcr.io/vrwrts/saezuri:latest</pre>
   </div>
 
@@ -21,13 +23,25 @@
     <pre>services:
   saezuri:
     image: ghcr.io/vrwrts/saezuri:latest
-    ports: ["8080:80"]
+    ports: ["8090:80"]
     environment:
       BIRDNETGO_URL: http://192.168.1.10:8080
-    restart: unless-stopped</pre>
+    volumes:
+      - saezuri-illustrations:/data/illustrations
+      - saezuri-calls:/data/calls
+    restart: unless-stopped
+
+volumes:
+  saezuri-illustrations:
+  saezuri-calls:</pre>
   </div>
 
-  <p class="step">Then open <code>http://localhost:8080</code>. Two settings:</p>
+  <p class="step">
+    The two volumes keep the illustrations and reference recordings it collects, so replacing the
+    container doesn&rsquo;t start it over. Then open <code>http://localhost:8090</code> &mdash; 8090
+    rather than 8080, because 8080 is BirdNET-Go&rsquo;s own default and the two often share a
+    host. Only one setting is required:
+  </p>
   <div class="table-scroll">
     <table class="envtable">
       <thead>
@@ -47,6 +61,179 @@
       </tbody>
     </table>
   </div>
+
+  <details class="advanced">
+    <summary>All settings</summary>
+    <p class="advanced-note">
+      Everything else has a working default. Set only what you want to change.
+    </p>
+
+    <h3>Illustrations</h3>
+    <div class="table-scroll">
+      <table class="envtable">
+        <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>ILLUSTRATIONS_REPO</code></td>
+            <td><code>vrwrts/saezuri-illustrations</code></td>
+            <td>Repo the free pre-made cutouts are downloaded from. Set it empty to turn downloading off.</td>
+          </tr>
+          <tr>
+            <td><code>ILLUSTRATIONS_REF</code></td>
+            <td><code>main</code></td>
+            <td>Branch or release tag to pull art from. Pin a tag for a fixed art set.</td>
+          </tr>
+          <tr>
+            <td><code>ILLUSTRATIONS_BASE_URL</code></td>
+            <td>derived</td>
+            <td>Overrides the download base URL entirely. For testing against a local file server.</td>
+          </tr>
+          <tr>
+            <td><code>GEMINI_API_KEY</code></td>
+            <td>unset</td>
+            <td>Google AI key. Set it to also generate art, in the same style, for species the library lacks. Uses the paid image API with your key.</td>
+          </tr>
+          <tr>
+            <td><code>GENERATE_MAX_PER_CYCLE</code></td>
+            <td><code>4</code></td>
+            <td>Cap on species generated per run.</td>
+          </tr>
+          <tr>
+            <td><code>GENERATE_SLEEP</code></td>
+            <td><code>6</code></td>
+            <td>Seconds between image-API calls, to stay under the Gemini free tier. Read by the bundled pipeline.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Reference calls</h3>
+    <div class="table-scroll">
+      <table class="envtable">
+        <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>CALL_PROVIDERS</code></td>
+            <td><code>commons</code></td>
+            <td>Archives to look recordings up in, tried in order. Only Wikimedia Commons today. Set it empty to stop all outbound lookups — here, empty means off rather than all.</td>
+          </tr>
+          <tr>
+            <td><code>CALLS_MAX_PER_CYCLE</code></td>
+            <td><code>4</code></td>
+            <td>Cap on species looked up per batch.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>E-ink frames</h3>
+    <div class="table-scroll">
+      <table class="envtable">
+        <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>FRAME_WIDTH</code></td>
+            <td><code>800</code></td>
+            <td>Frame width in device pixels — set it to your panel. 700 or less switches to portrait packing.</td>
+          </tr>
+          <tr>
+            <td><code>FRAME_HEIGHT</code></td>
+            <td><code>480</code></td>
+            <td>Frame height in device pixels.</td>
+          </tr>
+          <tr>
+            <td><code>FRAME_BG</code></td>
+            <td><code>#fcfcfb</code></td>
+            <td>Background fill. Use something like <code>#17181c</code> for a dark panel.</td>
+          </tr>
+          <tr>
+            <td><code>FRAME_SHADOW</code></td>
+            <td><code>1</code></td>
+            <td>Per-tile drop shadow; <code>0</code> disables it, which some quantized panels prefer.</td>
+          </tr>
+          <tr>
+            <td><code>FRAME_WINDOWS</code></td>
+            <td>all five</td>
+            <td>Which windows to render, e.g. <code>7d</code> for a single-purpose panel.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Display languages</h3>
+    <div class="table-scroll">
+      <table class="envtable">
+        <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>SPECIES_DICT_LOCALES</code></td>
+            <td>all 16</td>
+            <td>Which BirdNET-Go name dictionaries to publish for the browser to use. Narrow it to save disk and bandwidth, e.g. <code>de,nl,en</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Refresh cadence</h3>
+    <div class="table-scroll">
+      <table class="envtable">
+        <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>PUBLISH_DEBOUNCE_MS</code></td>
+            <td><code>20000</code></td>
+            <td>Minimum gap between publishes triggered by new detections.</td>
+          </tr>
+          <tr>
+            <td><code>AGING_INTERVAL_MS</code></td>
+            <td><code>120000</code></td>
+            <td>Periodic republish, so windows shed detections that aged out.</td>
+          </tr>
+          <tr>
+            <td><code>SUMMARY_INTERVAL_MS</code></td>
+            <td><code>1800000</code></td>
+            <td>How often the all-time summary — the one expensive call — is refreshed.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Paths</h3>
+    <div class="table-scroll">
+      <table class="envtable">
+        <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>FRAME_HTML_DIR</code></td>
+            <td><code>/usr/share/nginx/html</code></td>
+            <td>Root the background service publishes into. The image default is right; change it only outside Docker.</td>
+          </tr>
+          <tr>
+            <td><code>CACHE_DIR</code></td>
+            <td><code>/var/cache/saezuri</code></td>
+            <td>Scratch directory for the illustration pipeline.</td>
+          </tr>
+          <tr>
+            <td><code>PYTHON_BIN</code></td>
+            <td><code>python3</code></td>
+            <td>Interpreter used to run the pipeline.</td>
+          </tr>
+          <tr>
+            <td><code>WORKER_SCRIPT</code></td>
+            <td><code>/opt/saezuri/pipeline/worker.py</code></td>
+            <td>Pipeline entry script.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="advanced-note">
+      Neither kind of setting fails loudly: a number that isn&rsquo;t greater than zero falls back
+      to its default, and a comma-list naming nothing valid falls back to the full set — so
+      <code>FRAME_WINDOWS=6h</code> renders every window rather than erroring.
+      <code>CALL_PROVIDERS</code> is the deliberate exception, where empty means off.
+    </p>
+  </details>
 </section>
 
 <script is:inline>

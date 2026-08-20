@@ -62,6 +62,18 @@ RUN cd /opt/saezuri/server && node -e "require('@napi-rs/canvas')"
 # Static bundle.
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# Short, typeable mount paths for the two persistent stores. The real directories
+# stay under the html root, where nginx already serves them and where the refresh
+# service already writes, so a volume mounted the old way keeps working
+# untouched; these symlinks only spare operators a 45-character -v target.
+# Docker resolves symlinks in a mount destination, so a volume mounted on
+# /data/illustrations lands on the real directory.
+RUN mkdir -p /usr/share/nginx/html/assets/illustrations \
+             /usr/share/nginx/html/assets/calls \
+             /data \
+    && ln -s /usr/share/nginx/html/assets/illustrations /data/illustrations \
+    && ln -s /usr/share/nginx/html/assets/calls /data/calls
+
 # Config template (installed at start) + entrypoint hooks. The template lives
 # OUTSIDE /etc/nginx/templates so the image's built-in envsubst step doesn't
 # clobber nginx's own $variables — our hook just copies it verbatim now that

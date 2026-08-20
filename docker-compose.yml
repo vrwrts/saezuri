@@ -2,8 +2,10 @@ services:
   saezuri:
     build: .
     image: saezuri:local
+    # 8090, not 8080: BirdNET-Go's own default is 8080, and the two commonly
+    # share a host.
     ports:
-      - "8080:80"
+      - "8090:80"
     environment:
       # Required: base URL of your BirdNET-Go instance, reachable from inside this
       # container. A LAN IP is simplest; a hostname (incl. one behind a reverse
@@ -41,12 +43,16 @@ services:
     # re-spent. The layout manifest is rebuilt from them at startup. Harmless to
     # keep even if you don't generate art (it just holds the fallback silhouette).
     # (snapshot.json + /<window>.png frames live outside the volume — regenerated at start.)
+    # /data/illustrations and /data/calls are symlinks to the real directories
+    # under the html root; Docker resolves a symlinked mount destination, so
+    # these are the same targets as the longer /usr/share/nginx/html/assets/…
+    # paths — just shorter to type. Either spelling works.
     volumes:
-      - saezuri-illustrations:/usr/share/nginx/html/assets/illustrations
+      - saezuri-illustrations:/data/illustrations
       # Cached recordings + their attribution sidecars. Separate volume because
       # the mount above is on the illustrations dir specifically; without this
       # every upgrade would wipe the audio and re-fetch it from the archives.
-      - saezuri-calls:/usr/share/nginx/html/assets/calls
+      - saezuri-calls:/data/calls
     restart: unless-stopped
 
     # --- If BirdNET-Go also runs in Docker on this host (recommended) ---
