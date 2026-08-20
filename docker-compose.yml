@@ -2,8 +2,10 @@ services:
   saezuri:
     build: .
     image: saezuri:local
+    # 8090, not 8080: BirdNET-Go's own default is 8080, and the two commonly
+    # share a host.
     ports:
-      - "8080:80"
+      - "8090:80"
     environment:
       # Required: base URL of your BirdNET-Go instance, reachable from inside this
       # container. A LAN IP is simplest; a hostname (incl. one behind a reverse

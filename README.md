@@ -125,15 +125,17 @@ on its Docker network and point `BIRDNETGO_URL` at the service name + internal p
 ## Run the published image
 
 ```bash
-docker run -d -p 8080:80 \
+docker run -d -p 8090:80 \
   -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
   -v saezuri-illustrations:/data/illustrations \
   -v saezuri-calls:/data/calls \
   ghcr.io/vrwrts/saezuri:latest
 ```
 
-Then open <http://localhost:8080>. Images are published multi-arch (amd64 + arm64), so
-they run on a Raspberry Pi as well as an x86 host. The two volumes keep the illustrations
+Then open <http://localhost:8090>. The host port is 8090 rather than 8080 on purpose: 8080 is
+BirdNET-Go's own default, so the two would collide whenever they share a host, which is the
+common case. Images are published multi-arch (amd64 + arm64), so they run on a Raspberry Pi as
+well as an x86 host. The two volumes keep the illustrations
 and reference recordings it collects, so replacing the container doesn't start it over —
 both sections below explain what lands in them.
 
@@ -148,7 +150,7 @@ The free downloads above only cover species someone has contributed art for. To 
 anything the repo doesn't have — generated fresh in the same kachō-e style — set `GEMINI_API_KEY`:
 
 ```bash
-docker run -d -p 8080:80 \
+docker run -d -p 8090:80 \
   -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
   -e GEMINI_API_KEY=<your-google-ai-key> \
   -v saezuri-illustrations:/data/illustrations \
@@ -184,7 +186,7 @@ reports a species the refresh service downloads its ready-made cutout from the
 CDN) — no API key needed. Just mount the volume so it persists:
 
 ```bash
-docker run -d -p 8080:80 \
+docker run -d -p 8090:80 \
   -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
   -v saezuri-illustrations:/data/illustrations \
   ghcr.io/vrwrts/saezuri:latest
@@ -218,7 +220,7 @@ recording of its call, caches it in a volume, and publishes it — so selecting 
 collage offers a play button for what it sounds like. Mount the volume so it persists:
 
 ```bash
-docker run -d -p 8080:80 \
+docker run -d -p 8090:80 \
   -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
   -v saezuri-calls:/data/calls \
   ghcr.io/vrwrts/saezuri:latest

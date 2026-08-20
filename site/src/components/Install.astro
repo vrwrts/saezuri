@@ -10,7 +10,7 @@
   <p class="step">Run the container (use your instance&rsquo;s address):</p>
   <div class="code">
     <button class="copy-btn" type="button" aria-label="Copy command">copy</button>
-    <pre>docker run -d -p 8080:80 \
+    <pre>docker run -d -p 8090:80 \
   -e BIRDNETGO_URL=http://192.168.1.10:8080 \
   -v saezuri-illustrations:/data/illustrations \
   -v saezuri-calls:/data/calls \
@@ -23,7 +23,7 @@
     <pre>services:
   saezuri:
     image: ghcr.io/vrwrts/saezuri:latest
-    ports: ["8080:80"]
+    ports: ["8090:80"]
     environment:
       BIRDNETGO_URL: http://192.168.1.10:8080
     volumes:
@@ -38,8 +38,9 @@ volumes:
 
   <p class="step">
     The two volumes keep the illustrations and reference recordings it collects, so replacing the
-    container doesn&rsquo;t start it over. Then open <code>http://localhost:8080</code>. Only one
-    setting is required:
+    container doesn&rsquo;t start it over. Then open <code>http://localhost:8090</code> &mdash; 8090
+    rather than 8080, because 8080 is BirdNET-Go&rsquo;s own default and the two often share a
+    host. Only one setting is required:
   </p>
   <div class="table-scroll">
     <table class="envtable">
