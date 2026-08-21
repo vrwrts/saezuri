@@ -1,8 +1,8 @@
 #!/bin/sh
-# Rewrites the add-on's pinned version in place. Run by semantic-release (see
-# .releaserc.json) so the bump lands in the release commit: the add-on store reads
+# Rewrites the app's pinned version in place. Run by semantic-release (see
+# .releaserc.json) so the bump lands in the release commit: the app store reads
 # config.yaml from the default branch, and a version with no matching published
-# image tag makes the add-on uninstallable, so this can never be a manual step.
+# image tag makes the app uninstallable, so this can never be a manual step.
 set -eu
 
 VERSION="${1:?usage: bump-version.sh X.Y.Z}"

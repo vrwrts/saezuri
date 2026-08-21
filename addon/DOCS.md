@@ -10,39 +10,39 @@ talks to Saezuri itself.
 
 ## Installation
 
-1. In Home Assistant, go to **Settings** → **Add-ons** → **Add-on store**, open the
+1. In Home Assistant, go to **Settings** → **Apps** → **App store**, open the
    three-dot menu and choose **Repositories**.
 2. Add `https://github.com/vrwrts/saezuri`.
 3. Find **Saezuri** in the store and click **Install**.
 4. Start it. It appears in the sidebar as **Saezuri**.
 
-If BirdNET-Go runs as an add-on on the same machine you can start Saezuri without
+If BirdNET-Go runs as an app on the same machine you can start Saezuri without
 configuring anything. Otherwise set **BirdNET-Go URL** first.
 
 ## Finding BirdNET-Go
 
-Leave **BirdNET-Go URL** empty and the add-on looks for a BirdNET-Go add-on on the
+Leave **BirdNET-Go URL** empty and Saezuri looks for a BirdNET-Go app on the
 Supervisor network at startup. It tries these hostnames on port 8080, in order, and
 confirms each hit really is BirdNET-Go before using it:
 
-| Hostname | Where that add-on came from |
+| Hostname | Where that app came from |
 | --- | --- |
-| `db21ed7f-birdnet-go` | the [alexbelgium add-ons](https://github.com/alexbelgium/hassio-addons) store |
+| `db21ed7f-birdnet-go` | the [alexbelgium add-ons](https://github.com/alexbelgium/hassio-addons) repository |
 | `local-birdnet-go` | a copy you built yourself under `/addons` |
-| `a0d7b954-birdnet-go` | the [community add-ons](https://github.com/hassio-addons/repository) store |
+| `a0d7b954-birdnet-go` | the [Home Assistant Community Add-ons](https://github.com/hassio-addons/repository) repository |
 
-The add-on log says which one it picked. If several respond, the first in that order
+The app log says which one it picked. If several respond, the first in that order
 wins and the others are logged so you can see what was skipped.
 
-**If nothing is found**, the add-on stops with a message saying so. Set
+**If nothing is found**, the app stops with a message saying so. Set
 **BirdNET-Go URL** to your instance, for example `http://192.168.1.10:8080`. That
-also covers a BirdNET-Go that is not an add-on at all, running in Docker or on
+also covers a BirdNET-Go that is not an app at all, running in Docker or on
 another machine.
 
 **If it picks the wrong instance**, set **BirdNET-Go URL** explicitly. A configured
 URL always wins and is never second-guessed.
 
-**If your add-on has an unusual slug**, put its hostname in **Extra hostnames to
+**If your BirdNET-Go app has an unusual slug**, put its hostname in **Extra hostnames to
 probe** rather than waiting on a code change. Entries there are tried first.
 
 **If the log says authentication is required**, your BirdNET-Go runs in PrivateMode.
@@ -126,23 +126,23 @@ An e-ink panel fetches a rendered frame such as `/24h.png` directly. Ingress can
 serve it, because ingress requires Home Assistant authentication and a panel has no
 way to log in. So open the direct port instead:
 
-1. Open the add-on's **Configuration** tab and switch to **Network**.
+1. Open the app's **Configuration** tab and switch to **Network**.
 2. Give **80/tcp** a host port, for example `8090`.
-3. Restart the add-on.
+3. Restart the app.
 
 Your panel then fetches `http://<home-assistant-host>:8090/24h.png`. That port serves
 the whole collage with no authentication, so only open it on a network you trust.
 
 ## Storage
 
-Downloaded illustrations, cached recordings and the working cache live in the add-on's
+Downloaded illustrations, cached recordings and the working cache live in the app's
 `/data`, which the Supervisor keeps across restarts and updates. They are included in
 a Home Assistant backup, so a large illustration set makes for larger backups.
 
 ## Licensing
 
 The illustrations and the tooling that makes them inherit **CC-BY-NC-SA-4.0** from the
-BirdNET-Pi lineage, so this add-on and the art it downloads are **for non-commercial
+BirdNET-Pi lineage, so this app and the art it downloads are **for non-commercial
 use only**. Personal use in your own home is fine. Publishing the images, or a
 repository derived from them, carries obligations worth reading first: see
 [Credits and licensing](https://github.com/vrwrts/saezuri#credits-and-licensing).

@@ -90,8 +90,8 @@ RUN mkdir -p /opt/saezuri/bundled \
 # image's built-in envsubst step doesn't clobber nginx's own $variables — our
 # hook just copies it verbatim now that nothing is substituted. The locations
 # file is included from a server block, so it ships unconditionally: the Home
-# Assistant add-on wrapper adds a second server block that includes the same
-# file. 40 installs the static-serving config; 50 launches the refresh service
+# Assistant app wrapper (addon/) adds a second server block that includes the
+# same file. 40 installs the static-serving config; 50 launches the refresh service
 # (fetches per-species art + dictionaries, publishes the snapshot). Both run
 # before nginx, in that order.
 COPY nginx/default.conf.template /etc/nginx/saezuri.conf.template

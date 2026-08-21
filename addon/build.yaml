@@ -1,4 +1,4 @@
-# Only used when the Supervisor builds the add-on locally (a copy under /addons);
+# Only used when the Supervisor builds the app locally (a copy under /addons);
 # an install from the repository pulls `image:` from config.yaml instead. Both
 # entries name the same tag on purpose: the application image is a multi-arch
 # manifest, so the platform resolves per architecture. `aarch64` is Home

@@ -41,9 +41,9 @@ jobs:
       - uses: cycjimmy/semantic-release-action@v4
         id: semantic
         with:
-          # The add-on's pinned version has to be bumped in the release commit:
-          # the add-on store reads addon/config.yaml from main, and a version with
-          # no matching published image tag makes the add-on uninstallable.
+          # The app's pinned version has to be bumped in the release commit:
+          # the app store reads addon/config.yaml from main, and a version with
+          # no matching published image tag makes the app uninstallable.
           # changelog writes addon/CHANGELOG.md, exec rewrites the two pinned
           # versions, git commits them (with [skip ci], so the push back to main
           # does not re-trigger this workflow).
@@ -92,7 +92,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   publish-addon-image:
-    # The Home Assistant add-on is a thin wrapper around the image above, so it
+    # The Home Assistant app is a thin wrapper around the image above, so it
     # can only be built once that image exists at this exact version.
     needs: [release, publish-image]
     if: needs.release.outputs.published == 'true'
@@ -119,7 +119,7 @@ jobs:
           context: addon
           platforms: linux/amd64,linux/arm64
           push: true
-          # Pinned to the release just published, never `latest`: an add-on
+          # Pinned to the release just published, never `latest`: an app
           # updated by the Supervisor must get the application code it claims to.
           build-args: |
             BUILD_FROM=ghcr.io/${{ github.repository }}:${{ needs.release.outputs.version }}

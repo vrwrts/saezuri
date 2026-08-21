@@ -31,8 +31,8 @@ options:
   aging_interval_ms: 120000
   summary_interval_ms: 1800000
 schema:
-  # Optional: left empty, the add-on probes the Supervisor network for a
-  # BirdNET-Go add-on at startup. See DOCS.md.
+  # Optional: left empty, Saezuri probes the Supervisor network for a
+  # BirdNET-Go app at startup. See DOCS.md.
   birdnetgo_url: url?
   birdnetgo_token: password?
   birdnetgo_extra_hosts: str?

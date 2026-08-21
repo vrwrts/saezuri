@@ -1,5 +1,5 @@
 #!/bin/sh
-# Home Assistant add-on entrypoint. Translates the Supervisor's options.json into
+# Home Assistant app entrypoint. Translates the Supervisor's options.json into
 # the environment variables the application already understands, then hands off to
 # the image's own entrypoint. Nothing downstream of here knows it is running under
 # Home Assistant.
@@ -7,15 +7,15 @@ set -eu
 
 OPTIONS=/data/options.json
 
-# Hostnames probed for a BirdNET-Go add-on when birdnetgo_url is left empty, in
-# the order they are tried. The Supervisor names an add-on <repo-prefix>-<slug>,
-# where the prefix is `local` for a locally built add-on and the first 8 hex chars
+# Hostnames probed for a BirdNET-Go app when birdnetgo_url is left empty, in
+# the order they are tried. The Supervisor names an app <repo-prefix>-<slug>,
+# where the prefix is `local` for a locally built app and the first 8 hex chars
 # of sha1(repository-url) for one from a store. db21ed7f is
-# github.com/alexbelgium/hassio-addons, which is where the BirdNET-Go add-on
-# actually lives; a0d7b954 is the community add-ons store, should it land there
-# too. No `core-` entry: BirdNET-Go is not a built-in add-on. Users with an
-# unusual slug extend this through the birdnetgo_extra_hosts option rather than
-# needing a code change.
+# github.com/alexbelgium/hassio-addons, which is where the BirdNET-Go app
+# actually lives; a0d7b954 is the Home Assistant Community Add-ons repository,
+# should it land there too. No `core-` entry: BirdNET-Go is not a built-in app.
+# Users with an unusual slug extend this through the birdnetgo_extra_hosts option
+# rather than needing a code change.
 BIRDNETGO_HOSTS="db21ed7f-birdnet-go local-birdnet-go a0d7b954-birdnet-go"
 BIRDNETGO_PROBE_PORT=8080
 # Short enough that a missing neighbour costs no noticeable startup time.
@@ -76,7 +76,7 @@ export_opt SUMMARY_INTERVAL_MS summary_interval_ms
 
 # Not options: the standalone defaults are wrong here. /data is the Supervisor's
 # persistent volume, so the cache belongs there rather than in the container layer
-# that an add-on update throws away. The html root is where nginx serves from.
+# that an app update throws away. The html root is where nginx serves from.
 export FRAME_HTML_DIR=/usr/share/nginx/html
 export CACHE_DIR=/data/cache
 
@@ -155,12 +155,12 @@ detect_birdnetgo() {
 
 # An explicitly configured URL always wins and is never second-guessed.
 if [ -z "${BIRDNETGO_URL:-}" ]; then
-    log "no birdnetgo_url configured; looking for a BirdNET-Go add-on"
+    log "no birdnetgo_url configured; looking for a BirdNET-Go app"
     if ! detect_birdnetgo; then
-        log "no BirdNET-Go add-on found on the Supervisor network."
+        log "no BirdNET-Go app found on the Supervisor network."
         log "Set the birdnetgo_url option to your instance, for example"
         log "  http://192.168.1.10:8080"
-        log "If it is an add-on with an unusual slug, add its hostname to"
+        log "If your BirdNET-Go app has an unusual slug, add its hostname to"
         log "birdnetgo_extra_hosts instead."
         exit 1
     fi

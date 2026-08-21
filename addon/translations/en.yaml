@@ -3,7 +3,7 @@ configuration:
     name: BirdNET-Go URL
     description: >-
       Base URL of your BirdNET-Go instance, for example http://192.168.1.10:8080.
-      Leave empty to detect a BirdNET-Go add-on running on this machine.
+      Leave empty to detect a BirdNET-Go app running on this machine.
   birdnetgo_token:
     name: BirdNET-Go token
     description: >-
@@ -12,7 +12,7 @@ configuration:
     name: Extra hostnames to probe
     description: >-
       Comma-separated hostnames to try before the built-in guesses when
-      detecting BirdNET-Go. Only needed for an add-on with an unusual slug.
+      detecting BirdNET-Go. Only needed for a BirdNET-Go app with an unusual slug.
   illustrations_repo:
     name: Illustrations repository
     description: >-

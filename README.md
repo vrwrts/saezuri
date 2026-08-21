@@ -282,11 +282,12 @@ docker compose up --build
 
 ## Home Assistant
 
-Saezuri also ships as a Home Assistant add-on: add
-`https://github.com/vrwrts/saezuri` as an add-on repository and it installs from the
-store, appears in the sidebar through ingress, and finds a BirdNET-Go add-on on the
-same machine by itself. Everything add-on specific lives in [`addon/`](addon/); the
-page users read inside Home Assistant is [`addon/DOCS.md`](addon/DOCS.md).
+Saezuri also ships as a Home Assistant app, what Home Assistant called an add-on until
+recently: add `https://github.com/vrwrts/saezuri` as a repository and it installs from
+the app store, appears in the sidebar through ingress, and finds a BirdNET-Go app on the
+same machine by itself. Everything Home Assistant specific lives in [`addon/`](addon/),
+named for the Supervisor's own `/addons` layout; the page users read inside Home Assistant
+is [`addon/DOCS.md`](addon/DOCS.md).
 
 ## Landing page
 
