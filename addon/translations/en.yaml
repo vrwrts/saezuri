@@ -1,0 +1,84 @@
+configuration:
+  birdnetgo_url:
+    name: BirdNET-Go URL
+    description: >-
+      Base URL of your BirdNET-Go instance, for example http://192.168.1.10:8080.
+      Leave empty to detect a BirdNET-Go add-on running on this machine.
+  birdnetgo_token:
+    name: BirdNET-Go token
+    description: >-
+      Bearer token, only needed when BirdNET-Go runs in PrivateMode.
+  birdnetgo_extra_hosts:
+    name: Extra hostnames to probe
+    description: >-
+      Comma-separated hostnames to try before the built-in guesses when
+      detecting BirdNET-Go. Only needed for an add-on with an unusual slug.
+  illustrations_repo:
+    name: Illustrations repository
+    description: >-
+      GitHub repository the ready-made cutouts are downloaded from. Empty
+      disables downloading.
+  illustrations_ref:
+    name: Illustrations branch
+    description: Branch or tag to download illustrations from.
+  illustrations_base_url:
+    name: Illustrations base URL
+    description: >-
+      Overrides the repository and branch above with a URL to download cutouts
+      from directly.
+  gemini_api_key:
+    name: Gemini API key
+    description: >-
+      Optional. Set it to also generate art for species nobody has contributed
+      an illustration for yet.
+  generate_max_per_cycle:
+    name: Generated illustrations per cycle
+    description: How many illustrations to generate at a time.
+  generate_sleep:
+    name: Pause between generations
+    description: Seconds to wait between generated illustrations.
+  call_providers:
+    name: Recording archives
+    description: >-
+      Comma-separated archives to look up reference recordings in. Empty
+      disables reference recordings.
+  calls_max_per_cycle:
+    name: Recordings per cycle
+    description: How many reference recordings to look up at a time.
+  frame_width:
+    name: E-ink frame width
+    description: Width in pixels of the rendered e-ink frames.
+  frame_height:
+    name: E-ink frame height
+    description: Height in pixels of the rendered e-ink frames.
+  frame_bg:
+    name: E-ink frame background
+    description: Background colour of the rendered frames, as a hex colour.
+  frame_shadow:
+    name: E-ink frame shadows
+    description: Draw soft shadows under the birds in the rendered frames.
+  frame_windows:
+    name: E-ink frames to render
+    description: >-
+      Comma-separated time windows to render frames for, from 1h, 12h, 24h, 7d
+      and all.
+  species_dict_locales:
+    name: Display languages
+    description: >-
+      Comma-separated languages to publish species-name dictionaries for. The
+      browser picks the closest match to its own language.
+  publish_debounce_ms:
+    name: Publish debounce
+    description: >-
+      Milliseconds to wait after a detection before republishing, so a burst
+      becomes one update.
+  aging_interval_ms:
+    name: Ageing interval
+    description: >-
+      Milliseconds between recomputes that drop detections out of their time
+      window.
+  summary_interval_ms:
+    name: Summary interval
+    description: Milliseconds between full recounts from BirdNET-Go.
+network:
+  "80/tcp": Direct web access, only needed for an e-ink panel fetching /24h.png
