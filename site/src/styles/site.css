@@ -76,6 +76,34 @@ a {
      (Using the `padding` shorthand here would reset .wrap's side padding to 0.) */
   padding-block: 92px 8px;
 }
+/* "New" badge above the wordmark. --live is the same muted vermilion the app uses
+   for its live dot, so the two read as the same signal. */
+.pill-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 22px;
+  padding: 6px 14px 6px 12px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  box-shadow: var(--raised);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.pill-new:hover {
+  color: var(--ink);
+}
+.pill-new .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--live);
+}
+
 .hero h1 {
   /* fit-content + auto margins: centered, but only as wide as the wordmark,
      so the hover/focus reveal is triggered by the text itself, not the whole row. */
@@ -196,6 +224,22 @@ a {
   color: var(--ink);
 }
 
+/* ---- Install paths (Home Assistant / Docker) ---- */
+.path {
+  margin-top: 34px;
+}
+.path h3 {
+  font-size: 20px;
+  margin: 0 0 10px;
+}
+.path p {
+  margin: 0 0 14px;
+  color: var(--ink-2);
+}
+.path-cta {
+  margin-bottom: 18px;
+}
+
 /* ---- Hero product shot (theme-swapped) ---- */
 .shot {
   max-width: 720px;
@@ -290,6 +334,11 @@ a {
   line-height: 1.7;
   color: var(--ink);
   white-space: pre;
+}
+/* A one-line block has nothing to push the copy button clear of, so reserve the
+   room the multi-line blocks get for free from their longer first line. */
+.code-inline {
+  padding-right: 78px;
 }
 .copy-btn {
   position: absolute;
