@@ -62,25 +62,40 @@ RUN cd /opt/saezuri/server && node -e "require('@napi-rs/canvas')"
 # Static bundle.
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Short, typeable mount paths for the two persistent stores. The real directories
-# stay under the html root, where nginx already serves them and where the refresh
-# service already writes, so a volume mounted the old way keeps working
-# untouched; these symlinks only spare operators a 45-character -v target.
-# Docker resolves symlinks in a mount destination, so a volume mounted on
-# /data/illustrations lands on the real directory.
-RUN mkdir -p /usr/share/nginx/html/assets/illustrations \
-             /usr/share/nginx/html/assets/calls \
-             /data \
-    && ln -s /usr/share/nginx/html/assets/illustrations /data/illustrations \
-    && ln -s /usr/share/nginx/html/assets/calls /data/calls
+# /data is the real persistence root for the two stores; the html root reaches
+# them through symlinks. This direction, not the reverse, because the Home
+# Assistant Supervisor mounts its persistent volume at /data (alongside the
+# options.json it writes there) — symlinks under /data would be mounted over, and
+# downloaded art would silently land in the ephemeral container layer instead.
+# Docker resolves symlinks in a mount destination, so a volume mounted the long
+# way (/usr/share/nginx/html/assets/illustrations) still lands on /data: both
+# spellings keep working, and an existing deployment keeps its data because that
+# data lives in the volume, not at a path.
+#
+# The bundled art the build just shipped (the generic fallback silhouette) has to
+# move out of the way first — `ln -s` onto an existing directory silently nests
+# the link inside it. It cannot simply move *into* /data either: under the
+# Supervisor /data is a bind mount, which masks image content rather than seeding
+# it the way a named volume does. So it is parked here and re-seeded at start by
+# nginx/entrypoint.sh. `rm -rf` for calls, which never has bundled content.
+RUN mkdir -p /opt/saezuri/bundled \
+    && mv /usr/share/nginx/html/assets/illustrations /opt/saezuri/bundled/illustrations \
+    && rm -rf /usr/share/nginx/html/assets/calls \
+    && mkdir -p /data/illustrations /data/calls \
+    && ln -s /data/illustrations /usr/share/nginx/html/assets/illustrations \
+    && ln -s /data/calls /usr/share/nginx/html/assets/calls
 
-# Config template (installed at start) + entrypoint hooks. The template lives
-# OUTSIDE /etc/nginx/templates so the image's built-in envsubst step doesn't
-# clobber nginx's own $variables — our hook just copies it verbatim now that
-# nothing is substituted. 40 installs the static-serving config; 50 launches the
-# refresh service (fetches per-species art + dictionaries, publishes the
-# snapshot). Both run before nginx, in that order.
+# Config template (installed at start) + the location blocks it includes +
+# entrypoint hooks. The template lives OUTSIDE /etc/nginx/templates so the
+# image's built-in envsubst step doesn't clobber nginx's own $variables — our
+# hook just copies it verbatim now that nothing is substituted. The locations
+# file is included from a server block, so it ships unconditionally: the Home
+# Assistant add-on wrapper adds a second server block that includes the same
+# file. 40 installs the static-serving config; 50 launches the refresh service
+# (fetches per-species art + dictionaries, publishes the snapshot). Both run
+# before nginx, in that order.
 COPY nginx/default.conf.template /etc/nginx/saezuri.conf.template
+COPY nginx/saezuri-locations.conf /etc/nginx/saezuri-locations.conf
 COPY nginx/entrypoint.sh /docker-entrypoint.d/40-saezuri.sh
 COPY nginx/generator.sh /docker-entrypoint.d/50-generator.sh
 RUN chmod +x /docker-entrypoint.d/40-saezuri.sh \

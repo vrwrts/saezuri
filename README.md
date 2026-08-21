@@ -139,10 +139,10 @@ well as an x86 host. The two volumes keep the illustrations
 and reference recordings it collects, so replacing the container doesn't start it over —
 both sections below explain what lands in them.
 
-`/data/illustrations` and `/data/calls` are symlinks to where the files actually live,
-`/usr/share/nginx/html/assets/illustrations` and `.../assets/calls`. Docker resolves a symlinked
-mount destination, so both spellings mount the same directory: the short one is just less to
-type, and an existing deployment mounted on the long path keeps working unchanged.
+`/data/illustrations` and `/data/calls` are where the files actually live;
+`/usr/share/nginx/html/assets/illustrations` and `.../assets/calls` are symlinks to them. Docker
+resolves a symlinked mount destination, so both spellings mount the same directory: the short one
+is just less to type, and an existing deployment mounted on the long path keeps working unchanged.
 
 ## On-demand generation (optional)
 
@@ -279,6 +279,14 @@ short synthetic tones and a matching call manifest into `./public` so playback c
 cp .env.example .env                # set BIRDNETGO_URL (and BIRDNETGO_TOKEN if needed)
 docker compose up --build
 ```
+
+## Home Assistant
+
+Saezuri also ships as a Home Assistant add-on: add
+`https://github.com/vrwrts/saezuri` as an add-on repository and it installs from the
+store, appears in the sidebar through ingress, and finds a BirdNET-Go add-on on the
+same machine by itself. Everything add-on specific lives in [`addon/`](addon/); the
+page users read inside Home Assistant is [`addon/DOCS.md`](addon/DOCS.md).
 
 ## Landing page
 
