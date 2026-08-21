@@ -40,6 +40,17 @@ jobs:
           fetch-depth: 0     # semantic-release needs full history + tags
       - uses: cycjimmy/semantic-release-action@v4
         id: semantic
+        with:
+          # The app's pinned version has to be bumped in the release commit:
+          # the app store reads addon/config.yaml from main, and a version with
+          # no matching published image tag makes the app uninstallable.
+          # changelog writes addon/CHANGELOG.md, exec rewrites the two pinned
+          # versions, git commits them (with [skip ci], so the push back to main
+          # does not re-trigger this workflow).
+          extra_plugins: |
+            @semantic-release/changelog
+            @semantic-release/exec
+            @semantic-release/git
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -77,5 +88,43 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  publish-addon-image:
+    # The Home Assistant app is a thin wrapper around the image above, so it
+    # can only be built once that image exists at this exact version.
+    needs: [release, publish-image]
+    if: needs.release.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      # The triggering SHA, i.e. before semantic-release's version-bump commit.
+      # Fine: the wrapper's version comes from the job output below, and neither
+      # config.yaml nor build.yaml is baked into the image.
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: addon
+          platforms: linux/amd64,linux/arm64
+          push: true
+          # Pinned to the release just published, never `latest`: an app
+          # updated by the Supervisor must get the application code it claims to.
+          build-args: |
+            BUILD_FROM=ghcr.io/${{ github.repository }}:${{ needs.release.outputs.version }}
+          tags: |
+            ghcr.io/${{ github.repository }}-addon:${{ needs.release.outputs.version }}
+            ghcr.io/${{ github.repository }}-addon:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

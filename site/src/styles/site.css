@@ -76,6 +76,34 @@ a {
      (Using the `padding` shorthand here would reset .wrap's side padding to 0.) */
   padding-block: 92px 8px;
 }
+/* "New" badge above the wordmark. --live is the same muted vermilion the app uses
+   for its live dot, so the two read as the same signal. */
+.pill-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 22px;
+  padding: 6px 14px 6px 12px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  box-shadow: var(--raised);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.pill-new:hover {
+  color: var(--ink);
+}
+.pill-new .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--live);
+}
+
 .hero h1 {
   /* fit-content + auto margins: centered, but only as wide as the wordmark,
      so the hover/focus reveal is triggered by the text itself, not the whole row. */
@@ -196,6 +224,42 @@ a {
   color: var(--ink);
 }
 
+/* ---- Install paths (Home Assistant / Docker) ---- */
+.path {
+  margin-top: 34px;
+}
+.path h3 {
+  font-size: 20px;
+  margin: 0 0 10px;
+}
+.path p {
+  margin: 0 0 14px;
+  color: var(--ink-2);
+}
+/* One action, two ways to take it: the one-click link for anyone browsing from
+   the same network as their instance, and the URL to paste for everyone else.
+   Side by side so they read as alternatives, not as two separate steps. */
+.repo-row {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 10px 0 26px;
+}
+.repo-row .btn {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+/* Wide enough a basis that the row breaks onto two lines before the URL field
+   gets too narrow to show the whole URL beside its copy button. */
+.repo-row .code {
+  flex: 1 1 366px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
 /* ---- Hero product shot (theme-swapped) ---- */
 .shot {
   max-width: 720px;
@@ -290,6 +354,23 @@ a {
   line-height: 1.7;
   color: var(--ink);
   white-space: pre;
+}
+/* A one-line block has nothing to push the copy button clear of, so reserve the
+   room the multi-line blocks get for free from their longer first line. The
+   button also centres here rather than sitting at the top, since there is only
+   the one line for it to sit beside. */
+.code-inline {
+  padding-right: 78px;
+}
+.code-inline .copy-btn {
+  top: 50%;
+  transform: translateY(-50%);
+}
+/* On a screen too narrow for either, the URL wraps rather than scrolling out of
+   sight: a hidden tail in a field you are meant to copy is worse than two lines. */
+.code-inline pre {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .copy-btn {
   position: absolute;

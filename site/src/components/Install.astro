@@ -1,11 +1,45 @@
 <section class="section wrap" id="install">
   <p class="kicker">Install</p>
-  <h2>Up in one command</h2>
+  <h2>Two ways to run it</h2>
   <p class="lede">
-    You&rsquo;ll need a running
+    Either way you&rsquo;ll need a running
     <a href="https://github.com/tphakala/birdnet-go">BirdNET-Go</a> instance on your network.
-    Point Saezuri at it with a single environment variable.
   </p>
+
+  <div class="path">
+    <h3>Home Assistant</h3>
+    <p>
+      Saezuri is available as a Home Assistant App (previously Add-on). Add this
+      repository to your app store, install Saezuri, and it appears in the sidebar.
+    </p>
+    <div class="repo-row">
+      <a
+        class="btn btn-primary"
+        href="https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fvrwrts%2Fsaezuri"
+        >Add it to Home Assistant</a
+      >
+      <div class="code code-inline">
+        <button class="copy-btn" type="button" aria-label="Copy repository URL">copy</button>
+        <pre>https://github.com/vrwrts/saezuri</pre>
+      </div>
+    </div>
+    <p>
+      Saezuri as a Home Assistant App is best paired with the community-built
+      <a href="https://github.com/alexbelgium/hassio-addons/tree/master/birdnet-go">BirdNET-Go Home Assistant app</a>.
+      Saezuri looks for a BirdNET-Go App on startup and will work with it without
+      any configuration needed from you. Alternatively, set <strong>BirdNET-Go URL</strong>
+     to your instance and leave everything else alone.
+    </p>
+    <p>
+      Every setting outlined below is available as an option, under the same name in lower case. The
+      full list, including what to do when detection picks the wrong instance, is in the
+      <a href="https://github.com/vrwrts/saezuri/blob/main/addon/DOCS.md">app docs</a>.
+    </p>
+  </div>
+
+  <div class="path">
+    <h3>Docker</h3>
+    <p>Point Saezuri at BirdNET-Go with a single environment variable.</p>
 
   <p class="step">Run the container (use your instance&rsquo;s address):</p>
   <div class="code">
@@ -62,10 +96,14 @@ volumes:
     </table>
   </div>
 
+  </div>
+
   <details class="advanced">
     <summary>All settings</summary>
     <p class="advanced-note">
-      Everything else has a working default. Set only what you want to change.
+      Everything else has a working default. Set only what you want to change. Under Home
+      Assistant these are options with the same names in lower case, for example
+      <code>frame_width</code>.
     </p>
 
     <h3>Illustrations</h3>

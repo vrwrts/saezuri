@@ -13,4 +13,12 @@ set -eu
 # $host/$uri/... must survive, which a plain copy trivially guarantees.
 cp /etc/nginx/saezuri.conf.template /etc/nginx/conf.d/default.conf
 
+# The illustrations and calls directories live in /data now (see the Dockerfile),
+# and a mount there masks whatever the image shipped instead of seeding it — a
+# bind mount always, and that is how the Home Assistant Supervisor mounts /data.
+# So put the bundled fallback silhouette back. `-n` so art the refresh service has
+# already downloaded is never overwritten.
+mkdir -p /usr/share/nginx/html/assets/illustrations /usr/share/nginx/html/assets/calls
+cp -rn /opt/saezuri/bundled/illustrations/. /usr/share/nginx/html/assets/illustrations/
+
 echo "saezuri: serving static bundle; BirdNET-Go is backend-only (no /api proxy)"

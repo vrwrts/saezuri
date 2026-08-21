@@ -1,7 +1,8 @@
 import useSWR from 'swr'
 import type { DictionaryIndex } from '../domain/dictionary.ts'
+import { withBase } from '../lib/basePath.ts'
 
-const INDEX_URL = '/species-dict/index.json'
+const INDEX_URL = withBase('/species-dict/index.json')
 const EMPTY: DictionaryIndex = { locales: [], default: null }
 
 // Immutable-ish resource: the index changes only when the refresh service

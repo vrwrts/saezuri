@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { imagePath } from '../domain/asset.ts'
+import { withBase } from '../lib/basePath.ts'
 
 /** Empty-nest illustration, served from public/. A borrowed AvianVisitors
  *  CC-BY-NC-SA asset that is committed and shipped (see LICENSE / README). */
-const NEST_SRC = '/assets/nest.webp'
+const NEST_SRC = withBase('/assets/nest.webp')
 
 interface Props {
   /** Silhouette shown only if the nest illustration ever fails to load — a

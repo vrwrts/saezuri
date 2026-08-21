@@ -1,0 +1,10 @@
+# Only used when the Supervisor builds the app locally (a copy under /addons);
+# an install from the repository pulls `image:` from config.yaml instead. Both
+# entries name the same tag on purpose: the application image is a multi-arch
+# manifest, so the platform resolves per architecture. `aarch64` is Home
+# Assistant's spelling; there is no `arm64` here.
+# Kept in step with config.yaml's version by semantic-release, so a wrapper is
+# never built against a different release than it claims to be.
+build_from:
+  amd64: ghcr.io/vrwrts/saezuri:0.13.0
+  aarch64: ghcr.io/vrwrts/saezuri:0.13.0

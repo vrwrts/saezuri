@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import useSWR from 'swr'
 import type { DictLocale } from '../domain/locale.ts'
+import { withBase } from '../lib/basePath.ts'
 
 const EMPTY: ReadonlyMap<string, string> = new Map()
 
@@ -17,11 +18,15 @@ async function fetchDictionary(url: string): Promise<Record<string, string>> {
  *  an empty map, so the caller falls back to the station's own names. Any
  *  404/error also yields an empty map — never throws into the tree. */
 export function useSpeciesDictionary(locale: DictLocale | null): ReadonlyMap<string, string> {
-  const { data } = useSWR(locale ? `/species-dict/${locale}.json` : null, fetchDictionary, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    revalidateIfStale: false,
-    shouldRetryOnError: false,
-  })
+  const { data } = useSWR(
+    locale ? withBase(`/species-dict/${locale}.json`) : null,
+    fetchDictionary,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      revalidateIfStale: false,
+      shouldRetryOnError: false,
+    },
+  )
   return useMemo(() => (data ? new Map(Object.entries(data)) : EMPTY), [data])
 }

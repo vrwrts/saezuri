@@ -1,8 +1,9 @@
 import useSWR from 'swr'
 import type { Snapshot, WindowSnapshot } from '../domain/snapshot.ts'
 import { presetToSegment, type WindowPreset } from '../domain/window.ts'
+import { withBase } from '../lib/basePath.ts'
 
-const SNAPSHOT_URL = '/snapshot.json'
+const SNAPSHOT_URL = withBase('/snapshot.json')
 
 // The snapshot is a small static file the refresh service rewrites whenever new
 // detections land; poll it briskly so every viewer converges within one
