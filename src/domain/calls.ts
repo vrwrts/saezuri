@@ -1,3 +1,4 @@
+import { withBase } from '../lib/basePath.ts'
 import { slugify } from './slug.ts'
 
 // The refresh service caches one reference recording per detected species and
@@ -9,7 +10,7 @@ import { slugify } from './slug.ts'
 // are required rather than optional, and why the UI renders them alongside the
 // play control.
 
-export const CALLS_BASE = '/assets/calls'
+export const CALLS_BASE = withBase('/assets/calls')
 
 export interface CallRecord {
   /** Archives serve mixed formats and we re-encode nothing — re-encoding a

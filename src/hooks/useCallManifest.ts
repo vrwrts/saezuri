@@ -1,7 +1,8 @@
 import useSWR from 'swr'
 import { type CallManifest, EMPTY_CALL_MANIFEST } from '../domain/calls.ts'
+import { withBase } from '../lib/basePath.ts'
 
-const CALL_MANIFEST_URL = '/calls-manifest.json'
+const CALL_MANIFEST_URL = withBase('/calls-manifest.json')
 
 // Same cadence as the layout manifest, for the same reason: a recording the
 // refresh service acquires on the fly should become playable without a reload.

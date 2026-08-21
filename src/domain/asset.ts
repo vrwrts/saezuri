@@ -1,3 +1,4 @@
+import { withBase } from '../lib/basePath.ts'
 import type { LayoutManifest } from './manifest.ts'
 import { slugify } from './slug.ts'
 
@@ -8,7 +9,7 @@ import { slugify } from './slug.ts'
 // silhouette so it is still shown, labelled, and sized by its real count.
 
 /** Where the cutout PNGs are served from (public/assets/illustrations). */
-export const ILLUSTRATIONS_BASE = '/assets/illustrations'
+export const ILLUSTRATIONS_BASE = withBase('/assets/illustrations')
 
 /** Chance a bird is shown in its flight pose, when a flight render exists.
  *  Matches AvianVisitors' FLY_PROB. */

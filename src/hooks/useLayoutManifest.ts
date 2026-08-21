@@ -1,12 +1,13 @@
 import useSWR from 'swr'
 import { DEFAULT_MANIFEST } from '../domain/defaultManifest.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
+import { withBase } from '../lib/basePath.ts'
 
 // DEFAULT_MANIFEST lives in a React/SWR-free module so the Node refresh service
 // can share it; re-exported here for existing importers.
 export { DEFAULT_MANIFEST } from '../domain/defaultManifest.ts'
 
-const MANIFEST_URL = '/layout-manifest.json'
+const MANIFEST_URL = withBase('/layout-manifest.json')
 
 // Poll on the same cadence as the species data (useRecentSpecies) so generated
 // art replaces the fallback silhouette live.
