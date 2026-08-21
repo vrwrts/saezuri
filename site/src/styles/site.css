@@ -236,8 +236,28 @@ a {
   margin: 0 0 14px;
   color: var(--ink-2);
 }
-.path-cta {
-  margin-bottom: 18px;
+/* One action, two ways to take it: the one-click link for anyone browsing from
+   the same network as their instance, and the URL to paste for everyone else.
+   Side by side so they read as alternatives, not as two separate steps. */
+.repo-row {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 10px 0 26px;
+}
+.repo-row .btn {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+/* Wide enough a basis that the row breaks onto two lines before the URL field
+   gets too narrow to show the whole URL beside its copy button. */
+.repo-row .code {
+  flex: 1 1 366px;
+  margin: 0;
+  display: flex;
+  align-items: center;
 }
 
 /* ---- Hero product shot (theme-swapped) ---- */
@@ -336,9 +356,21 @@ a {
   white-space: pre;
 }
 /* A one-line block has nothing to push the copy button clear of, so reserve the
-   room the multi-line blocks get for free from their longer first line. */
+   room the multi-line blocks get for free from their longer first line. The
+   button also centres here rather than sitting at the top, since there is only
+   the one line for it to sit beside. */
 .code-inline {
   padding-right: 78px;
+}
+.code-inline .copy-btn {
+  top: 50%;
+  transform: translateY(-50%);
+}
+/* On a screen too narrow for either, the URL wraps rather than scrolling out of
+   sight: a hidden tail in a field you are meant to copy is worse than two lines. */
+.code-inline pre {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .copy-btn {
   position: absolute;
