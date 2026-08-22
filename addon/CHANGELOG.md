@@ -1,3 +1,10 @@
+## [0.14.1](https://github.com/vrwrts/saezuri/compare/v0.14.0...v0.14.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* incorrect email in repository.yaml ([b97e705](https://github.com/vrwrts/saezuri/commit/b97e70547a779bded6454d716f80926d9e4d3ded))
+
 # [0.14.0](https://github.com/vrwrts/saezuri/compare/v0.13.0...v0.14.0) (2026-08-22)
 
 
