@@ -1,3 +1,15 @@
+# [0.14.0](https://github.com/vrwrts/saezuri/compare/v0.13.0...v0.14.0) (2026-08-22)
+
+
+### Bug Fixes
+
+* let the release push the add-on version bump to main ([#43](https://github.com/vrwrts/saezuri/issues/43)) ([a1b71c1](https://github.com/vrwrts/saezuri/commit/a1b71c122b99a5084ce1205a9c586c8ed4a0a6f8))
+
+
+### Features
+
+* add home assistant app/add-on ([#42](https://github.com/vrwrts/saezuri/issues/42)) ([931a0e0](https://github.com/vrwrts/saezuri/commit/931a0e04c531c37e1d793d7b1981dc314500c87a))
+
 # Changelog
 
 ## 0.13.0
