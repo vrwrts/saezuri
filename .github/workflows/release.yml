@@ -17,6 +17,11 @@ on:
       # The generation pipeline lives in the saezuri-illustrations repo (versioned there);
       # the app adopts a new one by bumping PIPELINE_VERSION in the Dockerfile, which is a
       # normal releasable app change.
+  # Manual trigger, for the case the paths-ignore above creates: a release that
+  # failed for an infrastructure reason (a missing credential, a registry outage)
+  # can be retried once that is fixed, without inventing a code commit to push.
+  # semantic-release is idempotent — with nothing releasable it exits doing nothing.
+  workflow_dispatch:
 
 concurrency:
   group: release
@@ -35,9 +40,25 @@ jobs:
       major: ${{ steps.semantic.outputs.new_release_major_version }}
       minor: ${{ steps.semantic.outputs.new_release_minor_version }}
     steps:
+      # A release pushes a COMMIT to main (see below), which the default
+      # GITHUB_TOKEN cannot do while main requires a pull request. RELEASE_TOKEN
+      # is a PAT or GitHub App token with a bypass allowance on main; see
+      # "Release credentials" in README.md. Checked here rather than left to fail
+      # as an opaque `git push` rejection halfway through a release.
+      - name: Require the release credential
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          if [ -z "$RELEASE_TOKEN" ]; then
+            echo "::error::RELEASE_TOKEN is not set. semantic-release has to push the add-on version bump to main, which GITHUB_TOKEN may not do. See 'Release credentials' in README.md."
+            exit 1
+          fi
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0     # semantic-release needs full history + tags
+          # Don't leave GITHUB_TOKEN in .git/config: semantic-release would then
+          # push with it instead of RELEASE_TOKEN and be rejected.
+          persist-credentials: false
       - uses: cycjimmy/semantic-release-action@v4
         id: semantic
         with:
@@ -45,14 +66,17 @@ jobs:
           # the app store reads addon/config.yaml from main, and a version with
           # no matching published image tag makes the app uninstallable.
           # changelog writes addon/CHANGELOG.md, exec rewrites the two pinned
-          # versions, git commits them (with [skip ci], so the push back to main
-          # does not re-trigger this workflow).
+          # versions, git commits them.
           extra_plugins: |
             @semantic-release/changelog
             @semantic-release/exec
             @semantic-release/git
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A push authenticated with a PAT DOES trigger workflows, unlike one
+          # with GITHUB_TOKEN. The `[skip ci]` in the git plugin's commit message
+          # (.releaserc.json) is what stops the release commit from starting a
+          # second Release run, so it is load-bearing now, not cosmetic.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
   publish-image:
     needs: release
