@@ -323,14 +323,37 @@ image, and deploys to Cloudflare Pages — see [`site/README.md`](site/README.md
   if there is a releasable change (`feat`/`fix`/`perf`/breaking), it tags `vX.Y.Z` and
   publishes a **GitHub Release with auto-generated notes**. The same run then builds the
   multi-arch image (`linux/amd64` + `linux/arm64`) and pushes it to `ghcr.io/vrwrts/saezuri`
-  as `:X.Y.Z`, `:X.Y`, and `:latest`. No manual tagging.
+  as `:X.Y.Z`, `:X.Y`, and `:latest`, then the Home Assistant wrapper to
+  `ghcr.io/vrwrts/saezuri-addon` at the same version. No manual tagging. It can also be run
+  by hand from the Actions tab, for retrying a release that failed on infrastructure.
 - **Site vs app:** changes under `site/` and docs never cut an app release — the landing
   site deploys itself to Cloudflare. The generation **pipeline lives in the
   [saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) repo** (versioned
   there); the app adopts a new one by bumping the `PIPELINE_VERSION` build arg in the Dockerfile,
   which cuts a normal app release.
-- **One-time setup:** after the first release, set the `saezuri` package to **public** in
-  the org's GHCR package settings so anonymous `docker pull` works, and link it to the repo.
+- **Release credentials:** a release also pushes a **commit** to `main`, bumping the version
+  pinned in [`addon/config.yaml`](addon/config.yaml) and
+  [`addon/build.yaml`](addon/build.yaml). It has to: the Home Assistant app store reads that
+  version out of the default branch, so it is the only way a new version reaches an installed
+  app, and a version with no matching published image makes the app uninstallable. Tags and
+  GitHub Releases are unaffected by branch protection, but a commit is, so the default
+  `GITHUB_TOKEN` cannot do this while `main` requires a pull request. The workflow therefore
+  authenticates semantic-release with a `RELEASE_TOKEN` secret, and fails fast with a clear
+  message if it is missing. To set it up:
+  1. Create a **fine-grained PAT** with *Contents: read and write* on this repo (a GitHub App
+     installation token works too, and is preferable if you would rather not tie releases to a
+     personal account).
+  2. Add it as the repository secret `RELEASE_TOKEN`.
+  3. In **Settings → Branches → `main`**, add that identity to *Allow specified actors to bypass
+     required pull requests*.
+
+  The release commit carries `[skip ci]`. That matters here: a push authenticated with a PAT
+  triggers workflows, where one with `GITHUB_TOKEN` does not, so without it every release would
+  start a second, pointless Release run.
+- **One-time setup:** after the first release, set the `saezuri` **and `saezuri-addon`** packages
+  to **public** in the org's GHCR package settings so anonymous `docker pull` works, and link
+  them to the repo. The app store pulls `saezuri-addon` anonymously, so leaving that one private
+  makes the app fail to install with an image-pull error.
 
 ## Credits and licensing
 
