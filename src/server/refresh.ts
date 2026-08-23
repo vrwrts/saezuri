@@ -15,6 +15,7 @@ import { CallLibrary, publishCallManifest } from './calls.ts'
 import { publishDictionaries } from './dictionaries.ts'
 import { Generator } from './generate.ts'
 import { buildSnapshot, loadManifest, writeSnapshot } from './publish.ts'
+import { planArtRepairs, unpairedSlugs } from './reconcile.ts'
 import { frameSignature, renderFrame, writeFrame } from './render.ts'
 import { DetectionStore } from './store.ts'
 import { runDetectionStream } from './stream.ts'
@@ -142,6 +143,7 @@ class Refresher {
   private store = new DetectionStore()
   private manifest: LayoutManifest = DEFAULT_MANIFEST
   private allSpecies: Species[] = []
+  private sciBySlug: ReadonlyMap<string, { sci: string; com: string }> = new Map()
   private lastSummaryMs = 0
   private pendingPublish?: ReturnType<typeof setTimeout>
   private generator: Generator
@@ -191,12 +193,15 @@ class Refresher {
   /** Download + publish BirdNET-Go's species-name dictionaries as static files so
    *  the browser can localize display names without ever touching BirdNET-Go. */
   private async publishDicts(): Promise<void> {
-    await publishDictionaries({
+    const { sciBySlug } = await publishDictionaries({
       baseUrl: this.cfg.baseUrl,
       token: this.cfg.token,
       htmlDir: this.cfg.htmlDir,
       locales: this.cfg.dictLocales,
     })
+    // Names the cutouts we find on disk for birds outside the detection window, so
+    // a hand-deleted pose can be regenerated under the right name (see reconcile.ts).
+    if (sciBySlug.size > 0) this.sciBySlug = sciBySlug
   }
 
   /** Serialize publishes so overlapping triggers (aging tick, debounce,
@@ -246,18 +251,28 @@ class Refresher {
     await this.renderFrames(snapshot)
   }
 
-  /** Enqueue any recently-heard species missing art or a reference call, so gaps
-   *  fill on startup / after assets are deleted — not only when a species is next
-   *  heard live (onDetection). Cheap + idempotent: both queues dedupe in-flight
-   *  and queued slugs, `isComplete` skips species that already have both poses,
-   *  and the call library short-circuits on files already present or recently
-   *  looked up, so re-running this every publish costs no network. */
+  /** Enqueue any species missing art or a reference call, so gaps fill on startup /
+   *  after assets are deleted — not only when a species is next heard live
+   *  (onDetection). Cheap + idempotent: both queues dedupe in-flight and queued slugs,
+   *  the art queue skips species that already have both poses and backs off on gaps it
+   *  has already failed to fill, and the call library short-circuits on files already
+   *  present or recently looked up, so re-running this every publish costs no network.
+   *
+   *  Art looks wider than the store: a cutout deleted by hand belongs to a bird that
+   *  may not have been heard for weeks, and the store only holds 7 days. Calls stay on
+   *  the store — there is no on-disk gap to notice for a recording we never had. */
   private enqueueMissingAssets(now: number): void {
     const since = (resolveWindow('7D', now) as RangeWindow).sinceMs
-    for (const s of this.store.aggregate(since)) {
-      if (!isComplete(this.manifest, s.sci)) this.generator.enqueue(s.sci, s.com)
-      this.callLibrary.enqueue(s.sci)
-    }
+    const recent = this.store.aggregate(since)
+    this.generator.enqueueRepairs(
+      planArtRepairs({
+        recent,
+        allSpecies: this.allSpecies,
+        manifest: this.manifest,
+        sciBySlug: this.sciBySlug,
+      }),
+    )
+    for (const s of recent) this.callLibrary.enqueue(s.sci)
   }
 
   /** Rebuild the manifest from disk and republish, so a vanished cutout drops out
@@ -320,6 +335,10 @@ class Refresher {
       `starting; publishing to ${this.cfg.htmlDir} (art source: ${artSource}, call source: ${callSource})`,
     )
     await this.safe('rebuild', () => this.generator.rebuildManifest())
+    await this.safe('unpaired', async () => {
+      const unpaired = unpairedSlugs(await loadManifest(this.cfg.htmlDir))
+      if (unpaired.length > 0) log(`${unpaired.length} half-illustrated species on disk`)
+    })
     await this.safe('summary', () => this.refreshSummary())
     // Refresh the dictionaries on the slow summary cadence so a backend upgrade is
     // picked up without a restart.

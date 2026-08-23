@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest'
@@ -34,14 +34,19 @@ const BASE = 'http://fixtures.test'
 let assetsDir: string
 let onGenerated: Mock<() => Promise<void>>
 
+// Pose stems requested since the last stubFetch, in order.
+const fetched: string[] = []
+
 // fetch stub: 200 for exactly the listed pose filenames (e.g. 'turdus-merula' for the
 // perched pose, 'turdus-merula-2' for flight), 404 for everything else.
 function stubFetch(presentPoses: string[]) {
+  fetched.length = 0
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
       const m = url.match(/\/illustrations\/(.+)\.png$/)
       const name = m?.[1]
+      if (name) fetched.push(name)
       if (name && presentPoses.includes(name)) {
         return { ok: true, arrayBuffer: async () => PNG.buffer.slice(0) } as unknown as Response
       }
@@ -133,6 +138,78 @@ describe('Generator art acquisition', () => {
     expect(gen).toBeDefined()
     expect(gen).toContain('Turdus merula|Eurasian Blackbird')
     expect(onGenerated).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-downloads only the pose deleted from an existing pair', async () => {
+    // The reported bug's happy path: one image removed by hand, the other left alone.
+    stubFetch(['turdus-merula', 'turdus-merula-2'])
+    await writeFile(join(assetsDir, 'turdus-merula.png'), PNG)
+    const g = makeGen({ enabled: true, downloadBaseUrl: BASE })
+    g.enqueueRepairs([{ slug: 'turdus-merula', sci: 'Turdus merula', com: 'Eurasian Blackbird' }])
+    await idle(g)
+
+    expect(fetched).toEqual(['turdus-merula-2'])
+    expect(await readdir(assetsDir)).toContain('turdus-merula-2.png')
+    expect(spawnCalls.some((a) => a.includes('--generate'))).toBe(false)
+  })
+
+  it('downloads but never generates a repair whose species we cannot name', async () => {
+    stubFetch([]) // repo has nothing, and we have no scientific name to prompt with
+    const g = makeGen({ enabled: true, downloadBaseUrl: BASE })
+    g.enqueueRepairs([{ slug: 'turdus-merula' }])
+    await idle(g)
+
+    expect(fetched).toEqual(['turdus-merula', 'turdus-merula-2'])
+    expect(spawnCalls.some((a) => a.includes('--generate'))).toBe(false)
+  })
+
+  it('remembers a repo miss and stops re-requesting it, across restarts', async () => {
+    stubFetch([])
+    const g = makeGen({ enabled: false, downloadBaseUrl: BASE })
+    g.enqueue('Turdus merula', 'Eurasian Blackbird')
+    await idle(g)
+    expect(fetched).toEqual(['turdus-merula', 'turdus-merula-2'])
+
+    const misses = JSON.parse(await readFile(join(assetsDir, '_misses.json'), 'utf8'))
+    expect(Object.keys(misses.download).sort()).toEqual(['turdus-merula', 'turdus-merula-2'])
+
+    fetched.length = 0
+    const restarted = makeGen({ enabled: false, downloadBaseUrl: BASE })
+    restarted.enqueue('Turdus merula', 'Eurasian Blackbird')
+    await idle(restarted)
+    expect(fetched).toEqual([])
+  })
+
+  it('retries a repo miss once its backoff has expired', async () => {
+    const stale = Date.now() - 8 * 24 * 60 * 60 * 1000 // older than the 7d download TTL
+    await writeFile(
+      join(assetsDir, '_misses.json'),
+      JSON.stringify({ download: { 'turdus-merula': stale, 'turdus-merula-2': stale } }),
+    )
+    stubFetch(['turdus-merula', 'turdus-merula-2'])
+    const g = makeGen({ enabled: false, downloadBaseUrl: BASE })
+    g.enqueue('Turdus merula', 'Eurasian Blackbird')
+    await idle(g)
+
+    expect(fetched).toEqual(['turdus-merula', 'turdus-merula-2'])
+    expect(await readdir(assetsDir)).toContain('turdus-merula-2.png')
+    const misses = JSON.parse(await readFile(join(assetsDir, '_misses.json'), 'utf8'))
+    expect(misses.download).toEqual({}) // both poses landed
+  })
+
+  it('backs off a species the model declines rather than regenerating every sweep', async () => {
+    stubFetch([]) // repo has nothing; the mocked worker exits 0 without writing anything
+    const g = makeGen({ enabled: true, downloadBaseUrl: BASE })
+    g.enqueue('Turdus merula', 'Eurasian Blackbird')
+    await idle(g)
+    expect(spawnCalls.filter((a) => a.includes('--generate'))).toHaveLength(1)
+
+    g.enqueue('Turdus merula', 'Eurasian Blackbird')
+    await idle(g)
+    expect(spawnCalls.filter((a) => a.includes('--generate'))).toHaveLength(1)
+
+    const misses = JSON.parse(await readFile(join(assetsDir, '_misses.json'), 'utf8'))
+    expect(Object.keys(misses.generate).sort()).toEqual(['turdus-merula', 'turdus-merula-2'])
   })
 
   it('no-ops enqueue when both sources are disabled', async () => {
