@@ -1,3 +1,10 @@
+## [0.14.2](https://github.com/vrwrts/saezuri/compare/v0.14.1...v0.14.2) (2026-08-23)
+
+
+### Bug Fixes
+
+* always regenerate missing images ([#44](https://github.com/vrwrts/saezuri/issues/44)) ([29cb383](https://github.com/vrwrts/saezuri/commit/29cb38385679e3736de6cfbd90bdc0a91a32764f))
+
 ## [0.14.1](https://github.com/vrwrts/saezuri/compare/v0.14.0...v0.14.1) (2026-08-22)
 
 
