@@ -27,7 +27,7 @@ describe('publishDictionaries', () => {
       return Promise.resolve(notFound())
     })
 
-    const index = await publishDictionaries({
+    const { index } = await publishDictionaries({
       baseUrl: 'http://bng:8080',
       htmlDir,
       locales: ['de', 'nl'],
@@ -46,7 +46,7 @@ describe('publishDictionaries', () => {
       Promise.resolve(url.endsWith('/species/dictionary/de') ? ok({ x: 'y' }) : notFound()),
     )
 
-    const index = await publishDictionaries({
+    const { index } = await publishDictionaries({
       baseUrl: 'http://bng:8080',
       htmlDir,
       locales: ['de', 'nl'],
@@ -68,5 +68,27 @@ describe('publishDictionaries', () => {
     })
     const [, opts] = fetchMock.mock.calls[0]
     expect(opts.headers.Authorization).toBe('Bearer secret')
+  })
+
+  it('indexes slugs from the English dictionary so disk-only slugs can be named', async () => {
+    const htmlDir = await tmpHtmlDir()
+    fetchMock.mockImplementation((url: string) => {
+      if (url.endsWith('/species/dictionary/en'))
+        return Promise.resolve(ok({ 'Turdus merula': 'Eurasian Blackbird' }))
+      if (url.endsWith('/species/dictionary/nl'))
+        return Promise.resolve(ok({ 'Turdus merula': 'Merel' }))
+      return Promise.resolve(notFound())
+    })
+
+    const { sciBySlug } = await publishDictionaries({
+      baseUrl: 'http://bng:8080',
+      htmlDir,
+      locales: ['nl', 'en'],
+    })
+
+    expect(sciBySlug.get('turdus-merula')).toEqual({
+      sci: 'Turdus merula',
+      com: 'Eurasian Blackbird',
+    })
   })
 })
