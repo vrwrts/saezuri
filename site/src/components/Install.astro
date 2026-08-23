@@ -44,7 +44,7 @@
   <p class="step">Run the container (use your instance&rsquo;s address):</p>
   <div class="code">
     <button class="copy-btn" type="button" aria-label="Copy command">copy</button>
-    <pre>docker run -d -p 8090:80 \
+    <pre>docker run -d -p 8090:8080 \
   -e BIRDNETGO_URL=http://192.168.1.10:8080 \
   -v saezuri-illustrations:/data/illustrations \
   -v saezuri-calls:/data/calls \
@@ -57,7 +57,7 @@
     <pre>services:
   saezuri:
     image: ghcr.io/vrwrts/saezuri:latest
-    ports: ["8090:80"]
+    ports: ["8090:8080"]
     environment:
       BIRDNETGO_URL: http://192.168.1.10:8080
     volumes:

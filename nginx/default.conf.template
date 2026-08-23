@@ -3,7 +3,8 @@
 # only ever talks to this origin, and this origin serves ONLY static files the
 # refresh service publishes — nginx does not proxy BirdNET-Go at all.
 server {
-    listen 80;
+    # Unprivileged, so the container never needs root to bind it.
+    listen 8080;
     server_name _;
     root /usr/share/nginx/html;
     index index.html;

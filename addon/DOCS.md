@@ -127,11 +127,15 @@ serve it, because ingress requires Home Assistant authentication and a panel has
 way to log in. So open the direct port instead:
 
 1. Open the app's **Configuration** tab and switch to **Network**.
-2. Give **80/tcp** a host port, for example `8090`.
+2. Give **8080/tcp** a host port, for example `8090`.
 3. Restart the app.
 
 Your panel then fetches `http://<home-assistant-host>:8090/24h.png`. That port serves
 the whole collage with no authentication, so only open it on a network you trust.
+
+The direct port used to be **80/tcp** and is now **8080/tcp**. The Supervisor stores the
+mapping against the old number, so updating from 0.14.1 or earlier closes it: if you run a
+panel, re-open it with the steps above once after updating.
 
 ## Storage
 

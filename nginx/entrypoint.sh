@@ -10,7 +10,10 @@ set -eu
 : "${BIRDNETGO_URL:?BIRDNETGO_URL is required, e.g. http://192.168.1.10:8080}"
 
 # The template has no ${...} placeholders left, so copy it verbatim — nginx's own
-# $host/$uri/... must survive, which a plain copy trivially guarantees.
+# $host/$uri/... must survive, which a plain copy trivially guarantees. Unlink
+# rather than truncate in place: a previous run may have been a different uid, and
+# unlink needs write permission on the directory only.
+rm -f /etc/nginx/conf.d/default.conf
 cp /etc/nginx/saezuri.conf.template /etc/nginx/conf.d/default.conf
 
 # The illustrations and calls directories live in /data now (see the Dockerfile),
@@ -19,6 +22,26 @@ cp /etc/nginx/saezuri.conf.template /etc/nginx/conf.d/default.conf
 # So put the bundled fallback silhouette back. `-n` so art the refresh service has
 # already downloaded is never overwritten.
 mkdir -p /usr/share/nginx/html/assets/illustrations /usr/share/nginx/html/assets/calls
+
+# Docker never re-chowns an existing volume, so one created by an older,
+# root-running Saezuri is unwritable to this unprivileged container. Refuse to
+# start: otherwise it serves the art already there forever while every publish,
+# download and recording fails silently.
+for dir in /usr/share/nginx/html /usr/share/nginx/html/assets/illustrations \
+           /usr/share/nginx/html/assets/calls "${CACHE_DIR:-/var/cache/saezuri}"; do
+    mkdir -p "$dir" 2>/dev/null || true
+    if [ ! -w "$dir" ]; then
+        echo "saezuri: $dir is not writable by uid $(id -u):$(id -g)." >&2
+        echo "saezuri: upgrading from a root-running release? take ownership once, e.g." >&2
+        echo "saezuri:   docker run --rm -v saezuri-illustrations:/d alpine chown -R $(id -u):$(id -g) /d" >&2
+        exit 1
+    fi
+done
+
+# Tmp names are fixed, so one left behind by a crash under a different uid would
+# block that file's publish forever.
+rm -f /usr/share/nginx/html/*.tmp
+
 cp -rn /opt/saezuri/bundled/illustrations/. /usr/share/nginx/html/assets/illustrations/
 
 echo "saezuri: serving static bundle; BirdNET-Go is backend-only (no /api proxy)"

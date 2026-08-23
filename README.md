@@ -125,14 +125,15 @@ on its Docker network and point `BIRDNETGO_URL` at the service name + internal p
 ## Run the published image
 
 ```bash
-docker run -d -p 8090:80 \
+docker run -d -p 8090:8080 \
   -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
   -v saezuri-illustrations:/data/illustrations \
   -v saezuri-calls:/data/calls \
   ghcr.io/vrwrts/saezuri:latest
 ```
 
-Then open <http://localhost:8090>. The host port is 8090 rather than 8080 on purpose: 8080 is
+Then open <http://localhost:8090>. The container listens on 8080, which is unprivileged so it
+never needs root to bind. The *host* port is 8090 rather than 8080 on purpose: 8080 is
 BirdNET-Go's own default, so the two would collide whenever they share a host, which is the
 common case. Images are published multi-arch (amd64 + arm64), so they run on a Raspberry Pi as
 well as an x86 host. The two volumes keep the illustrations
@@ -144,13 +145,37 @@ both sections below explain what lands in them.
 resolves a symlinked mount destination, so both spellings mount the same directory: the short one
 is just less to type, and an existing deployment mounted on the long path keeps working unchanged.
 
+### Running as another user
+
+The image runs as uid/gid **1000**, not root, so files it writes into a mounted volume belong to
+a real account rather than to root. Override it the ordinary Docker way:
+
+```bash
+docker run -d -p 8090:8080 --user 1000:1000 ...
+```
+
+Any uid works — the directories the container writes to are mode-granted rather than
+owner-granted, so there is no `PUID`/`PGID` to set. Two things follow from it:
+
+- A **bind-mounted** host directory has to be owned by the uid you pass; Docker never changes
+  ownership on a mount. Named volumes are seeded from the image and need nothing.
+- **Upgrading from a release before this one**, your existing volumes are still root-owned, so
+  the container refuses to start and tells you to take ownership once, per volume:
+
+  ```bash
+  docker run --rm -v saezuri-illustrations:/d alpine chown -R 1000:1000 /d
+  ```
+
+One stock nginx knob is unsupported as a result: `NGINX_ENTRYPOINT_WORKER_PROCESSES_AUTOTUNE`
+rewrites `/etc/nginx/nginx.conf`, which an unprivileged container cannot do.
+
 ## On-demand generation (optional)
 
 The free downloads above only cover species someone has contributed art for. To *also* fill in
 anything the repo doesn't have — generated fresh in the same kachō-e style — set `GEMINI_API_KEY`:
 
 ```bash
-docker run -d -p 8090:80 \
+docker run -d -p 8090:8080 \
   -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
   -e GEMINI_API_KEY=<your-google-ai-key> \
   -v saezuri-illustrations:/data/illustrations \
@@ -186,7 +211,7 @@ reports a species the refresh service downloads its ready-made cutout from the
 CDN) — no API key needed. Just mount the volume so it persists:
 
 ```bash
-docker run -d -p 8090:80 \
+docker run -d -p 8090:8080 \
   -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
   -v saezuri-illustrations:/data/illustrations \
   ghcr.io/vrwrts/saezuri:latest
@@ -220,7 +245,7 @@ recording of its call, caches it in a volume, and publishes it — so selecting 
 collage offers a play button for what it sounds like. Mount the volume so it persists:
 
 ```bash
-docker run -d -p 8090:80 \
+docker run -d -p 8090:8080 \
   -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
   -v saezuri-calls:/data/calls \
   ghcr.io/vrwrts/saezuri:latest
