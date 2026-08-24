@@ -72,11 +72,35 @@ generic silhouette, still labelled and still sized by their real count.
 | **Illustrations branch** | `main` | Branch or tag to download from. |
 | **Illustrations base URL** | derived | Overrides the two above with a direct URL. |
 | **Gemini API key** | unset | Optional. Set it to *also* generate art, in the same style, for species nobody has contributed yet. |
-| **Generated illustrations per cycle** | `4` | How many to generate at a time. |
-| **Pause between generations** | `6` | Seconds between generated illustrations. |
+| **Pause between generations** | `6` | Seconds between generated illustrations. Lower on a paid tier, raise if rate-limited. |
+| **Species notes** | none | Per-bird prompt corrections, see below. |
 
 Generation costs money at Google's rates and is entirely optional. Everything works
 without a key.
+
+Illustrations are generated one pose at a time, perched first. A bird stops being a
+silhouette as soon as its perched illustration lands, so it appears without waiting
+for the flight one.
+
+### Species notes
+
+Some birds come out wrong no matter how often they are regenerated — the model's idea
+of them is simply off, and trying again won't help. A note is a short description
+added to that bird's prompt only. One entry per bird:
+
+```
+Turdus merula|Solid glossy black, orange-yellow bill and eye-ring.
+Parus major|Black crown and throat stripe, white cheeks, yellow underparts.
+```
+
+Use the scientific name before the pipe (the slug, like `turdus-merula`, also works).
+Change a note and that bird is redrawn on the next cycle — nothing to restart.
+
+Notes only affect illustrations this app generates itself. One downloaded from the
+illustrations repository is left as it is, because that repository is the shared set
+everyone draws from. If a note fixes a bird the repository gets wrong, please
+[contribute it there](https://github.com/vrwrts/saezuri-illustrations) so every
+installation benefits.
 
 ### Reference recordings
 

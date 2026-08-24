@@ -150,6 +150,19 @@ Where things live, so a change lands in the right place fast.
   gates/aggregates species, and publishes `/snapshot.json`, `/layout-manifest.json`,
   `/calls-manifest.json`, and the e-ink PNG frames (`render.ts`, reusing `computeLayout`).
   Run it with `npm run refresh:dev`.
+- **Art acquisition:** `src/server/generate.ts` (`Generator`). The unit of work is a **pose**,
+  not a species: a perched-only species already renders (`resolveArt`), so perched is what
+  lifts it off the fallback silhouette and flight only changes the 15% that roll for it.
+  Two independent lanes — repo download (concurrent, cheap) and Gemini generation (serial) —
+  so free art never queues behind a paid render. Precedence is fixed and deliberate: file on
+  disk > illustrations repo > local generation > fallback silhouette. The repo is the state of
+  the art, so `species-notes.json` (`notes.ts`) tunes the *generation* fallback only and never
+  replaces downloaded art; a changed note re-renders a pose only when `source: 'generated'`.
+  `_art-state.json` in `assetsDir` records per pose: repo 404s (7-day TTL, so the repo isn't
+  re-probed every publish), provenance, and the note version. It is a cache, never a source of
+  truth — a bad entry must degrade to "probe again", never to "skip forever". The generate lane
+  owns the rate limit (`GENERATE_SLEEP`): the pipeline is invoked once per pose, so its own
+  inter-call sleep never fires.
 - **Reference calls:** `src/server/calls.ts` (`CallLibrary`) queues a lookup per newly-heard
   species, mirroring `generate.ts`; `callProviders/` holds one provider per archive behind a
   common interface — `find()` resolves null for "nothing here" (cacheable) and **throws** for

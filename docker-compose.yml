@@ -22,10 +22,13 @@ services:
       # display-only: the refresh service still publishes, it just skips
       # generation, so new species stay hidden until art exists.
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      # Throttle between image-API calls (unset => pregen's 6s free-tier default).
+      # Seconds between image-API calls (default 6, the Gemini free-tier pace). The
+      # throughput knob: art is acquired one pose at a time and this gap is what keeps
+      # us under the request-rate limit.
       GENERATE_SLEEP: ${GENERATE_SLEEP:-}
-      # Cap species generated per pipeline run.
-      GENERATE_MAX_PER_CYCLE: ${GENERATE_MAX_PER_CYCLE:-4}
+      # Prompt addenda for species that keep coming out wrong. Defaults to
+      # _species-notes.json beside the art, i.e. inside the persisted volume.
+      SPECIES_NOTES: ${SPECIES_NOTES:-}
       # --- Free pre-made illustrations (see .env.example) ---
       # Per detected species, the refresh service downloads a ready-made cutout from
       # the saezuri-illustrations repo (via jsDelivr) — no Gemini key needed. Defaults

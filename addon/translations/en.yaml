@@ -31,12 +31,23 @@ configuration:
     description: >-
       Optional. Set it to also generate art for species nobody has contributed
       an illustration for yet.
-  generate_max_per_cycle:
-    name: Generated illustrations per cycle
-    description: How many illustrations to generate at a time.
   generate_sleep:
     name: Pause between generations
-    description: Seconds to wait between generated illustrations.
+    description: >-
+      Seconds to wait between generated illustrations. Lower it if you are on a
+      paid Gemini tier, raise it if you get rate-limited.
+  species_notes:
+    name: Species notes
+    description: >-
+      For birds that keep coming out wrong. One entry per bird, written as
+      "Scientific name|what it should look like" — for example "Turdus
+      merula|Solid glossy black, orange-yellow bill and eye-ring". Only affects
+      illustrations this app generates itself; downloaded ones are left alone.
+  generate_max_per_cycle:
+    name: Generated illustrations per cycle (unused)
+    description: >-
+      No longer used — illustrations are now generated one at a time. Safe to
+      remove from your configuration.
   call_providers:
     name: Recording archives
     description: >-
