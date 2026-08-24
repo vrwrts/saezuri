@@ -81,4 +81,4 @@ configuration:
     name: Summary interval
     description: Milliseconds between full recounts from BirdNET-Go.
 network:
-  "80/tcp": Direct web access, only needed for an e-ink panel fetching /24h.png
+  "8080/tcp": Direct web access, only needed for an e-ink panel fetching /24h.png

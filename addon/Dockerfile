@@ -4,6 +4,11 @@
 ARG BUILD_FROM=ghcr.io/vrwrts/saezuri:latest
 FROM ${BUILD_FROM}
 
+# The application image is rootless, which the Supervisor's root-owned /data bind
+# mount and run.sh's mkdir into it are not. Before the RUN below, which also needs
+# root, so one instruction covers build and runtime alike.
+USER root
+
 # jq reads options.json. curl (not busybox wget) because the BirdNET-Go probe has
 # to tell an authentication failure apart from an unreachable host, and busybox
 # wget cannot report an HTTP status code.

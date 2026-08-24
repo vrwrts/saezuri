@@ -2,10 +2,14 @@ services:
   saezuri:
     build: .
     image: saezuri:local
-    # 8090, not 8080: BirdNET-Go's own default is 8080, and the two commonly
-    # share a host.
+    # The container listens on 8080 (unprivileged, so it needs no root). The host
+    # port is 8090 rather than 8080 because BirdNET-Go's own default is 8080 and
+    # the two commonly share a host.
     ports:
-      - "8090:80"
+      - "8090:8080"
+    # Runs as uid/gid 1000 by default; override to own the volume contents with
+    # another account. A bind mount must already be owned by whatever you set here.
+    # user: "1000:1000"
     environment:
       # Required: base URL of your BirdNET-Go instance, reachable from inside this
       # container. A LAN IP is simplest; a hostname (incl. one behind a reverse
