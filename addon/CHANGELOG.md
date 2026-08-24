@@ -1,3 +1,26 @@
+# [1.0.0](https://github.com/vrwrts/saezuri/compare/v0.14.2...v1.0.0) (2026-08-24)
+
+
+### Features
+
+* run the container as an unprivileged user ([#45](https://github.com/vrwrts/saezuri/issues/45)) ([a3a46ec](https://github.com/vrwrts/saezuri/commit/a3a46ecd87f6cf55b287d9dda263370955c850c9))
+
+
+### BREAKING CHANGES
+
+* the container now listens on 8080 instead of 80.
+Published
+ports must be remapped, e.g. `-p 8090:8080`. Existing volumes were
+created
+root-owned and are unwritable to the unprivileged container; it refuses
+to
+start and prints the one-off `chown` to run.
+* the add-on's optional direct port is now 8080/tcp, not
+80/tcp. The Supervisor stores the mapping against the old number, so
+anyone
+running an e-ink panel on it must re-open the new port once after
+updating.
+
 ## [0.14.2](https://github.com/vrwrts/saezuri/compare/v0.14.1...v0.14.2) (2026-08-23)
 
 
