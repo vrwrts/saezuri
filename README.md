@@ -230,8 +230,15 @@ How it behaves:
 - **Offline-safe / disable.** A failed fetch is non-fatal (silhouette until art exists). Set
   `ILLUSTRATIONS_REPO=` (empty) to turn downloading off entirely; pin `ILLUSTRATIONS_REF` to a
   release tag instead of `main` for a fixed art set.
+- **Gaps it can't fill are remembered, not retried forever.** A cutout the repo doesn't have (or
+  that generation declined) is logged once and left alone for a while — a week for a repo miss, a
+  day for a generation miss — instead of being re-requested on every refresh. The record lives in
+  `_misses.json` in the illustrations volume; delete it to retry everything immediately.
 - **Self-healing.** Delete a cutout from the volume and the service notices, re-downloads it (or
   regenerates it), and rebuilds the manifest — which is also how you replace art you don't like.
+  This works for a single pose of a pair, and for a bird that hasn't been heard in weeks: every
+  refresh compares what's on disk against what should be there and repairs the difference, at
+  startup as well as while running.
 - **Licensing.** The illustrations (and the generation pipeline the image bundles) are
   **CC-BY-NC-SA-4.0** — non-commercial. See the illustrations repo and *Credits and licensing* below.
 
