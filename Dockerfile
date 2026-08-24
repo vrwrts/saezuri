@@ -24,7 +24,7 @@ RUN mkdir -p /opt/canvas && cd /opt/canvas \
 # We fetch only the pipeline.tar.gz asset (not the whole art repo), so the build
 # stays lean. Bumping PIPELINE_VERSION (a normal app commit) adopts a new pipeline.
 # NOTE: the illustrations repo must have published this release first.
-ARG PIPELINE_VERSION=v1.0.0
+ARG PIPELINE_VERSION=v1.1.0
 RUN apk add --no-cache curl \
     && mkdir -p /build \
     && curl -fSL "https://github.com/vrwrts/saezuri-illustrations/releases/download/${PIPELINE_VERSION}/pipeline.tar.gz" \

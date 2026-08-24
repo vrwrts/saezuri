@@ -66,8 +66,8 @@ annotated copy of every setting.
 | `ILLUSTRATIONS_REF`      | `main`                        | Branch or release tag to pull art from. Pin a tag for a fixed art set.                                                         |
 | `ILLUSTRATIONS_BASE_URL` | derived jsDelivr URL          | Overrides the whole download base URL, and wins over the two above. For testing against a local file server.                   |
 | `GEMINI_API_KEY`         | unset                         | Google AI (Gemini) key. Set it to *also* generate art for species the repo lacks (see below); unset relies on downloads only.   |
-| `GENERATE_MAX_PER_CYCLE` | `4`                           | Cap on species generated per pipeline run.                                                                                     |
-| `GENERATE_SLEEP`         | pipeline default (`6`)        | Seconds between image-API calls, to stay under the Gemini free tier. Read by the vendored pipeline, not by Saezuri — the default lives there. |
+| `GENERATE_SLEEP`         | `6`                           | Seconds between image-API calls, to stay under the Gemini free tier. **The throughput knob**: lower it on a paid tier, raise it if you get throttled, `0` to remove the gap. |
+| `SPECIES_NOTES`          | `_species-notes.json` beside the art | Prompt addenda for species that keep coming out wrong (see below). Layered over the set bundled with the pipeline. |
 
 ### Reference calls
 
@@ -183,25 +183,66 @@ docker run -d -p 8090:8080 \
 ```
 
 The refresh service holds BirdNET-Go's detection SSE stream; the moment a new species is heard it
-first tries the free download, and if the repo doesn't have it, generates a perched + flight cutout
-(via the bundled pipeline), then refreshes the layout manifest the frontend polls. Silhouettes turn
-into real birds on their own within seconds to hours.
+first tries the free download, and if the repo doesn't have it, generates the cutout (via the
+bundled pipeline), then refreshes the layout manifest the frontend polls. Silhouettes turn into
+real birds on their own within seconds to hours.
+
+Art is acquired **one pose at a time**, perched first. A species needs only its perched cutout to
+stop being a silhouette, so that render lands and shows up before the flight pose is even started.
+The free downloads and the paid generation run independently, so a species whose art is already in
+the repo appears immediately rather than queueing behind someone else's render.
 
 Things to know:
 
 - **It uses the paid Gemini image API with _your_ key** — you pay for what it generates.
-  Only detected species not already downloaded are generated (typically a handful). Generation is
-  paced by `GENERATE_SLEEP` (default 6s) to stay under the free tier and capped per cycle by
-  `GENERATE_MAX_PER_CYCLE`.
+  Only detected species the repo doesn't already have are generated (typically a handful).
+  Generation is paced by `GENERATE_SLEEP` (default 6s) to stay under the free tier; that gap is
+  the only throughput control, since the limit here is the API's request rate.
+- **A pose the model declines is left alone for a day** rather than re-attempted every
+  refresh, so a stubborn species can't quietly drain quota. See
+  [Free illustrations](#free-illustrations) for how gaps are remembered.
 - **Persist the art** with the named volume above so container upgrades don't re-spend
   those API calls. The manifest is rebuilt from the volume at startup.
 - **The generator is bundled in every image** — vendored at build time from the
   [saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) pipeline at a pinned
   version (numpy/scipy cutout, no ML model, so the `nginx:alpine` image stays modest).
   `GEMINI_API_KEY` unset simply means the worker never generates; the container is otherwise identical.
+- **A species that keeps coming out wrong** needs a better prompt, not more attempts — see
+  [Species notes](#species-notes).
 - **Licensing.** Generating art locally for your own display is personal use. The style
   derives from the CC-BY-NC-SA lineage (see below) — confirm the obligations before
   publishing generated images.
+
+## Species notes
+
+Sometimes a species comes out wrong no matter how many times you regenerate it — the model's prior
+is simply off, and re-rolling the dice won't fix it. A *note* is a sentence or two appended to that
+species' prompt only:
+
+```json
+{
+  "Turdus merula": "Solid glossy black, no pale markings; bill and eye-ring bright orange-yellow.",
+  "parus-major": "Black crown and throat stripe, bright white cheeks, yellow underparts."
+}
+```
+
+Save it as `_species-notes.json` beside the art (inside the persisted volume, so it survives
+upgrades), or point `SPECIES_NOTES` anywhere you like. A key may be either the scientific name or
+its slug — the slug is what you see in the illustration filenames. Keys beginning with `_` are
+comments.
+
+How it behaves:
+
+- **Edits apply on their own.** When you change a species' note, its art is re-rendered on the next
+  cycle; you don't need to delete anything or restart the container.
+- **It only affects art Saezuri generated.** A cutout downloaded from the illustrations repo is
+  left alone, because that repo is the state of the art and everyone benefits from it being right.
+  If a note fixes a species the repo gets wrong, [contribute it
+  upstream](https://github.com/vrwrts/saezuri-illustrations) rather than keeping the fix local — the
+  pipeline ships its own `species-notes.json` that yours is layered over, and that is the file to
+  send a PR to.
+- **It needs `GEMINI_API_KEY`.** A note is an instruction to the generator; with no key there is
+  nothing to instruct.
 
 ## Free illustrations
 
@@ -233,7 +274,7 @@ How it behaves:
 - **Gaps it can't fill are remembered, not retried forever.** A cutout the repo doesn't have (or
   that generation declined) is logged once and left alone for a while — a week for a repo miss, a
   day for a generation miss — instead of being re-requested on every refresh. The record lives in
-  `_misses.json` in the illustrations volume; delete it to retry everything immediately.
+  `_art-state.json` in the illustrations volume; delete it to retry everything immediately.
 - **Self-healing.** Delete a cutout from the volume and the service notices, re-downloads it (or
   regenerates it), and rebuilds the manifest — which is also how you replace art you don't like.
   This works for a single pose of a pair, and for a bird that hasn't been heard in weeks: every

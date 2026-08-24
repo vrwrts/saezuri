@@ -40,6 +40,35 @@ export_opt() {
     fi
 }
 
+# The generator reads prompt addenda from a JSON file, but a Home Assistant user has
+# no way to edit a file inside the app's own /data. So the option is a list of
+# "key|note" strings — editable in the app's configuration UI, and the same
+# pipe-separated convention the pipeline already uses for "scientific|common" — and
+# this turns it into the file. Split on the FIRST pipe only, since a note may
+# contain one.
+export_species_notes() {
+    opt_present species_notes || return 0
+    _notes_file=/data/species-notes.json
+    jq '[.species_notes[]?
+          | select(type == "string")
+          | (. | index("|")) as $i
+          | select($i != null)
+          | { key:   (.[:$i]   | sub("^\\s+"; "") | sub("\\s+$"; "")),
+              value: (.[$i+1:] | sub("^\\s+"; "") | sub("\\s+$"; "")) }
+          | select(.key != "" and .value != "")
+        ] | from_entries' "$OPTIONS" > "$_notes_file"
+    _count=$(jq 'length' "$_notes_file")
+    if [ "$_count" -gt 0 ]; then
+        export SPECIES_NOTES="$_notes_file"
+        log "species_notes: ${_count} note(s) -> ${_notes_file}"
+    else
+        # Nothing usable: leave SPECIES_NOTES unset so the app falls back to its own
+        # default path, rather than pointing it at an empty file.
+        rm -f "$_notes_file"
+        log "species_notes: no usable entries (expected \"Scientific name|note\")"
+    fi
+}
+
 # FRAME_SHADOW is read as "anything but 0", so a YAML bool has to become 1 or 0;
 # exporting the string "false" would silently enable the shadow.
 export_bool_opt() {
@@ -60,8 +89,8 @@ export_opt ILLUSTRATIONS_REPO illustrations_repo
 export_opt ILLUSTRATIONS_REF illustrations_ref
 export_opt ILLUSTRATIONS_BASE_URL illustrations_base_url
 export_opt GEMINI_API_KEY gemini_api_key
-export_opt GENERATE_MAX_PER_CYCLE generate_max_per_cycle
 export_opt GENERATE_SLEEP generate_sleep
+export_species_notes
 export_opt CALL_PROVIDERS call_providers
 export_opt CALLS_MAX_PER_CYCLE calls_max_per_cycle
 export_opt FRAME_WIDTH frame_width
@@ -174,7 +203,7 @@ log "BIRDNETGO_URL=${BIRDNETGO_URL}"
 log "BIRDNETGO_TOKEN=$(redacted "${BIRDNETGO_TOKEN:-}")"
 log "GEMINI_API_KEY=$(redacted "${GEMINI_API_KEY:-}")"
 for _name in ILLUSTRATIONS_REPO ILLUSTRATIONS_REF ILLUSTRATIONS_BASE_URL \
-             GENERATE_MAX_PER_CYCLE GENERATE_SLEEP CALL_PROVIDERS CALLS_MAX_PER_CYCLE \
+             GENERATE_SLEEP SPECIES_NOTES CALL_PROVIDERS CALLS_MAX_PER_CYCLE \
              FRAME_WIDTH FRAME_HEIGHT FRAME_BG FRAME_SHADOW FRAME_WINDOWS \
              SPECIES_DICT_LOCALES PUBLISH_DEBOUNCE_MS AGING_INTERVAL_MS \
              SUMMARY_INTERVAL_MS FRAME_HTML_DIR CACHE_DIR; do

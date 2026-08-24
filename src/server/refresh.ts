@@ -37,6 +37,9 @@ const CALL_PROVIDER_FACTORIES: Record<CallProviderName, () => CallProvider> = {
 const ASSET_HEAL_DEBOUNCE_MS = 2_000
 const ASSET_WATCH_REARM_MS = 1_000
 
+// Trailing window for republishing after art lands. See scheduleArtPublish.
+const ART_PUBLISH_DEBOUNCE_MS = 3_000
+
 // Resolve a comma-separated env override to the subset of `all` it names (in
 // `all`'s order). Unknown codes are dropped; an empty or all-unknown list falls
 // back to the full set.
@@ -71,7 +74,8 @@ interface Config {
   assetsDir: string
   callsDir: string
   cacheDir: string
-  maxPerCycle: number
+  notesPaths: string[]
+  generateGapMs: number
   callProviders: CallProviderName[]
   callsMaxPerCycle: number
   frameWidth: number
@@ -87,6 +91,16 @@ function intEnv(name: string, def: number): number {
   if (!raw) return def
   const n = Number(raw)
   return Number.isFinite(n) && n > 0 ? n : def
+}
+
+/** Read a duration given in seconds (possibly fractional) as milliseconds. Unlike
+ *  intEnv, zero is meaningful here — it is how an operator on a paid tier turns the
+ *  inter-call gap off entirely. */
+function secondsEnvMs(name: string, defSeconds: number): number {
+  const raw = (process.env[name] ?? '').trim()
+  if (!raw) return defSeconds * 1000
+  const n = Number(raw)
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 1000) : defSeconds * 1000
 }
 
 function readConfig(): Config {
@@ -106,6 +120,18 @@ function readConfig(): Config {
     (illustrationsRepo
       ? `https://cdn.jsdelivr.net/gh/${illustrationsRepo}@${illustrationsRef}`
       : '')
+  const workerScript = (process.env.WORKER_SCRIPT ?? '/opt/saezuri/pipeline/worker.py').trim()
+  const assetsDir = join(htmlDir, 'assets', 'illustrations')
+  // Prompt addenda, layered: the pipeline's own species-notes.json carries what the
+  // community has learned, and an operator's file refines it per key. The operator's
+  // has to sit on the writable volume — beside the art is where they will look for it.
+  // Both layers are passed to the pipeline verbatim; it prepends the bundled one
+  // itself, and merging a layer twice is a no-op, so the duplicate is harmless and
+  // keeps this list identical to the one the service hashes for note changes.
+  const notesPaths = [
+    join(workerScript, '..', 'species-notes.json'),
+    (process.env.SPECIES_NOTES ?? '').trim() || join(assetsDir, '_species-notes.json'),
+  ]
   return {
     baseUrl,
     token: (process.env.BIRDNETGO_TOKEN ?? '').trim() || undefined,
@@ -116,11 +142,15 @@ function readConfig(): Config {
     geminiEnabled: Boolean((process.env.GEMINI_API_KEY ?? '').trim()),
     downloadBaseUrl,
     pythonBin: (process.env.PYTHON_BIN ?? 'python3').trim(),
-    workerScript: (process.env.WORKER_SCRIPT ?? '/opt/saezuri/pipeline/worker.py').trim(),
-    assetsDir: join(htmlDir, 'assets', 'illustrations'),
+    workerScript,
+    assetsDir,
     callsDir: join(htmlDir, 'assets', 'calls'),
     cacheDir: (process.env.CACHE_DIR ?? '/var/cache/saezuri').trim(),
-    maxPerCycle: intEnv('GENERATE_MAX_PER_CYCLE', 4),
+    notesPaths,
+    // The generate lane asks the pipeline for one pose per invocation, so the
+    // pipeline's own inter-call sleep never fires and this is the only thing keeping
+    // us under the image API's rate limit.
+    generateGapMs: secondsEnvMs('GENERATE_SLEEP', 6),
     // Unlike the other CSV settings, an explicitly empty CALL_PROVIDERS means
     // "off" rather than "all" — it is the way to stop the service reaching out
     // to third-party archives at all.
@@ -146,6 +176,7 @@ class Refresher {
   private sciBySlug: ReadonlyMap<string, { sci: string; com: string }> = new Map()
   private lastSummaryMs = 0
   private pendingPublish?: ReturnType<typeof setTimeout>
+  private pendingArtPublish?: ReturnType<typeof setTimeout>
   private generator: Generator
   private callLibrary: CallLibrary
   private lastFrameSig = new Map<WindowSegment, string>()
@@ -161,11 +192,16 @@ class Refresher {
       workerScript: cfg.workerScript,
       assetsDir: cfg.assetsDir,
       cacheDir: cfg.cacheDir,
-      maxPerCycle: cfg.maxPerCycle,
       enabled: cfg.geminiEnabled,
       downloadBaseUrl: cfg.downloadBaseUrl,
-      // Reload the manifest + republish so the freshly-acquired art appears.
-      onGenerated: () => this.safe('publish', () => this.publish()),
+      notesPaths: cfg.notesPaths,
+      generateGapMs: cfg.generateGapMs,
+      // Reload the manifest + republish so the freshly-acquired art appears. Debounced
+      // rather than immediate: acquisition is now one pose at a time, and a publish
+      // rebuilds every mask and re-renders every frame, so a fast run of poses must
+      // coalesce into one rebuild instead of paying that per pose.
+      onGenerated: () => this.scheduleArtPublish(),
+      isDescribed: (key) => key in this.manifest.masks,
     })
     this.callLibrary = new CallLibrary({
       callsDir: cfg.callsDir,
@@ -315,6 +351,18 @@ class Refresher {
     }
   }
 
+  /** Coalesce a run of acquired poses into one trailing publish. Separate from
+   *  schedulePublish because art lands on a much faster cadence than detections and
+   *  wants a much shorter window: long enough that a burst of repo downloads rebuilds
+   *  the manifest once, short enough that a slow render still shows up promptly. */
+  private scheduleArtPublish(): void {
+    if (this.pendingArtPublish) return
+    this.pendingArtPublish = setTimeout(() => {
+      this.pendingArtPublish = undefined
+      void this.safe('publish', () => this.publish())
+    }, ART_PUBLISH_DEBOUNCE_MS)
+  }
+
   /** Coalesce a burst of detections into one trailing publish per debounce
    *  window, so a dawn chorus doesn't rewrite the snapshot on every event. */
   private schedulePublish(): void {
@@ -334,7 +382,11 @@ class Refresher {
     log(
       `starting; publishing to ${this.cfg.htmlDir} (art source: ${artSource}, call source: ${callSource})`,
     )
-    await this.safe('rebuild', () => this.generator.rebuildManifest())
+    // Repair before the first publish: an older pipeline wrote the magenta render under
+    // its real filename and matted it in a second pass, so a run killed in between left
+    // a rectangle nothing else would ever revisit. Rebuilds the manifest as well, so it
+    // stands in for the plain rebuild — and has to run before the count below reads it.
+    await this.safe('repair', () => this.generator.repairAndRebuildManifest())
     await this.safe('unpaired', async () => {
       const unpaired = unpairedSlugs(await loadManifest(this.cfg.htmlDir))
       if (unpaired.length > 0) log(`${unpaired.length} half-illustrated species on disk`)
