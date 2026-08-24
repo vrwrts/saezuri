@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/vrwrts/saezuri/compare/v1.0.0...v1.1.0) (2026-08-24)
+
+
+### Features
+
+* acquire art one pose at a time, in two lanes ([#46](https://github.com/vrwrts/saezuri/issues/46)) ([fc5ae2a](https://github.com/vrwrts/saezuri/commit/fc5ae2a7084c19d08a9d0482f1dab92026a3630b))
+
 # [1.0.0](https://github.com/vrwrts/saezuri/compare/v0.14.2...v1.0.0) (2026-08-24)
 
 
