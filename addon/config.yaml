@@ -11,6 +11,7 @@ startup: services
 boot: auto
 ingress: true
 ingress_port: 8099
+panel_admin: false
 panel_icon: mdi:bird
 panel_title: Saezuri
 # Off by default; ingress covers the collage itself. An e-ink panel fetching
