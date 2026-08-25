@@ -1,6 +1,6 @@
 name: Saezuri
 slug: saezuri
-version: 1.1.0
+version: 1.1.1
 description: Live bird collage for BirdNET-Go, in the AvianVisitors kachō-e style
 url: https://github.com/vrwrts/saezuri
 image: ghcr.io/vrwrts/saezuri-addon

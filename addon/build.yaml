@@ -6,5 +6,5 @@
 # Kept in step with config.yaml's version by semantic-release, so a wrapper is
 # never built against a different release than it claims to be.
 build_from:
-  amd64: ghcr.io/vrwrts/saezuri:1.1.0
-  aarch64: ghcr.io/vrwrts/saezuri:1.1.0
+  amd64: ghcr.io/vrwrts/saezuri:1.1.1
+  aarch64: ghcr.io/vrwrts/saezuri:1.1.1

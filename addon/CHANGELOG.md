@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/vrwrts/saezuri/compare/v1.1.0...v1.1.1) (2026-08-25)
+
+
+### Bug Fixes
+
+* allow home assistant app access for non admin users ([#47](https://github.com/vrwrts/saezuri/issues/47)) ([8dfe995](https://github.com/vrwrts/saezuri/commit/8dfe9956a1e769411bb604d669a574713fe806d8))
+
 # [1.1.0](https://github.com/vrwrts/saezuri/compare/v1.0.0...v1.1.0) (2026-08-24)
 
 
