@@ -21,17 +21,22 @@ services:
       # Optional: on-demand illustration generation (see .env.example). Unset =>
       # display-only: the refresh service still publishes, it just skips
       # generation, so new species stay hidden until art exists.
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      # Seconds between image-API calls (default 6, the Gemini free-tier pace). The
-      # throughput knob: art is acquired one pose at a time and this gap is what keeps
-      # us under the request-rate limit.
+      GENERATE_API_KEY: ${GENERATE_API_KEY:-}
+      # Any OpenAI-compatible chat/completions endpoint; default OpenRouter. Point it
+      # at a server on your own network to generate art locally.
+      GENERATE_API_URL: ${GENERATE_API_URL:-}
+      # Which model draws the birds; default google/gemini-2.5-flash-image, the one
+      # the style was tuned against.
+      GENERATE_MODEL: ${GENERATE_MODEL:-}
+      # Seconds between model calls (default 6). The throughput knob: art is acquired
+      # one pose at a time and this gap is what keeps us under the request-rate limit.
       GENERATE_SLEEP: ${GENERATE_SLEEP:-}
       # Prompt addenda for species that keep coming out wrong. Defaults to
       # _species-notes.json beside the art, i.e. inside the persisted volume.
       SPECIES_NOTES: ${SPECIES_NOTES:-}
       # --- Free pre-made illustrations (see .env.example) ---
       # Per detected species, the refresh service downloads a ready-made cutout from
-      # the saezuri-illustrations repo (via jsDelivr) — no Gemini key needed. Defaults
+      # the saezuri-illustrations repo (via jsDelivr) — no API key needed. Defaults
       # on; set ILLUSTRATIONS_REPO empty to disable. Composes with on-demand generation.
       ILLUSTRATIONS_REPO: ${ILLUSTRATIONS_REPO-vrwrts/saezuri-illustrations}
       ILLUSTRATIONS_REF: ${ILLUSTRATIONS_REF:-main}
@@ -46,7 +51,7 @@ services:
       FRAME_WIDTH: ${FRAME_WIDTH:-800}
       FRAME_HEIGHT: ${FRAME_HEIGHT:-480}
       FRAME_BG: ${FRAME_BG:-#fcfcfb}
-    # Persist generated illustrations across upgrades so the Gemini calls aren't
+    # Persist generated illustrations across upgrades so the paid calls aren't
     # re-spent. The layout manifest is rebuilt from them at startup. Harmless to
     # keep even if you don't generate art (it just holds the fallback silhouette).
     # (snapshot.json + /<window>.png frames live outside the volume — regenerated at start.)

@@ -153,8 +153,12 @@ Where things live, so a change lands in the right place fast.
 - **Art acquisition:** `src/server/generate.ts` (`Generator`). The unit of work is a **pose**,
   not a species: a perched-only species already renders (`resolveArt`), so perched is what
   lifts it off the fallback silhouette and flight only changes the 15% that roll for it.
-  Two independent lanes — repo download (concurrent, cheap) and Gemini generation (serial) —
-  so free art never queues behind a paid render. Precedence is fixed and deliberate: file on
+  Two independent lanes — repo download (concurrent, cheap) and model generation (serial) —
+  so free art never queues behind a paid render. The model is not baked in: the vendored
+  pipeline calls an OpenAI-compatible `chat/completions` endpoint, so `GENERATE_API_URL` /
+  `GENERATE_MODEL` reach OpenRouter by default and a local server just as well. The app itself
+  never calls a model — it reads `GENERATE_API_KEY` only as a feature gate and passes the
+  environment through to the pipeline. Precedence is fixed and deliberate: file on
   disk > illustrations repo > local generation > fallback silhouette. The repo is the state of
   the art, so `species-notes.json` (`notes.ts`) tunes the *generation* fallback only and never
   replaces downloaded art; a changed note re-renders a pose only when `source: 'generated'`.

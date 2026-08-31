@@ -67,7 +67,7 @@ interface Config {
   agingIntervalMs: number
   summaryIntervalMs: number
   publishDebounceMs: number
-  geminiEnabled: boolean
+  generateEnabled: boolean
   downloadBaseUrl: string
   pythonBin: string
   workerScript: string
@@ -139,7 +139,7 @@ function readConfig(): Config {
     agingIntervalMs: intEnv('AGING_INTERVAL_MS', 120_000),
     summaryIntervalMs: intEnv('SUMMARY_INTERVAL_MS', 1_800_000),
     publishDebounceMs: intEnv('PUBLISH_DEBOUNCE_MS', 20_000),
-    geminiEnabled: Boolean((process.env.GEMINI_API_KEY ?? '').trim()),
+    generateEnabled: Boolean((process.env.GENERATE_API_KEY ?? '').trim()),
     downloadBaseUrl,
     pythonBin: (process.env.PYTHON_BIN ?? 'python3').trim(),
     workerScript,
@@ -149,7 +149,7 @@ function readConfig(): Config {
     notesPaths,
     // The generate lane asks the pipeline for one pose per invocation, so the
     // pipeline's own inter-call sleep never fires and this is the only thing keeping
-    // us under the image API's rate limit.
+    // us under the model provider's rate limit.
     generateGapMs: secondsEnvMs('GENERATE_SLEEP', 6),
     // Unlike the other CSV settings, an explicitly empty CALL_PROVIDERS means
     // "off" rather than "all" — it is the way to stop the service reaching out
@@ -192,7 +192,7 @@ class Refresher {
       workerScript: cfg.workerScript,
       assetsDir: cfg.assetsDir,
       cacheDir: cfg.cacheDir,
-      enabled: cfg.geminiEnabled,
+      enabled: cfg.generateEnabled,
       downloadBaseUrl: cfg.downloadBaseUrl,
       notesPaths: cfg.notesPaths,
       generateGapMs: cfg.generateGapMs,
@@ -375,13 +375,24 @@ class Refresher {
 
   async run(): Promise<void> {
     const artSource =
-      [this.cfg.downloadBaseUrl && 'download', this.cfg.geminiEnabled && 'generate']
+      [this.cfg.downloadBaseUrl && 'download', this.cfg.generateEnabled && 'generate']
         .filter(Boolean)
         .join('+') || 'none'
     const callSource = this.cfg.callProviders.join('+') || 'none'
     log(
       `starting; publishing to ${this.cfg.htmlDir} (art source: ${artSource}, call source: ${callSource})`,
     )
+    // An upgraded deployment that still only sets GEMINI_API_KEY would otherwise
+    // just stop generating, silently: the gate above is key *presence*, and the
+    // old name is no longer a key we recognise.
+    if (!this.cfg.generateEnabled && (process.env.GEMINI_API_KEY ?? '').trim()) {
+      log(
+        'GEMINI_API_KEY is set but no longer read, so on-demand generation is OFF. ' +
+          'Generation now goes through an OpenAI-compatible endpoint: set GENERATE_API_KEY, ' +
+          'and note a Google AI key will not authenticate against the default endpoint ' +
+          '(OpenRouter). GENERATE_API_URL and GENERATE_MODEL choose the endpoint and model.',
+      )
+    }
     // Repair before the first publish: an older pipeline wrote the magenta render under
     // its real filename and matted it in a second pass, so a run killed in between left
     // a rectangle nothing else would ever revisit. Rebuilds the manifest as well, so it

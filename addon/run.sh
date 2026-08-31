@@ -88,7 +88,9 @@ export_opt BIRDNETGO_TOKEN birdnetgo_token
 export_opt ILLUSTRATIONS_REPO illustrations_repo
 export_opt ILLUSTRATIONS_REF illustrations_ref
 export_opt ILLUSTRATIONS_BASE_URL illustrations_base_url
-export_opt GEMINI_API_KEY gemini_api_key
+export_opt GENERATE_API_KEY generate_api_key
+export_opt GENERATE_API_URL generate_api_url
+export_opt GENERATE_MODEL generate_model
 export_opt GENERATE_SLEEP generate_sleep
 export_species_notes
 export_opt CALL_PROVIDERS call_providers
@@ -201,8 +203,9 @@ redacted() { [ -n "${1:-}" ] && echo '<set>' || echo '<unset>'; }
 
 log "BIRDNETGO_URL=${BIRDNETGO_URL}"
 log "BIRDNETGO_TOKEN=$(redacted "${BIRDNETGO_TOKEN:-}")"
-log "GEMINI_API_KEY=$(redacted "${GEMINI_API_KEY:-}")"
+log "GENERATE_API_KEY=$(redacted "${GENERATE_API_KEY:-}")"
 for _name in ILLUSTRATIONS_REPO ILLUSTRATIONS_REF ILLUSTRATIONS_BASE_URL \
+             GENERATE_API_URL GENERATE_MODEL \
              GENERATE_SLEEP SPECIES_NOTES CALL_PROVIDERS CALLS_MAX_PER_CYCLE \
              FRAME_WIDTH FRAME_HEIGHT FRAME_BG FRAME_SHADOW FRAME_WINDOWS \
              SPECIES_DICT_LOCALES PUBLISH_DEBOUNCE_MS AGING_INTERVAL_MS \

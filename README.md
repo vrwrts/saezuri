@@ -65,8 +65,10 @@ annotated copy of every setting.
 | `ILLUSTRATIONS_REPO`     | `vrwrts/saezuri-illustrations` | Source repo for the free pre-made cutouts, downloaded per detected species. Set it **empty** to turn downloading off entirely. |
 | `ILLUSTRATIONS_REF`      | `main`                        | Branch or release tag to pull art from. Pin a tag for a fixed art set.                                                         |
 | `ILLUSTRATIONS_BASE_URL` | derived jsDelivr URL          | Overrides the whole download base URL, and wins over the two above. For testing against a local file server.                   |
-| `GEMINI_API_KEY`         | unset                         | Google AI (Gemini) key. Set it to *also* generate art for species the repo lacks (see below); unset relies on downloads only.   |
-| `GENERATE_SLEEP`         | `6`                           | Seconds between image-API calls, to stay under the Gemini free tier. **The throughput knob**: lower it on a paid tier, raise it if you get throttled, `0` to remove the gap. |
+| `GENERATE_API_KEY`       | unset                         | API key for the image model. Set it to *also* generate art for species the repo lacks (see below); unset relies on downloads only. |
+| `GENERATE_API_URL`       | `https://openrouter.ai/api/v1` | Any OpenAI-compatible `chat/completions` base URL — including one on your own network, which is how you generate art locally.  |
+| `GENERATE_MODEL`         | `google/gemini-2.5-flash-image` | Which model draws the birds. The default is the one the style was tuned against; see the caveat below before changing it.     |
+| `GENERATE_SLEEP`         | `6`                           | Seconds between model calls, to stay under your provider's rate limit. **The throughput knob**: lower it if your plan allows, raise it if you get throttled, `0` to remove the gap. |
 | `SPECIES_NOTES`          | `_species-notes.json` beside the art | Prompt addenda for species that keep coming out wrong (see below). Layered over the set bundled with the pipeline. |
 
 ### Reference calls
@@ -172,12 +174,13 @@ rewrites `/etc/nginx/nginx.conf`, which an unprivileged container cannot do.
 ## On-demand generation (optional)
 
 The free downloads above only cover species someone has contributed art for. To *also* fill in
-anything the repo doesn't have — generated fresh in the same kachō-e style — set `GEMINI_API_KEY`:
+anything the repo doesn't have — generated fresh in the same kachō-e style — set
+`GENERATE_API_KEY`:
 
 ```bash
 docker run -d -p 8090:8080 \
   -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
-  -e GEMINI_API_KEY=<your-google-ai-key> \
+  -e GENERATE_API_KEY=<your-openrouter-key> \
   -v saezuri-illustrations:/data/illustrations \
   ghcr.io/vrwrts/saezuri:latest
 ```
@@ -192,12 +195,31 @@ stop being a silhouette, so that render lands and shows up before the flight pos
 The free downloads and the paid generation run independently, so a species whose art is already in
 the repo appears immediately rather than queueing behind someone else's render.
 
+### Choosing a model
+
+Saezuri talks to an OpenAI-compatible `chat/completions` endpoint, so you are not tied to one
+vendor. `GENERATE_API_URL` defaults to [OpenRouter](https://openrouter.ai), which fronts most
+image-output models behind one account, and `GENERATE_MODEL` picks one from it. Point
+`GENERATE_API_URL` at a local server instead and generation never leaves your network:
+
+```bash
+-e GENERATE_API_URL=http://192.168.1.10:1234/v1 \
+-e GENERATE_MODEL=<the-model-your-server-serves> \
+-e GENERATE_API_KEY=<whatever-your-server-accepts>
+```
+
+One real constraint on the model: **it has to honour the magenta background.** No image model
+emits transparency, so the prompt asks for the bird on a flat `#FF00FF` ground and Saezuri cuts
+that away afterwards. A model that ignores the instruction gives you a magenta rectangle rather
+than a bird. `google/gemini-2.5-flash-image` is the default because the style was tuned against
+it; anything else is worth checking on a species or two before you leave it running.
+
 Things to know:
 
-- **It uses the paid Gemini image API with _your_ key** — you pay for what it generates.
-  Only detected species the repo doesn't already have are generated (typically a handful).
-  Generation is paced by `GENERATE_SLEEP` (default 6s) to stay under the free tier; that gap is
-  the only throughput control, since the limit here is the API's request rate.
+- **You pay for what it generates, with _your_ key.** Only detected species the repo doesn't
+  already have are generated (typically a handful). Generation is paced by `GENERATE_SLEEP`
+  (default 6s); that gap is the only throughput control, since the limit here is the provider's
+  request rate.
 - **A pose the model declines is left alone for a day** rather than re-attempted every
   refresh, so a stubborn species can't quietly drain quota. See
   [Free illustrations](#free-illustrations) for how gaps are remembered.
@@ -206,7 +228,7 @@ Things to know:
 - **The generator is bundled in every image** — vendored at build time from the
   [saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) pipeline at a pinned
   version (numpy/scipy cutout, no ML model, so the `nginx:alpine` image stays modest).
-  `GEMINI_API_KEY` unset simply means the worker never generates; the container is otherwise identical.
+  `GENERATE_API_KEY` unset simply means the worker never generates; the container is otherwise identical.
 - **A species that keeps coming out wrong** needs a better prompt, not more attempts — see
   [Species notes](#species-notes).
 - **Licensing.** Generating art locally for your own display is personal use. The style
@@ -241,7 +263,7 @@ How it behaves:
   upstream](https://github.com/vrwrts/saezuri-illustrations) rather than keeping the fix local — the
   pipeline ships its own `species-notes.json` that yours is layered over, and that is the file to
   send a PR to.
-- **It needs `GEMINI_API_KEY`.** A note is an instruction to the generator; with no key there is
+- **It needs `GENERATE_API_KEY`.** A note is an instruction to the generator; with no key there is
   nothing to instruct.
 
 ## Free illustrations
@@ -264,8 +286,8 @@ How it behaves:
   it is first heard and kept in the volume, so a restart re-downloads nothing. A species only
   appears once it has both. A fresh display fills in over the first hours
   as birds are heard (not all at t=0).
-- **Composes with on-demand generation.** Download is tried first (free); if `GEMINI_API_KEY`
-  is set, a species the repo *doesn't* have still falls back to Gemini generation.
+- **Composes with on-demand generation.** Download is tried first (free); if `GENERATE_API_KEY`
+  is set, a species the repo *doesn't* have still falls back to local generation.
 - **Requires `BIRDNETGO_URL`** — the refresh service (which fetches art and builds the manifest)
   only runs when it's set.
 - **Offline-safe / disable.** A failed fetch is non-fatal (silhouette until art exists). Set
