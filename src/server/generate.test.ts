@@ -134,7 +134,7 @@ afterEach(async () => {
 })
 
 describe('Generator art acquisition', () => {
-  it('downloads a complete pair and rebuilds the manifest (no Gemini key)', async () => {
+  it('downloads a complete pair and rebuilds the manifest (no generation key)', async () => {
     stubFetch(['turdus-merula', 'turdus-merula-2'])
     const g = makeGen({ enabled: false, downloadBaseUrl: BASE })
     g.enqueue('Turdus merula', 'Eurasian Blackbird')
@@ -143,7 +143,7 @@ describe('Generator art acquisition', () => {
     const files = await readdir(assetsDir)
     expect(files).toContain('turdus-merula.png')
     expect(files).toContain('turdus-merula-2.png')
-    // Downloaded art still needs its silhouette built, but never Gemini generation.
+    // Downloaded art still needs its silhouette built, but never local generation.
     expect(spawnCalls.some((a) => a.includes('--rebuild'))).toBe(true)
     expect(generateCalls()).toHaveLength(0)
     expect(onGenerated).toHaveBeenCalled()
@@ -179,7 +179,7 @@ describe('Generator art acquisition', () => {
     }
   })
 
-  it('is a no-op for an absent species with no Gemini key', async () => {
+  it('is a no-op for an absent species with no generation key', async () => {
     stubFetch([])
     const g = makeGen({ enabled: false, downloadBaseUrl: BASE })
     g.enqueue('Turdus merula', 'Eurasian Blackbird')
