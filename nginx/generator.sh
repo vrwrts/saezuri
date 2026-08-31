@@ -6,7 +6,7 @@
 # the snapshot + e-ink frames nginx serves, generating any missing art on demand.
 #
 # Gated on BIRDNETGO_URL (already required by 40-saezuri.sh) — NOT on
-# GEMINI_API_KEY: a display-only container (no key) still publishes from existing
+# GENERATE_API_KEY: a display-only container (no key) still publishes from existing
 # art; only the art-generation step inside the service is key-gated.
 set -eu
 
