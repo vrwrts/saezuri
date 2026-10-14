@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import type { CallManifest } from '../domain/calls.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
 import type { Species } from '../domain/species.ts'
@@ -10,10 +10,14 @@ import { Collage } from './Collage.tsx'
 // has measured a viewport — so report a fixed one immediately on observe.
 const VIEWPORT = { width: 900, height: 650 }
 
+/** Reports a new container size to the most recently mounted collage. */
+let resizeTo: (size: { width: number; height: number }) => void = () => {}
+
 beforeAll(() => {
   class StubResizeObserver {
     constructor(private cb: ResizeObserverCallback) {}
     observe() {
+      resizeTo = (size) => this.cb([{ contentRect: size } as ResizeObserverEntry], this as never)
       this.cb([{ contentRect: VIEWPORT } as ResizeObserverEntry], this as never)
     }
     unobserve() {}
@@ -162,5 +166,31 @@ describe('Collage selection', () => {
     fireEvent.click(container, tileCenter(container, 1))
     expect(screen.getByRole('complementary')).toHaveAccessibleName('Great Tit')
     expect(screen.queryByRole('button', { name: /play/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('Collage pinch-zoom', () => {
+  const visual = Object.assign(new EventTarget(), { scale: 1 })
+
+  beforeAll(() => vi.stubGlobal('visualViewport', visual))
+  afterEach(() => {
+    visual.scale = 1
+  })
+
+  const firstTileLeft = (container: HTMLElement) =>
+    container.querySelector<HTMLElement>('.gtile')?.style.left
+
+  it('holds the layout while zoomed in and applies the new size on zoom-out', async () => {
+    const { container } = await renderCollage()
+    const before = firstTileLeft(container)
+
+    visual.scale = 2
+    resizeTo({ width: 400, height: 800 })
+    await new Promise((r) => setTimeout(r, 300))
+    expect(firstTileLeft(container)).toBe(before)
+
+    visual.scale = 1
+    visual.dispatchEvent(new Event('resize'))
+    await waitFor(() => expect(firstTileLeft(container)).not.toBe(before))
   })
 })

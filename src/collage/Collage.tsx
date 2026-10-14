@@ -41,6 +41,10 @@ interface Props {
 
 const RESIZE_DEBOUNCE_MS = 120
 
+/** `visualViewport.scale` above this means the user has pinch-zoomed in. A hair
+ *  over 1 so float noise at rest never reads as a zoom. */
+const PINCH_ZOOM_SCALE = 1.01
+
 /** Fallback tile aspect ratio when a species has no manifest dims. */
 const DEFAULT_ASPECT_RATIO = 1.4
 
@@ -74,22 +78,42 @@ export function Collage({
   const poseRef = useRef<Map<string, boolean>>(new Map())
 
   // Measure the container; debounce so a drag-resize doesn't thrash the packer.
+  // While the user is pinch-zoomed in, hold the layout: a mobile browser can show
+  // or hide its toolbar mid-pinch, resizing the stage, and re-packing then shuffles
+  // the very bird they are zooming in on. The latest size lands on zoom-out.
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
+    const visual = window.visualViewport
     let timer: ReturnType<typeof setTimeout> | undefined
+    let pending: Viewport | null = null
+    let measured = false
+    const commit = () => {
+      if (!pending) return
+      // The first measurement always lands, or a page opened zoomed-in stays empty.
+      if (measured && (visual?.scale ?? 1) > PINCH_ZOOM_SCALE) return
+      setVp(pending)
+      pending = null
+      measured = true
+    }
+    const schedule = () => {
+      clearTimeout(timer)
+      timer = setTimeout(commit, RESIZE_DEBOUNCE_MS)
+    }
     const ro = new ResizeObserver((entries) => {
       const rect = entries[0].contentRect
-      clearTimeout(timer)
-      timer = setTimeout(
-        () => setVp({ width: rect.width, height: rect.height }),
-        RESIZE_DEBOUNCE_MS,
-      )
+      pending = { width: rect.width, height: rect.height }
+      schedule()
     })
+    const onVisualResize = () => {
+      if (pending) schedule()
+    }
     ro.observe(el)
+    visual?.addEventListener('resize', onVisualResize)
     return () => {
       clearTimeout(timer)
       ro.disconnect()
+      visual?.removeEventListener('resize', onVisualResize)
     }
   }, [])
 
