@@ -205,7 +205,7 @@ Things to know:
   those API calls. The manifest is rebuilt from the volume at startup.
 - **The generator is bundled in every image** — vendored at build time from the
   [saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) pipeline at a pinned
-  version (numpy/scipy cutout, no ML model, so the `nginx:alpine` image stays modest).
+  version (numpy/scipy cutout, no ML model, so the image stays modest).
   `GEMINI_API_KEY` unset simply means the worker never generates; the container is otherwise identical.
 - **A species that keeps coming out wrong** needs a better prompt, not more attempts — see
   [Species notes](#species-notes).
