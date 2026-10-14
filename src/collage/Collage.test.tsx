@@ -194,3 +194,65 @@ describe('Collage pinch-zoom', () => {
     await waitFor(() => expect(firstTileLeft(container)).not.toBe(before))
   })
 })
+
+describe('Collage load-in', () => {
+  async function renderAnimated(onReadyChange: (ready: boolean) => void, blossomKey = '24H') {
+    const view = render(
+      <Collage
+        species={SPECIES}
+        manifest={MANIFEST}
+        blossomKey={blossomKey}
+        onReadyChange={onReadyChange}
+      />,
+    )
+    const container = view.container.querySelector('.gcollage') as HTMLDivElement
+    await waitFor(() => expect(container.querySelector('.gtile')).not.toBeNull())
+    return { ...view, container }
+  }
+
+  it('holds each bird back until its image has loaded', async () => {
+    const { container } = await renderAnimated(() => {})
+    const [first, second] = container.querySelectorAll('.gtile')
+    expect(first).toHaveClass('pending')
+    expect(first).not.toHaveClass('entering')
+
+    fireEvent.load(first.querySelector('img') as HTMLImageElement)
+    expect(first).toHaveClass('entering')
+    expect(second).toHaveClass('pending')
+  })
+
+  it('reports ready once the first bird has loaded, and re-arms on a window switch', async () => {
+    const onReadyChange = vi.fn()
+    const { container, rerender } = await renderAnimated(onReadyChange)
+    expect(onReadyChange).toHaveBeenLastCalledWith(false)
+
+    fireEvent.load(container.querySelector('.gtile img') as HTMLImageElement)
+    expect(onReadyChange).toHaveBeenLastCalledWith(true)
+
+    rerender(
+      <Collage
+        species={SPECIES}
+        manifest={MANIFEST}
+        blossomKey="1H"
+        onReadyChange={onReadyChange}
+      />,
+    )
+    expect(onReadyChange).toHaveBeenLastCalledWith(false)
+  })
+
+  it('is ready straight away when the window is empty', () => {
+    const onReadyChange = vi.fn()
+    render(<Collage species={[]} manifest={MANIFEST} onReadyChange={onReadyChange} />)
+    expect(onReadyChange).toHaveBeenLastCalledWith(true)
+  })
+
+  it('stops waiting when even the fallback image fails', async () => {
+    const onReadyChange = vi.fn()
+    const { container } = await renderAnimated(onReadyChange)
+    const img = container.querySelector('.gtile img') as HTMLImageElement
+    fireEvent.error(img)
+    expect(onReadyChange).toHaveBeenLastCalledWith(false)
+    fireEvent.error(img)
+    expect(onReadyChange).toHaveBeenLastCalledWith(true)
+  })
+})

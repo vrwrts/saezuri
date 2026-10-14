@@ -37,6 +37,10 @@ interface Props {
   blossomKey?: string
   /** Rendered when there are no birds in the window. */
   emptyState?: ReactNode
+  /** Reports whether the current window has anything on screen yet: an empty
+   *  state, or at least one bird whose image has loaded. Re-arms on a window
+   *  switch, since the new window's art may not be cached. */
+  onReadyChange?: (ready: boolean) => void
 }
 
 const RESIZE_DEBOUNCE_MS = 120
@@ -59,6 +63,7 @@ export function Collage({
   animate = true,
   blossomKey = '',
   emptyState,
+  onReadyChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [vp, setVp] = useState<Viewport>({ width: 0, height: 0 })
@@ -76,6 +81,12 @@ export function Collage({
   // sci -> prefersFlight, persisted across polls so a bird keeps its pose until
   // it leaves the window (then it re-rolls on return), matching AvianVisitors.
   const poseRef = useRef<Map<string, boolean>>(new Map())
+  // The window (`blossomKey`) whose first bird has loaded.
+  const [loadedWindow, setLoadedWindow] = useState<string | null>(null)
+  const ready = species.length === 0 || loadedWindow === blossomKey
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reports on a change of readiness only, not of the callback's identity
+  useEffect(() => onReadyChange?.(ready), [ready])
 
   // Measure the container; debounce so a drag-resize doesn't thrash the packer.
   // While the user is pinch-zoomed in, hold the layout: a mobile browser can show
@@ -234,6 +245,7 @@ export function Collage({
                 tile={t}
                 animate={animate}
                 delayMs={Math.min(MAX_BLOOM_DELAY_MS, dist * BLOOM_DELAY_PER_PX)}
+                onLoaded={() => setLoadedWindow(blossomKey)}
                 fallbackUrl={fallbackUrl}
                 hovered={t.sci === hoveredSci}
                 selected={t.sci === selectedSci}
