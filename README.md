@@ -283,8 +283,31 @@ How it behaves:
 - **Licensing.** The illustrations (and the generation pipeline the image bundles) are
   **CC-BY-NC-SA-4.0** — non-commercial. See the illustrations repo and *Credits and licensing* below.
 
-Want to contribute art for more species? Generate them with your key and open a PR — see the
-[saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) repo.
+### Contributing generated art
+
+Art your key generated stays on your deployment until you contribute it. Every other
+deployment keeps showing those birds as silhouettes. Opening a PR against
+[saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) takes a few steps,
+and an AI agent can do them for you:
+
+```bash
+git clone https://github.com/<you>/saezuri-illustrations   # your fork
+docker cp <container>:/data/illustrations/. /tmp/saezuri-art   # or your bind-mounted folder
+cp /tmp/saezuri-art/[!_]*.png saezuri-illustrations/illustrations/
+cd saezuri-illustrations
+git status                    # new files are the art the repo lacks
+git checkout -- illustrations # drop changes to art the repo already has
+scripts/validate.sh illustrations
+```
+
+Art downloaded from the repo is byte-identical to the repo's copy, so only your generated
+birds show up as new. A modified file means the repo already has that bird, or you replaced
+its art by hand. The `git checkout` drops those changes, so leave it out if you mean to
+propose a replacement. Commit, push, and open a PR.
+See the repo's `CONTRIBUTING.md` for its rules and licence (CC-BY-NC-SA-4.0).
+
+On Home Assistant, the illustrations folder is in `addon_configs`, reachable over Samba or
+the File editor. See the app's [DOCS.md](addon/DOCS.md#storage).
 
 ## Reference calls
 
