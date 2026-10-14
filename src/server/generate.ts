@@ -51,7 +51,7 @@ const DOWNLOAD_CONCURRENCY = 4
  *  `_fallback.png` convention. The legacy file held only the per-source misses; this
  *  one also carries provenance and the note each pose was drawn under, so it is read
  *  once to seed the new file rather than being kept in sync. */
-const STATE_FILE = '_art-state.json'
+export const STATE_FILE = '_art-state.json'
 const LEGACY_MISSES_FILE = '_misses.json'
 
 const TAG = 'saezuri-generate'
@@ -73,7 +73,7 @@ interface PoseRequest extends ArtRepair {
 /** What we know about a pose we have already acted on. A cache, never a source of
  *  truth: disk decides whether art exists, and a missing or unreadable entry must
  *  degrade to "ask again", never to "skip this pose forever". */
-interface PoseState {
+export interface PoseState {
   /** When the repo last returned a clean 404 for this pose. */
   downloadMissAt?: number
   /** When a generation run last finished without producing this pose. */
@@ -451,18 +451,7 @@ export class Generator {
     this.stateLoaded = true
     try {
       const raw = await readFile(join(this.opts.assetsDir, STATE_FILE), 'utf8')
-      const data: unknown = JSON.parse(raw)
-      if (data === null || typeof data !== 'object' || Array.isArray(data)) return
-      for (const [stem, value] of Object.entries(data)) {
-        if (value === null || typeof value !== 'object') continue
-        const v = value as PoseState
-        this.state.set(stem, {
-          downloadMissAt: typeof v.downloadMissAt === 'number' ? v.downloadMissAt : undefined,
-          generateMissAt: typeof v.generateMissAt === 'number' ? v.generateMissAt : undefined,
-          source: v.source === 'repo' || v.source === 'generated' ? v.source : undefined,
-          noteVer: typeof v.noteVer === 'string' ? v.noteVer : undefined,
-        })
-      }
+      for (const [stem, st] of parseArtState(JSON.parse(raw))) this.state.set(stem, st)
       return
     } catch {
       // Absent or unreadable: fall through to the legacy file, then start empty. Costs
@@ -557,6 +546,24 @@ const UNDESCRIBED_GRACE_MS = 60_000
  *  that an edit is picked up promptly, long enough that a burst of poses doesn't re-read
  *  the file per pose. */
 const NOTES_TTL_MS = 10_000
+
+/** Read the parsed contents of STATE_FILE, dropping any entry or field that isn't the
+ *  shape we wrote. Shared with the contribute command, which reads provenance from it. */
+export function parseArtState(data: unknown): Map<string, PoseState> {
+  const state = new Map<string, PoseState>()
+  if (data === null || typeof data !== 'object' || Array.isArray(data)) return state
+  for (const [stem, value] of Object.entries(data)) {
+    if (value === null || typeof value !== 'object') continue
+    const v = value as PoseState
+    state.set(stem, {
+      downloadMissAt: typeof v.downloadMissAt === 'number' ? v.downloadMissAt : undefined,
+      generateMissAt: typeof v.generateMissAt === 'number' ? v.generateMissAt : undefined,
+      source: v.source === 'repo' || v.source === 'generated' ? v.source : undefined,
+      noteVer: typeof v.noteVer === 'string' ? v.noteVer : undefined,
+    })
+  }
+  return state
+}
 
 /** Modification time in ms, or undefined when the file isn't there. */
 function mtimeMs(path: string): number | undefined {

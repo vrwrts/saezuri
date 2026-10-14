@@ -8,6 +8,7 @@ import type { LayoutManifest } from '../domain/manifest.ts'
 import type { Snapshot } from '../domain/snapshot.ts'
 import type { Species } from '../domain/species.ts'
 import { type RangeWindow, resolveWindow, type WindowSegment } from '../domain/window.ts'
+import { readArtConfig } from './artConfig.ts'
 import { makeNodeDeps } from './birdnetDeps.ts'
 import { commonsProvider } from './callProviders/commons.ts'
 import type { CallProvider } from './callProviders/types.ts'
@@ -106,32 +107,17 @@ function secondsEnvMs(name: string, defSeconds: number): number {
 function readConfig(): Config {
   const baseUrl = (process.env.BIRDNETGO_URL ?? '').trim()
   if (!baseUrl) throw new Error('BIRDNETGO_URL is required')
-  const htmlDir = (process.env.FRAME_HTML_DIR ?? '/usr/share/nginx/html').trim()
+  const { htmlDir, assetsDir, workerScript, notesPaths, illustrationsRepo, illustrationsRef } =
+    readArtConfig()
   // Free pre-made art source: the repo root for downloads (generate.ts appends
   // /illustrations/<slug>.png). Default is jsDelivr over the public illustrations
   // repo; an empty ILLUSTRATIONS_REPO disables it; ILLUSTRATIONS_BASE_URL overrides
   // (e.g. a local http.server in tests).
-  const illustrationsRepo = (
-    process.env.ILLUSTRATIONS_REPO ?? 'vrwrts/saezuri-illustrations'
-  ).trim()
-  const illustrationsRef = (process.env.ILLUSTRATIONS_REF ?? 'main').trim()
   const downloadBaseUrl =
     (process.env.ILLUSTRATIONS_BASE_URL ?? '').trim() ||
     (illustrationsRepo
       ? `https://cdn.jsdelivr.net/gh/${illustrationsRepo}@${illustrationsRef}`
       : '')
-  const workerScript = (process.env.WORKER_SCRIPT ?? '/opt/saezuri/pipeline/worker.py').trim()
-  const assetsDir = join(htmlDir, 'assets', 'illustrations')
-  // Prompt addenda, layered: the pipeline's own species-notes.json carries what the
-  // community has learned, and an operator's file refines it per key. The operator's
-  // has to sit on the writable volume — beside the art is where they will look for it.
-  // Both layers are passed to the pipeline verbatim; it prepends the bundled one
-  // itself, and merging a layer twice is a no-op, so the duplicate is harmless and
-  // keeps this list identical to the one the service hashes for note changes.
-  const notesPaths = [
-    join(workerScript, '..', 'species-notes.json'),
-    (process.env.SPECIES_NOTES ?? '').trim() || join(assetsDir, '_species-notes.json'),
-  ]
   return {
     baseUrl,
     token: (process.env.BIRDNETGO_TOKEN ?? '').trim() || undefined,
