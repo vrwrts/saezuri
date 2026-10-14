@@ -71,7 +71,7 @@ volumes:
   </div>
 
   <p class="step">
-    The two volumes keep the illustrations and reference recordings it collects, so replacing the
+    The two volumes keep the illustrations and call recordings it collects, so replacing the
     container doesn&rsquo;t start it over. Then open <code>http://localhost:8090</code> &mdash; 8090
     rather than 8080, because 8080 is BirdNET-Go&rsquo;s own default and the two often share a
     host. Only one setting is required:
@@ -91,6 +91,11 @@ volumes:
           <td><code>BIRDNETGO_TOKEN</code></td>
           <td>no</td>
           <td>Token for a private (PrivateMode) instance. Used by the background service — never sent to the browser.</td>
+        </tr>
+        <tr>
+          <td><code>BIRDNETGO_UI_BASE_URL</code></td>
+          <td>no</td>
+          <td>Browser-reachable root URL, without <code>/ui</code>. Links station audio to its exact detection.</td>
         </tr>
       </tbody>
     </table>
@@ -145,7 +150,7 @@ volumes:
       </table>
     </div>
 
-    <h3>Reference calls</h3>
+    <h3>Call recordings</h3>
     <div class="table-scroll">
       <table class="envtable">
         <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
@@ -153,7 +158,7 @@ volumes:
           <tr>
             <td><code>CALL_PROVIDERS</code></td>
             <td><code>commons</code></td>
-            <td>Archives to look recordings up in, tried in order. Only Wikimedia Commons today. Set it empty to stop all outbound lookups — here, empty means off rather than all.</td>
+            <td>Sources in order: <code>birdnet</code> for saved clips and <code>commons</code> for representative calls. Use both for fallback; empty turns recordings off.</td>
           </tr>
           <tr>
             <td><code>CALLS_MAX_PER_CYCLE</code></td>
@@ -163,6 +168,12 @@ volumes:
         </tbody>
       </table>
     </div>
+    <p>
+      Station clips are served to everyone who can access Saezuri, even when fetched with a
+      PrivateMode token. Enable them only on a trusted deployment or put Saezuri behind access
+      control. Removing <code>birdnet</code> stops new lookups; clear the calls volume to revoke
+      cached clips.
+    </p>
 
     <h3>E-ink frames</h3>
     <div class="table-scroll">

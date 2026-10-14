@@ -35,6 +35,7 @@ schema:
   # BirdNET-Go app at startup. See DOCS.md.
   birdnetgo_url: url?
   birdnetgo_token: password?
+  birdnetgo_ui_base_url: url?
   birdnetgo_extra_hosts: str?
   illustrations_repo: str?
   illustrations_ref: str?

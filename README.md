@@ -30,7 +30,7 @@ grows the birds you hear most.
   Anything else redirects to `/24h`.
 - **Click or tab to a bird** for a species card: local and scientific name, how many times it
   was heard, the first and last time it called in the window, and — when a recording was found —
-  a play button with the recordist and licence credited.
+  a play button with its source and any required archive credit.
 - **Light, dark, or follow-the-OS**, and a display language for species names, both in the
   settings menu. Both are per-browser, remembered in `localStorage` under `saezuri:theme` and
   `saezuri:lang`.
@@ -53,10 +53,11 @@ annotated copy of every setting.
 
 ### Core
 
-| Variable          | Default | Description                                                                                                                              |
-| ----------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `BIRDNETGO_URL`   | —       | **Required.** Base URL of your BirdNET-Go instance, e.g. `http://192.168.1.10:8080`.                                                     |
-| `BIRDNETGO_TOKEN` | unset   | Auth token for an instance running with `Security.PrivateMode`. Used only by the refresh service, for the API and the SSE detection stream; it never reaches the browser. |
+| Variable                | Default | Description                                                                                                                              |
+| ----------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `BIRDNETGO_URL`         | —       | **Required.** Base URL of your BirdNET-Go instance, e.g. `http://192.168.1.10:8080`.                                                     |
+| `BIRDNETGO_TOKEN`       | unset   | Auth token for an instance running with `Security.PrivateMode`. Used only by the refresh service, for the API and the SSE detection stream; it never reaches the browser. |
+| `BIRDNETGO_UI_BASE_URL` | unset   | Browser-reachable root URL of BirdNET-Go, without `/ui`, e.g. `http://192.168.1.10:8080`. Adds a link from station audio to its exact detection; leave unset to hide that source line. |
 
 ### Illustrations
 
@@ -69,11 +70,11 @@ annotated copy of every setting.
 | `GENERATE_SLEEP`         | `6`                           | Seconds between image-API calls, to stay under the Gemini free tier. **The throughput knob**: lower it on a paid tier, raise it if you get throttled, `0` to remove the gap. |
 | `SPECIES_NOTES`          | `_species-notes.json` beside the art | Prompt addenda for species that keep coming out wrong (see below). Layered over the set bundled with the pipeline. |
 
-### Reference calls
+### Call recordings
 
 | Variable              | Default   | Description                                                                                                                     |
 | --------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `CALL_PROVIDERS`      | `commons` | Comma-list of archives to look recordings up in, tried in order. Only `commons` exists today. Set it **empty** to disable all outbound archive lookups — unlike the other comma-lists, empty here means *off*, not *all*. |
+| `CALL_PROVIDERS`      | `commons` | Comma-list of recording sources, tried in order: `birdnet` for saved detection clips and `commons` for representative calls. Use `birdnet,commons` for station audio with Commons fallback. Set it **empty** to disable all recording lookups. |
 | `CALLS_MAX_PER_CYCLE` | `4`       | Cap on species looked up per batch.                                                                                             |
 
 ### e-ink frames
@@ -137,7 +138,7 @@ never needs root to bind. The *host* port is 8090 rather than 8080 on purpose: 8
 BirdNET-Go's own default, so the two would collide whenever they share a host, which is the
 common case. Images are published multi-arch (amd64 + arm64), so they run on a Raspberry Pi as
 well as an x86 host. The two volumes keep the illustrations
-and reference recordings it collects, so replacing the container doesn't start it over —
+and call recordings it collects, so replacing the container doesn't start it over —
 both sections below explain what lands in them.
 
 `/data/illustrations` and `/data/calls` are where the files actually live;
@@ -286,11 +287,11 @@ How it behaves:
 Want to contribute art for more species? Generate them with your key and open a PR — see the
 [saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) repo.
 
-## Reference calls
+## Call recordings
 
-**On by default.** When a species is heard, the refresh service looks up a freely-licensed
-recording of its call, caches it in a volume, and publishes it — so selecting a bird on the
-collage offers a play button for what it sounds like. Mount the volume so it persists:
+**Commons is on by default.** When a species is heard, the refresh service caches one recording
+in a volume and publishes it — so selecting a bird on the collage offers a play button. Mount
+the volume so it persists:
 
 ```bash
 docker run -d -p 8090:8080 \
@@ -301,16 +302,30 @@ docker run -d -p 8090:8080 \
 
 How it behaves:
 
-- **The browser never talks to the archives.** Only the refresh service does; clients play the
-  cached copy from Saezuri's own origin, like every other asset.
-- **Per species, once.** A lookup happens the first time a species is heard. Species with no
-  recording are remembered so they aren't re-queried every cycle, and retried after a week.
-- **Source: [Wikimedia Commons](https://commons.wikimedia.org/)** — no account or API key.
+- **The browser never talks to a recording source.** Only the refresh service does; clients
+  play the cached copy from Saezuri's own origin, like every other asset.
+- **Actual station audio:** set `CALL_PROVIDERS=birdnet,commons`. Saezuri asks BirdNET-Go's public
+  API for the newest saved detection clip from the last seven days. When a newer detection is
+  heard it updates the cache; missing clips are tried newest-first before falling back to Commons.
+  Detections already marked as false positives are skipped. It reuses `BIRDNETGO_URL` and
+  `BIRDNETGO_TOKEN` and never exposes the token to the browser.
+- **Mind the access boundary:** station clips are served to everyone who can access Saezuri, even
+  when they were fetched from BirdNET-Go with a PrivateMode token. Enable them only on a trusted
+  deployment or put Saezuri behind access control.
+- **Detection links are opt-in:** set `BIRDNETGO_UI_BASE_URL` to the browser-reachable root of
+  BirdNET-Go, without `/ui`. The source then opens that exact detection at
+  `/ui/detections/<id>`; without it, Saezuri hides the BirdNET-Go source line. This cannot safely
+  default to `BIRDNETGO_URL`, which may be an internal Docker or Home Assistant address.
+- **Representative fallback:** [Wikimedia Commons](https://commons.wikimedia.org/) needs no
+  account or API key.
   Commons only hosts free licences (CC0 / CC BY / CC BY-SA), so everything it yields is safe to
   cache and re-serve provided the recordist is credited, which the species card does.
 - **Matched on the binomial**, not on free text, so a recording of a different bird that merely
   mentions the species is never picked. Playing the wrong call is worse than playing none.
-- **Disable** with `CALL_PROVIDERS=` (empty) to stop all outbound archive lookups.
+- **Avoid repeated work.** Recordings and settled misses are cached. BirdNET misses are keyed by
+  detection ID, so a new detection is still tried; archive misses are retried after a week.
+- **Disable new lookups** with `CALL_PROVIDERS=` (empty). Cached recordings remain published;
+  clear the calls volume to remove them, including when revoking BirdNET station audio.
 
 Not every species has a recording, and that's expected — the card simply offers no playback.
 
@@ -435,11 +450,12 @@ into the Docker image.
   **BirdNET-Lite** from the K. Lisa Yang Center for Conservation Bioacoustics, Cornell Lab
   of Ornithology, Cornell University.
 - Detections come from **[BirdNET-Go](https://github.com/tphakala/birdnet-go)** by Tomi Phakala.
-- Reference calls come from **[Wikimedia Commons](https://commons.wikimedia.org/)** and the
-  recordists who contributed them — much of the bird audio there originates from
+- Call recordings can be the deployment owner's saved **[BirdNET-Go](https://github.com/tphakala/birdnet-go)**
+  detection clips. Representative calls come from **[Wikimedia Commons](https://commons.wikimedia.org/)**
+  and the recordists who contributed them — much of the bird audio there originates from
   **[xeno-canto](https://xeno-canto.org/)**. Each recording is cached per deployment and is
-  individually licensed (CC0 / CC BY / CC BY-SA); the recordist, licence, and a link back are
-  shown on the species card whenever a call can be played. These recordings are **not**
+  shown with its source; Commons recordings also show their individual licence (CC0 / CC BY /
+  CC BY-SA) and recordist. These recordings are **not**
   redistributed by this repo or bundled into the image — each deployment fetches its own.
 
 The reused illustrations and pipeline carry the **CC-BY-NC-SA-4.0** license inherited from

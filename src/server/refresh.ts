@@ -9,8 +9,9 @@ import type { Snapshot } from '../domain/snapshot.ts'
 import type { Species } from '../domain/species.ts'
 import { type RangeWindow, resolveWindow, type WindowSegment } from '../domain/window.ts'
 import { makeNodeDeps } from './birdnetDeps.ts'
+import { birdnetProvider } from './callProviders/birdnet.ts'
 import { commonsProvider } from './callProviders/commons.ts'
-import type { CallProvider } from './callProviders/types.ts'
+import { type CallProviderName, parseCallProviders } from './callProviders/config.ts'
 import { CallLibrary, publishCallManifest } from './calls.ts'
 import { publishDictionaries } from './dictionaries.ts'
 import { Generator } from './generate.ts'
@@ -22,14 +23,6 @@ import { runDetectionStream } from './stream.ts'
 import { watchAssetRemovals } from './watchAssets.ts'
 
 const ALL_SEGMENTS: readonly WindowSegment[] = ['1h', '12h', '24h', '7d', 'all']
-
-/** Reference-call sources, in the order they are tried. */
-const ALL_CALL_PROVIDERS = ['commons'] as const
-type CallProviderName = (typeof ALL_CALL_PROVIDERS)[number]
-
-const CALL_PROVIDER_FACTORIES: Record<CallProviderName, () => CallProvider> = {
-  commons: commonsProvider,
-}
 
 // Coalesce a burst of cutout removals (e.g. `rm *.png`) into a single heal, and
 // how long to wait before re-arming the watcher after an error / a not-yet-created
@@ -63,6 +56,7 @@ const logErr = (where: string, e: unknown) =>
 interface Config {
   baseUrl: string
   token?: string
+  birdnetUiBaseUrl?: string
   htmlDir: string
   agingIntervalMs: number
   summaryIntervalMs: number
@@ -135,6 +129,7 @@ function readConfig(): Config {
   return {
     baseUrl,
     token: (process.env.BIRDNETGO_TOKEN ?? '').trim() || undefined,
+    birdnetUiBaseUrl: (process.env.BIRDNETGO_UI_BASE_URL ?? '').trim() || undefined,
     htmlDir,
     agingIntervalMs: intEnv('AGING_INTERVAL_MS', 120_000),
     summaryIntervalMs: intEnv('SUMMARY_INTERVAL_MS', 1_800_000),
@@ -151,13 +146,7 @@ function readConfig(): Config {
     // pipeline's own inter-call sleep never fires and this is the only thing keeping
     // us under the image API's rate limit.
     generateGapMs: secondsEnvMs('GENERATE_SLEEP', 6),
-    // Unlike the other CSV settings, an explicitly empty CALL_PROVIDERS means
-    // "off" rather than "all" — it is the way to stop the service reaching out
-    // to third-party archives at all.
-    callProviders:
-      (process.env.CALL_PROVIDERS ?? '').trim() === '' && process.env.CALL_PROVIDERS !== undefined
-        ? []
-        : parseCsvSubset(process.env.CALL_PROVIDERS, ALL_CALL_PROVIDERS),
+    callProviders: parseCallProviders(process.env.CALL_PROVIDERS),
     callsMaxPerCycle: intEnv('CALLS_MAX_PER_CYCLE', 4),
     frameWidth: intEnv('FRAME_WIDTH', 800),
     frameHeight: intEnv('FRAME_HEIGHT', 480),
@@ -205,7 +194,9 @@ class Refresher {
     })
     this.callLibrary = new CallLibrary({
       callsDir: cfg.callsDir,
-      providers: cfg.callProviders.map((name) => CALL_PROVIDER_FACTORIES[name]()),
+      providers: cfg.callProviders.map((name) =>
+        name === 'birdnet' ? birdnetProvider(cfg.baseUrl, cfg.token) : commonsProvider(),
+      ),
       maxPerCycle: cfg.callsMaxPerCycle,
       onAcquired: () => this.safe('publish', () => this.publish()),
     })
@@ -281,13 +272,13 @@ class Refresher {
     // Manifests first, then the snapshot, then the frames — a client (or the
     // frame) never references art or audio the manifests don't yet describe.
     await this.safe('call-manifest', async () => {
-      await publishCallManifest(this.cfg.htmlDir, this.cfg.callsDir)
+      await publishCallManifest(this.cfg.htmlDir, this.cfg.callsDir, this.cfg.birdnetUiBaseUrl)
     })
     await writeSnapshot(this.cfg.htmlDir, snapshot)
     await this.renderFrames(snapshot)
   }
 
-  /** Enqueue any species missing art or a reference call, so gaps fill on startup /
+  /** Enqueue any species missing art or a call recording, so gaps fill on startup /
    *  after assets are deleted — not only when a species is next heard live
    *  (onDetection). Cheap + idempotent: both queues dedupe in-flight and queued slugs,
    *  the art queue skips species that already have both poses and backs off on gaps it
@@ -308,7 +299,13 @@ class Refresher {
         sciBySlug: this.sciBySlug,
       }),
     )
-    for (const s of recent) this.callLibrary.enqueue(s.sci)
+    const useDetectionRecordings = this.cfg.callProviders.includes('birdnet')
+    for (const s of recent) {
+      this.callLibrary.enqueue(
+        s.sci,
+        useDetectionRecordings ? this.store.recordingsFor(s.sci, since) : [],
+      )
+    }
   }
 
   /** Rebuild the manifest from disk and republish, so a vanished cutout drops out
@@ -430,7 +427,6 @@ class Refresher {
           if (!isComplete(this.manifest, row.scientificName)) {
             this.generator.enqueue(row.scientificName, row.commonName)
           }
-          this.callLibrary.enqueue(row.scientificName)
         },
         // The server closes the stream every ~30 min (and any blip drops it);
         // undici surfaces that as `terminated`. It's expected and self-healing —

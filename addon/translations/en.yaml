@@ -8,6 +8,11 @@ configuration:
     name: BirdNET-Go token
     description: >-
       Bearer token, only needed when BirdNET-Go runs in PrivateMode.
+  birdnetgo_ui_base_url:
+    name: BirdNET-Go browser URL
+    description: >-
+      Browser-reachable root URL of BirdNET-Go, without /ui. Links station
+      recordings to their exact detection; leave empty to hide the source line.
   birdnetgo_extra_hosts:
     name: Extra hostnames to probe
     description: >-
@@ -49,13 +54,13 @@ configuration:
       No longer used — illustrations are now generated one at a time. Safe to
       remove from your configuration.
   call_providers:
-    name: Recording archives
+    name: Recording sources
     description: >-
-      Comma-separated archives to look up reference recordings in. Empty
-      disables reference recordings.
+      Comma-separated sources in priority order: birdnet for saved detection
+      clips and commons for representative calls. Empty disables recordings.
   calls_max_per_cycle:
     name: Recordings per cycle
-    description: How many reference recordings to look up at a time.
+    description: How many recordings to look up at a time.
   frame_width:
     name: E-ink frame width
     description: Width in pixels of the rendered e-ink frames.

@@ -85,6 +85,7 @@ export_bool_opt() {
 
 export_opt BIRDNETGO_URL birdnetgo_url
 export_opt BIRDNETGO_TOKEN birdnetgo_token
+export_opt BIRDNETGO_UI_BASE_URL birdnetgo_ui_base_url
 export_opt ILLUSTRATIONS_REPO illustrations_repo
 export_opt ILLUSTRATIONS_REF illustrations_ref
 export_opt ILLUSTRATIONS_BASE_URL illustrations_base_url
@@ -202,7 +203,7 @@ redacted() { [ -n "${1:-}" ] && echo '<set>' || echo '<unset>'; }
 log "BIRDNETGO_URL=${BIRDNETGO_URL}"
 log "BIRDNETGO_TOKEN=$(redacted "${BIRDNETGO_TOKEN:-}")"
 log "GEMINI_API_KEY=$(redacted "${GEMINI_API_KEY:-}")"
-for _name in ILLUSTRATIONS_REPO ILLUSTRATIONS_REF ILLUSTRATIONS_BASE_URL \
+for _name in BIRDNETGO_UI_BASE_URL ILLUSTRATIONS_REPO ILLUSTRATIONS_REF ILLUSTRATIONS_BASE_URL \
              GENERATE_SLEEP SPECIES_NOTES CALL_PROVIDERS CALLS_MAX_PER_CYCLE \
              FRAME_WIDTH FRAME_HEIGHT FRAME_BG FRAME_SHADOW FRAME_WINDOWS \
              SPECIES_DICT_LOCALES PUBLISH_DEBOUNCE_MS AGING_INTERVAL_MS \

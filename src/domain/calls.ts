@@ -1,14 +1,13 @@
 import { withBase } from '../lib/basePath.ts'
 import { slugify } from './slug.ts'
 
-// The refresh service caches one reference recording per detected species and
+// The refresh service caches one recording per detected species and
 // describes it here, so the browser plays audio from Saezuri's own origin like
-// every other asset and never reaches the archive directly.
+// every other asset and never reaches the source directly.
 //
-// Attribution is not decoration: every recording carries a CC licence requiring
-// the recordist be credited wherever it is played. That is why the credit fields
-// are required rather than optional, and why the UI renders them alongside the
-// play control.
+// Archive recordings carry attribution alongside the play control. A station's
+// own BirdNET-Go clip has no archive licence or named recordist, and its source
+// link is shown only when a browser-reachable BirdNET-Go URL is configured.
 
 export const CALLS_BASE = withBase('/assets/calls')
 
@@ -20,9 +19,10 @@ export interface CallRecord {
   ver: string
   /** Empty when the archive names none. */
   recordist: string
-  license: string
+  license?: string
   licenseUrl?: string
-  sourceUrl: string
+  /** Absent when the source has no browser-reachable recording page. */
+  sourceUrl?: string
   sourceName: string
 }
 
@@ -37,8 +37,8 @@ export function callPath(scientificName: string, rec: CallRecord): string {
   return rec.ver ? `${url}?v=${rec.ver}` : url
 }
 
-/** Null is the ordinary case, not a failure — most species have no
- *  free-licensed recording in the archives. */
+/** Null is the ordinary case, not a failure — a species may have no saved
+ *  station clip or free-licensed archive recording. */
 export function callFor(manifest: CallManifest, scientificName: string): CallRecord | null {
   return manifest.calls[slugify(scientificName)] ?? null
 }

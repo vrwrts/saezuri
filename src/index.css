@@ -244,7 +244,7 @@ body {
   cursor: default;
   color: var(--ink-soft);
 }
-/* Fetching the recording: the archives are slow and the files are not small, so
+/* Fetching the recording: audio files are not small, so
    the press needs an acknowledgement before the first sound arrives. */
 .card-play.is-loading {
   animation: card-play-pulse 900ms ease-in-out infinite;
@@ -279,8 +279,7 @@ body {
   letter-spacing: 0.04em;
   color: var(--ink-soft);
 }
-/* Licence credit. Not decoration — the CC licences these recordings carry
-   require the recordist be named wherever the recording plays. */
+/* Recording source and, for archive calls, the required licence credit. */
 .card-credit {
   font-size: 10px;
   letter-spacing: 0.03em;

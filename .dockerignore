@@ -16,8 +16,8 @@ site
 public/assets/illustrations/*
 !public/assets/illustrations/_fallback.png
 
-# Reference recordings a local run happened to cache. Each deployment fetches
-# (and credits) its own; the image must never redistribute someone else's.
+# Call recordings a local run happened to cache. Each deployment fetches its
+# own; the image must never redistribute them.
 public/assets/calls
 
 # Generated locally; the app ships a built-in fallback manifest instead.

@@ -127,4 +127,29 @@ describe('SpeciesCard', () => {
     expect(screen.getByText(/CC BY-SA 4\.0/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Wikimedia Commons' })).toBeInTheDocument()
   })
+
+  it('links a BirdNET-Go station recording without showing archive credit', () => {
+    renderCard({
+      ...REC,
+      recordist: '',
+      license: undefined,
+      sourceUrl: 'https://github.com/tphakala/birdnet-go',
+      sourceName: 'BirdNET-Go',
+    })
+
+    expect(screen.getByRole('link', { name: 'BirdNET-Go' })).toBeInTheDocument()
+    expect(screen.queryByText(/CC BY-SA/)).not.toBeInTheDocument()
+  })
+
+  it('hides a BirdNET-Go source that has no detection-page link', () => {
+    renderCard({
+      ...REC,
+      recordist: '',
+      license: undefined,
+      sourceUrl: undefined,
+      sourceName: 'BirdNET-Go',
+    })
+
+    expect(screen.queryByText('BirdNET-Go')).not.toBeInTheDocument()
+  })
 })

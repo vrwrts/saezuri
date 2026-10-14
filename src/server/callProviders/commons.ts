@@ -131,7 +131,7 @@ export function selectCandidate(
 export function commonsProvider(): CallProvider {
   return {
     name: 'commons',
-    async find(scientificName, signal) {
+    async find({ scientificName }, signal) {
       const params = new URLSearchParams({
         action: 'query',
         format: 'json',

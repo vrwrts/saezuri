@@ -32,6 +32,7 @@ describe('normalizeDetection', () => {
       commonName: 'Blackbird',
       confidence: 0.87,
       verified: 'unverified',
+      clipName: 'blackbird.wav',
     })
     expect(row).toMatchObject({
       id: 42,
@@ -40,6 +41,7 @@ describe('normalizeDetection', () => {
       confidence: 0.87,
       timestamp: '2026-07-08T09:09:54+03:00',
       verified: 'unverified',
+      clipName: 'blackbird.wav',
     })
   })
 

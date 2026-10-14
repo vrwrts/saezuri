@@ -59,7 +59,7 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   const baseSpecies: Species[] = USE_MOCK ? mockSpecies(manifest) : live.species
   const species = useMemo(() => localizeCommonNames(baseSpecies, dict), [baseSpecies, dict])
 
-  // Reference calls the refresh service has cached. Absent until it acquires
+  // Call recordings the refresh service has cached. Absent until it acquires
   // any, so the card just offers no playback in the meantime. Mock mode falls
   // back to placeholder tones only when no real manifest has been published —
   // point the refresh service at ./public and a mock run plays actual birds.

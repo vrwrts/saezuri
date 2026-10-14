@@ -28,7 +28,7 @@ Saezuri just visualizes recent detections.
  
 - The browser only ever talks to Saezuri's own origin, and reads **only static files
   Saezuri publishes** (snapshot, layout manifest, species-name dictionaries, e-ink
-  frames, cutouts, cached reference calls). All outbound access is **backend-only**:
+  frames, cutouts, cached call recordings). All outbound access is **backend-only**:
   the Node refresh service is the sole BirdNET-Go client (it holds the detection SSE
   stream and publishes the static files) and the only thing that reaches third-party
   archives for call audio — it caches what it fetches and re-serves it from this
@@ -91,11 +91,12 @@ Rules:
 - `fixtures/` holds real `/api/v2` responses captured from a running instance. Treat
   fixtures as the source of truth for shapes, ahead of anything inferred from source.
 - Consume only public read endpoints under `/api/v2`: detections and analytics (the
-  species set); the per-locale species-name dictionaries (`/species/dictionary/:locale`)
-  and the public dashboard locale (`/settings/dashboard`, a read only — for the
-  default display language) for browser-language localization. No auth beyond the
-  optional bearer token. No writes. All of these are called **server-side** by the
-  refresh service; the browser reads the republished static files.
+  species set); detection audio (`/media/audio?id=<id>`); the per-locale species-name
+  dictionaries (`/species/dictionary/:locale`); and the public dashboard locale
+  (`/settings/dashboard`, a read only — for the default display language) for
+  browser-language localization. No auth beyond the optional bearer token. No writes.
+  All of these are called **server-side** by the refresh service; the browser reads the
+  republished static files.
 - BirdNET-Go ships as rolling nightlies and its v2 API takes occasional breaking
   changes. Keep the typed client centralized so a shape change is a one-file fix, and
   note in the client which fixture and roughly which BirdNET-Go build it was derived
@@ -163,14 +164,14 @@ Where things live, so a change lands in the right place fast.
   truth — a bad entry must degrade to "probe again", never to "skip forever". The generate lane
   owns the rate limit (`GENERATE_SLEEP`): the pipeline is invoked once per pose, so its own
   inter-call sleep never fires.
-- **Reference calls:** `src/server/calls.ts` (`CallLibrary`) queues a lookup per newly-heard
-  species, mirroring `generate.ts`; `callProviders/` holds one provider per archive behind a
+- **Call recordings:** `src/server/calls.ts` (`CallLibrary`) queues a lookup per newly-heard
+  species, mirroring `generate.ts`; `callProviders/` holds each source behind a
   common interface — `find()` resolves null for "nothing here" (cacheable) and **throws** for
-  anything transient, so a rate limit is retried rather than written off. Audio lands in
+  anything that is not a settled miss, so a rate limit or configuration error is retried rather
+  than written off. Audio lands in
   `assets/calls/<slug>.<ext>` beside a `<slug>.json` sidecar holding its `CallRecord`; the
-  sidecar sits there, not in `cacheDir`, because the credit is a licence obligation and has to
-  travel in the same volume as the file it credits. A recording with no sidecar (or vice versa)
-  is never published — no credit, no playback.
+  sidecar also holds provider provenance so newer station detections can replace older clips
+  without repeating downloads. A recording with no sidecar (or vice versa) is never published.
  
 ## Common commands
  

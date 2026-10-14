@@ -1,5 +1,6 @@
 import type { DetectionResponse } from '../api/types.ts'
 import { aggregateDetections, detectionInstantMs, type Species } from '../domain/species.ts'
+import type { CallDetection } from './callProviders/types.ts'
 
 // In-memory rolling store of recent detections for the refresh service. Seeded
 // once per (re)connect from a 7d backfill and then fed live by the SSE stream;
@@ -73,6 +74,23 @@ export class DetectionStore {
   /** Aggregate the stored rows into windowed species (count desc). */
   aggregate(sinceMs: number): Species[] {
     return aggregateDetections(this.rows, { sinceMs })
+  }
+
+  /** Playable detections for one species, newest first. */
+  recordingsFor(scientificName: string, sinceMs: number): CallDetection[] {
+    const matches: Array<CallDetection & { at: number }> = []
+    for (const row of this.rows) {
+      if (
+        row.scientificName !== scientificName ||
+        row.verified === 'false_positive' ||
+        !row.clipName
+      ) {
+        continue
+      }
+      const at = detectionInstantMs(row)
+      if (at !== null && at >= sinceMs) matches.push({ id: row.id, clipName: row.clipName, at })
+    }
+    return matches.sort((a, b) => b.at - a.at).map(({ id, clipName }) => ({ id, clipName }))
   }
 
   /** True when the window reaches further back than the store is complete. */

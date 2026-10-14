@@ -152,7 +152,7 @@ describe('selectCandidate', () => {
 describe('commonsProvider.find', () => {
   it('identifies itself per Wikimedia policy', async () => {
     fetchMock.mockResolvedValue(respond(NO_HITS))
-    await commonsProvider().find('Turdus merula')
+    await commonsProvider().find({ scientificName: 'Turdus merula', detections: [] })
     const [, opts] = fetchMock.mock.calls[0]
     // A generic or absent agent is answered with 403.
     expect(opts.headers['User-Agent']).toMatch(/^Saezuri\/\S+ \(https?:\/\/\S+\)$/)
@@ -162,17 +162,23 @@ describe('commonsProvider.find', () => {
     fetchMock.mockResolvedValue(
       respond({}, { status: 429, headers: new Headers({ 'retry-after': '30' }) }),
     )
-    await expect(commonsProvider().find('Turdus merula')).rejects.toThrow(/429.*retry-after 30/)
+    await expect(
+      commonsProvider().find({ scientificName: 'Turdus merula', detections: [] }),
+    ).rejects.toThrow(/429.*retry-after 30/)
   })
 
   it('throws on a server error for the same reason', async () => {
     fetchMock.mockResolvedValue(respond({}, { status: 503 }))
-    await expect(commonsProvider().find('Turdus merula')).rejects.toThrow(/503/)
+    await expect(
+      commonsProvider().find({ scientificName: 'Turdus merula', detections: [] }),
+    ).rejects.toThrow(/503/)
   })
 
   it('resolves null on a client error — a settled answer, not a transient one', async () => {
     fetchMock.mockResolvedValue(respond({}, { status: 400 }))
-    await expect(commonsProvider().find('Turdus merula')).resolves.toBeNull()
+    await expect(
+      commonsProvider().find({ scientificName: 'Turdus merula', detections: [] }),
+    ).resolves.toBeNull()
   })
 })
 

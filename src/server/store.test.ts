@@ -77,4 +77,24 @@ describe('DetectionStore', () => {
     full.seed([det(1, 'A', now - 2 * H)], true, now - 7 * D)
     expect(full.truncated(now - 7 * D)).toBe(false) // covered to the cutoff
   })
+
+  it('returns playable detections for a species newest-first', () => {
+    const s = new DetectionStore()
+    s.seed(
+      [
+        { ...det(1, 'Turdus merula', now - 2 * H), clipName: 'older.wav' },
+        { ...det(2, 'Turdus merula', now - H), clipName: 'newest.mp3' },
+        { ...det(3, 'Turdus merula', now - 0.5 * H), clipName: '' },
+        { ...det(4, 'Turdus merula', now - 0.25 * H, 'false_positive'), clipName: 'false.wav' },
+        { ...det(5, 'Parus major', now - 0.1 * H), clipName: 'other.wav' },
+      ],
+      true,
+      now - 7 * D,
+    )
+
+    expect(s.recordingsFor('Turdus merula', now - 3 * H)).toEqual([
+      { id: 2, clipName: 'newest.mp3' },
+      { id: 1, clipName: 'older.wav' },
+    ])
+  })
 })

@@ -130,7 +130,7 @@ export function SpeciesCard({
             {formatCalls(n)}
             {heard && ` · ${heard}`}
           </span>
-          {call && (
+          {call?.sourceUrl && (
             <span className="card-credit mono">
               {credit && `${credit} · `}
               <a href={call.sourceUrl} target="_blank" rel="noreferrer">

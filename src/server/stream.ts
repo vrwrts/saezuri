@@ -68,6 +68,7 @@ export function normalizeDetection(data: unknown): DetectionResponse | null {
       : 'unverified') as DetectionResponse['verified'],
     locked: Boolean(d.locked),
     speciesCode: typeof d.speciesCode === 'string' ? d.speciesCode : undefined,
+    clipName: typeof d.clipName === 'string' ? d.clipName : undefined,
   }
 }
 

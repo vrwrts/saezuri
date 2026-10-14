@@ -4,24 +4,21 @@ import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { CallManifest, CallRecord } from '../domain/calls.ts'
 import { slugify } from '../domain/slug.ts'
-import type { CallProvider } from './callProviders/types.ts'
+import type { CallDetection, CallLookup, CallProvider } from './callProviders/types.ts'
 import { USER_AGENT } from './userAgent.ts'
 
 // Mirrors the art Generator — deduped by slug, serialized, capped per batch —
-// because it has the same shape of problem: a third-party lookup per newly-heard
+// because it has the same shape of problem: an audio lookup per newly-heard
 // species that must not stampede.
 //
 // Each recording is stored as two files: the audio, and a `<slug>.json` sidecar
-// holding its CallRecord. The sidecar sits beside the audio rather than in the
-// cache dir because the credit is a licence obligation, so it has to travel in
-// the same volume as the file it credits. Separate them and an upgrade could
-// leave us serving audio we can no longer attribute.
+// holding its CallRecord and private cache provenance. The sidecar sits beside
+// the audio so the two travel in the same persistent volume.
 
-/** Archives do gain recordings, but rarely — and without a memory of misses every
- *  publish cycle would re-query every silent species, which is most of them. */
+/** Without a memory of misses every publish cycle would repeat settled lookups. */
 const MISS_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
-/** Politeness gap between third-party lookups. */
+/** Politeness gap between provider lookups. */
 const DEFAULT_LOOKUP_GAP_MS = 250
 
 /** Leading underscore keeps it out of the manifest scan, matching the
@@ -58,11 +55,16 @@ export interface CallLibraryOptions {
   lookupGapMs?: number
 }
 
+interface StoredCallRecord extends CallRecord {
+  provider?: string
+  sourceKey?: string
+}
+
 export class CallLibrary {
-  private scientificNameBySlug = new Map<string, string>()
+  private lookupBySlug = new Map<string, CallLookup>()
   private inFlightSlugs = new Set<string>()
   private busy = false
-  private missedAtBySlug = new Map<string, number>()
+  private missedAtByKey = new Map<string, number>()
   private missesLoaded = false
 
   constructor(private opts: CallLibraryOptions) {}
@@ -71,18 +73,18 @@ export class CallLibrary {
     return this.opts.providers.length > 0
   }
 
-  enqueue(scientificName: string): void {
+  enqueue(scientificName: string, detections: readonly CallDetection[] = []): void {
     if (!this.enabled) return
     const slug = slugify(scientificName)
-    if (!slug || this.inFlightSlugs.has(slug) || this.scientificNameBySlug.has(slug)) return
-    this.scientificNameBySlug.set(slug, scientificName)
+    if (!slug || this.inFlightSlugs.has(slug)) return
+    this.lookupBySlug.set(slug, { scientificName, detections })
     void this.drain()
   }
 
-  private take(n: number): Array<[string, string]> {
-    const out: Array<[string, string]> = []
-    for (const entry of this.scientificNameBySlug) {
-      this.scientificNameBySlug.delete(entry[0])
+  private take(n: number): Array<[string, CallLookup]> {
+    const out: Array<[string, CallLookup]> = []
+    for (const entry of this.lookupBySlug) {
+      this.lookupBySlug.delete(entry[0])
       out.push(entry)
       if (out.length >= n) break
     }
@@ -94,15 +96,14 @@ export class CallLibrary {
     this.busy = true
     try {
       await this.loadMisses()
-      while (this.scientificNameBySlug.size > 0) {
-        const cap =
-          this.opts.maxPerCycle > 0 ? this.opts.maxPerCycle : this.scientificNameBySlug.size
+      while (this.lookupBySlug.size > 0) {
+        const cap = this.opts.maxPerCycle > 0 ? this.opts.maxPerCycle : this.lookupBySlug.size
         const batch = this.take(cap)
         for (const [slug] of batch) this.inFlightSlugs.add(slug)
         let acquired = 0
         try {
-          for (const [slug, sci] of batch) {
-            if (await this.acquire(slug, sci)) acquired++
+          for (const [slug, lookup] of batch) {
+            if (await this.acquire(slug, lookup)) acquired++
           }
           await this.saveMisses()
           // Republish before clearing inFlight, so a detection arriving mid-flight
@@ -120,21 +121,56 @@ export class CallLibrary {
   }
 
   /** True when a new recording landed on disk. */
-  private async acquire(slug: string, sci: string): Promise<boolean> {
-    if (existsSync(join(this.opts.callsDir, `${slug}.json`))) return false
-    const missedAt = this.missedAtBySlug.get(slug)
-    if (missedAt !== undefined && Date.now() - missedAt < MISS_TTL_MS) return false
+  private async acquire(slug: string, lookup: CallLookup): Promise<boolean> {
+    const existing = await this.readStored(slug)
+    // Sidecars from before provider provenance identify Commons by source name;
+    // recognizing them avoids re-downloading every cached call on upgrade.
+    const currentProvider =
+      existing?.provider ?? (existing?.sourceName === 'Wikimedia Commons' ? 'commons' : undefined)
+    const currentIndex = this.opts.providers.findIndex((p) => p.name === currentProvider)
 
-    for (const provider of this.opts.providers) {
+    for (const [index, provider] of this.opts.providers.entries()) {
+      if (existing && currentIndex >= 0 && index > currentIndex) break
+      const sourceKey = provider.sourceKey?.(lookup)
+      // Older releases keyed Commons misses by slug, so retain that shape and
+      // avoid repeating all settled archive lookups once after an upgrade.
+      const missKey = sourceKey
+        ? `${provider.name}:${slug}:${sourceKey}`
+        : provider.name === 'commons'
+          ? slug
+          : `${provider.name}:${slug}`
+      const missedAt = this.missedAtByKey.get(missKey)
+      if (missedAt !== undefined && Date.now() - missedAt < MISS_TTL_MS) {
+        if (index === currentIndex) return false
+        continue
+      }
+      if (index === currentIndex && (!sourceKey || sourceKey === existing?.sourceKey)) return false
+
       try {
         await sleep(this.opts.lookupGapMs ?? DEFAULT_LOOKUP_GAP_MS)
-        const found = await provider.find(sci)
-        if (!found) continue
-        const bytes = await download(found.audioUrl)
-        if (!bytes) continue
+        const found = await provider.find({
+          ...lookup,
+          current: existing
+            ? { provider: currentProvider ?? '', sourceKey: existing.sourceKey }
+            : undefined,
+        })
+        if (!found) {
+          this.missedAtByKey.set(missKey, Date.now())
+          if (index === currentIndex) return false
+          continue
+        }
+        const bytes = found.bytes
+          ? Buffer.from(found.bytes)
+          : found.audioUrl
+            ? await download(found.audioUrl)
+            : null
+        if (!bytes) {
+          this.missedAtByKey.set(missKey, Date.now())
+          continue
+        }
 
         await mkdir(this.opts.callsDir, { recursive: true })
-        const record: CallRecord = {
+        const record: StoredCallRecord = {
           ext: found.ext,
           ver: contentHash(bytes),
           recordist: found.recordist,
@@ -142,25 +178,38 @@ export class CallLibrary {
           licenseUrl: found.licenseUrl,
           sourceUrl: found.sourceUrl,
           sourceName: found.sourceName,
+          provider: provider.name,
+          sourceKey: found.sourceKey,
         }
         // Audio before sidecar: the manifest scan keys off the sidecar, so this
         // order leaves a half-finished acquisition invisible rather than
         // published without its audio.
         await writeAtomic(join(this.opts.callsDir, `${slug}.${found.ext}`), bytes)
         await writeAtomic(join(this.opts.callsDir, `${slug}.json`), JSON.stringify(record))
-        this.missedAtBySlug.delete(slug)
-        log(`${sci}: ${found.sourceName} (${found.license})`)
+        this.missedAtByKey.delete(missKey)
+        log(
+          `${lookup.scientificName}: ${found.sourceName}${found.license ? ` (${found.license})` : ''}`,
+        )
         return true
       } catch (e) {
-        // Transient by contract (see CallProvider.find), so leave the miss
+        // Not a settled miss by contract (see CallProvider.find), so leave it
         // unrecorded and let the next cycle try again.
         logErr(e)
         return false
       }
     }
 
-    this.missedAtBySlug.set(slug, Date.now())
     return false
+  }
+
+  private async readStored(slug: string): Promise<StoredCallRecord | null> {
+    try {
+      return JSON.parse(
+        await readFile(join(this.opts.callsDir, `${slug}.json`), 'utf8'),
+      ) as StoredCallRecord
+    } catch {
+      return null
+    }
   }
 
   private async loadMisses(): Promise<void> {
@@ -170,7 +219,7 @@ export class CallLibrary {
       const raw = await readFile(join(this.opts.callsDir, MISSES_FILE), 'utf8')
       const data = JSON.parse(raw) as Record<string, number>
       for (const [slug, at] of Object.entries(data)) {
-        if (typeof at === 'number') this.missedAtBySlug.set(slug, at)
+        if (typeof at === 'number') this.missedAtByKey.set(slug, at)
       }
     } catch {
       // Absent or unreadable: start empty and rebuild it.
@@ -178,11 +227,15 @@ export class CallLibrary {
   }
 
   private async saveMisses(): Promise<void> {
+    const cutoff = Date.now() - MISS_TTL_MS
+    for (const [key, at] of this.missedAtByKey) {
+      if (at <= cutoff) this.missedAtByKey.delete(key)
+    }
     try {
       await mkdir(this.opts.callsDir, { recursive: true })
       await writeAtomic(
         join(this.opts.callsDir, MISSES_FILE),
-        JSON.stringify(Object.fromEntries(this.missedAtBySlug)),
+        JSON.stringify(Object.fromEntries(this.missedAtByKey)),
       )
     } catch (e) {
       logErr(e) // non-fatal: we just re-query after a restart
@@ -206,6 +259,7 @@ async function download(audioUrl: string, maxBytes = 16 * 1024 * 1024): Promise<
 export async function publishCallManifest(
   htmlDir: string,
   callsDir: string,
+  birdnetUiBaseUrl?: string,
 ): Promise<CallManifest> {
   const calls: Record<string, CallRecord> = {}
   let names: string[] = []
@@ -219,10 +273,25 @@ export async function publishCallManifest(
     if (!name.endsWith('.json') || name.startsWith('_')) continue
     const slug = name.slice(0, -'.json'.length)
     try {
-      const rec = JSON.parse(await readFile(join(callsDir, name), 'utf8')) as CallRecord
-      if (!rec?.ext || !rec.license || !rec.sourceUrl) continue
+      const rec = JSON.parse(await readFile(join(callsDir, name), 'utf8')) as StoredCallRecord
+      if (!rec?.ext || !rec.sourceName) continue
+      if (rec.provider !== 'birdnet' && (!rec.license || !rec.sourceUrl)) continue
       if (!existsSync(join(callsDir, `${slug}.${rec.ext}`))) continue
-      calls[slug] = rec
+      const { provider: _provider, sourceKey: _sourceKey, ...published } = rec
+      if (rec.provider === 'birdnet') {
+        // Detection links are opt-in and derived from the browser-reachable base;
+        // never leak a stale or provider-supplied URL from the private sidecar.
+        const { sourceUrl: _storedSourceUrl, ...birdnetCall } = published
+        calls[slug] =
+          birdnetUiBaseUrl && rec.sourceKey
+            ? {
+                ...birdnetCall,
+                sourceUrl: `${birdnetUiBaseUrl.replace(/\/+$/, '')}/ui/detections/${encodeURIComponent(rec.sourceKey)}`,
+              }
+            : birdnetCall
+      } else {
+        calls[slug] = published
+      }
     } catch {
       // Malformed sidecar — skip it rather than fail the whole publish.
     }

@@ -18,6 +18,8 @@ services:
       # Optional: token for a PrivateMode instance (used only by the refresh
       # service, for the API + SSE stream; never sent to the browser).
       BIRDNETGO_TOKEN: ${BIRDNETGO_TOKEN:-}
+      # Optional browser-reachable root used only for exact detection links.
+      BIRDNETGO_UI_BASE_URL: ${BIRDNETGO_UI_BASE_URL:-}
       # Optional: on-demand illustration generation (see .env.example). Unset =>
       # display-only: the refresh service still publishes, it just skips
       # generation, so new species stay hidden until art exists.
@@ -35,11 +37,10 @@ services:
       # on; set ILLUSTRATIONS_REPO empty to disable. Composes with on-demand generation.
       ILLUSTRATIONS_REPO: ${ILLUSTRATIONS_REPO-vrwrts/saezuri-illustrations}
       ILLUSTRATIONS_REF: ${ILLUSTRATIONS_REF:-main}
-      # --- Reference calls (see .env.example) ---
-      # Per detected species, the refresh service looks up a freely-licensed
-      # recording and caches it so the browser can play it from this origin.
-      # Defaults on (Wikimedia Commons needs no key); set empty to disable all
-      # outbound archive lookups.
+      # --- Call recordings (see .env.example) ---
+      # Providers are tried in order. Use birdnet,commons to prefer the newest
+      # saved station clip with Commons fallback. Defaults to Commons only; set
+      # empty to disable all recording lookups.
       CALL_PROVIDERS: ${CALL_PROVIDERS-commons}
       CALLS_MAX_PER_CYCLE: ${CALLS_MAX_PER_CYCLE:-4}
       # --- e-ink frame (/<window>.png) size + look; set to your panel ---
