@@ -33,6 +33,7 @@ illustrations repo doesn't have yet, to that repo.
   --exclude <list>   leave these species out
   --repo <owner/name>  target repo (default: ILLUSTRATIONS_REPO, else vrwrts/saezuri-illustrations)
   -y, --yes          don't ask for confirmation
+  --json             print the outcome as one JSON object on stdout (with --dry-run or --yes)
   -h, --help         show this help
 
 Needs a GitHub token in GITHUB_TOKEN (or GH_TOKEN) that can fork public repos and open
@@ -87,10 +88,19 @@ async function loadSpeciesInfo(
   return info
 }
 
-function printSkipped(skipped: readonly Skip[]): void {
+/** What --json prints: the plan, plus where it went when it was pushed. */
+interface Report {
+  repo: string
+  species: Array<{ slug: string; sci?: string; com?: string; stems: string[] }>
+  skipped: Skip[]
+  prUrl?: string
+  compareUrl?: string
+}
+
+function printSkipped(say: (msg: string) => void, skipped: readonly Skip[]): void {
   if (skipped.length === 0) return
-  console.log('\nHeld back:')
-  for (const s of skipped) console.log(`  ${s.slug}: ${s.reason}`)
+  say('\nHeld back:')
+  for (const s of skipped) say(`  ${s.slug}: ${s.reason}`)
 }
 
 async function confirm(question: string): Promise<boolean> {
@@ -111,12 +121,23 @@ async function main(): Promise<number> {
       exclude: { type: 'string' },
       repo: { type: 'string' },
       yes: { type: 'boolean', short: 'y' },
+      json: { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },
   })
   if (args.help) {
     console.log(USAGE)
     return 0
+  }
+
+  // With --json, stdout carries only the report, for a caller to parse; the human
+  // narrative moves to stderr so it still lands in the log.
+  const json = args.json === true
+  const say = json ? console.error : console.log
+  const report: Report = { repo: '', species: [], skipped: [] }
+  const done = (code: number) => {
+    if (json && code === 0) console.log(JSON.stringify(report))
+    return code
   }
 
   const cfg = readArtConfig()
@@ -127,6 +148,11 @@ async function main(): Promise<number> {
   }
   const token = (process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '').trim() || undefined
   const dryRun = args['dry-run'] === true
+  report.repo = repo
+  if (json && !dryRun && !args.yes) {
+    console.error('--json needs --dry-run or --yes: it never asks for confirmation.')
+    return 2
+  }
   if (!token && !dryRun) {
     console.error(`GITHUB_TOKEN is not set.\n\n${USAGE}`)
     return 2
@@ -139,9 +165,10 @@ async function main(): Promise<number> {
   const wanted = found.poses.filter((p) => selected(p.slug))
   const rejected = found.skipped.filter((s) => selected(s.slug))
   if (wanted.length === 0) {
-    console.log(`No generated illustrations to contribute in ${cfg.assetsDir}.`)
-    printSkipped(rejected)
-    return 0
+    say(`No generated illustrations to contribute in ${cfg.assetsDir}.`)
+    report.skipped = rejected
+    printSkipped(say, rejected)
+    return done(0)
   }
 
   const gh = gitHubClient(token)
@@ -153,29 +180,29 @@ async function main(): Promise<number> {
     plan.species.map((s) => s.slug),
   )
   const skipped = [...rejected, ...plan.skipped]
+  report.skipped = skipped
+  report.species = plan.species.map((s) => ({ ...s, ...info.get(s.slug), localNote: undefined }))
 
   if (plan.species.length === 0) {
-    console.log(`Nothing new to contribute to ${repo}.`)
-    printSkipped(skipped)
-    return 0
+    say(`Nothing new to contribute to ${repo}.`)
+    printSkipped(say, skipped)
+    return done(0)
   }
 
   const images = plan.species.reduce((n, s) => n + s.stems.length, 0)
-  console.log(
-    `Ready to contribute to ${repo}: ${plan.species.length} species, ${images} image(s)\n`,
-  )
+  say(`Ready to contribute to ${repo}: ${plan.species.length} species, ${images} image(s)\n`)
   for (const s of plan.species) {
     const i = info.get(s.slug)
     const label = i ? `${i.com} (${i.sci})` : s.slug
     const poses = s.stems.map((stem) => (stem === s.slug ? 'perched' : 'flight')).join(' + ')
-    console.log(`  ${label}: ${poses}${i?.localNote ? '  [local prompt note]' : ''}`)
+    say(`  ${label}: ${poses}${i?.localNote ? '  [local prompt note]' : ''}`)
   }
-  printSkipped(skipped)
-  console.log('')
+  printSkipped(say, skipped)
+  say('')
 
   if (dryRun) {
-    console.log('Dry run: nothing was pushed.')
-    return 0
+    say('Dry run: nothing was pushed.')
+    return done(0)
   }
   if (!args.yes) {
     if (!process.stdin.isTTY) {
@@ -198,16 +225,16 @@ async function main(): Promise<number> {
     info,
     assetsDir: cfg.assetsDir,
     openPr: args['no-pr'] !== true,
-    log: (msg) => console.log(`  ${msg}`),
+    log: (msg) => say(`  ${msg}`),
   })
+  report.prUrl = result.prUrl
+  report.compareUrl = result.compareUrl
   if (result.prUrl) {
-    console.log(`\nOpened ${result.prUrl}`)
+    say(`\nOpened ${result.prUrl}`)
   } else {
-    console.log(
-      `\nPushed ${result.headRepo}:${result.branch}. Open the PR at:\n${result.compareUrl}`,
-    )
+    say(`\nPushed ${result.headRepo}:${result.branch}. Open the PR at:\n${result.compareUrl}`)
   }
-  return 0
+  return done(0)
 }
 
 main().then(
