@@ -324,6 +324,10 @@ Narrow it with `--only` / `--exclude` (comma-separated slugs or scientific names
 `--no-pr` to push the branch and open the pull request yourself; `--help` lists everything.
 It contributes to `ILLUSTRATIONS_REPO`, the same repo the art is downloaded from.
 
+On Home Assistant there is no need for a shell: set the app's GitHub token option and it
+offers a contribution itself once enough new species are ready, as a phone notification
+with a **Contribute** button — see [`addon/DOCS.md`](addon/DOCS.md).
+
 ## Reference calls
 
 **On by default.** When a species is heard, the refresh service looks up a freely-licensed

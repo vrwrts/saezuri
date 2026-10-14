@@ -215,6 +215,26 @@ done
 
 cp /opt/saezuri/addon/ingress.conf /etc/nginx/conf.d/ingress.conf
 
+# Offering generated art upstream is opt-in: the agent starts only with a token, and
+# reads that token from options.json itself so it never enters this environment,
+# which the refresh service and nginx inherit. Restarted after a crash, but not after
+# a clean exit, which is the agent deciding it has nothing to do.
+#
+# A background job's stdin is /dev/null in a non-interactive shell, and that happens
+# before its own redirections apply — so stdin, where hassio.addon_stdin writes, is
+# parked on fd 3 first and handed back from there.
+if opt_present github_token && [ -n "$(opt_value github_token)" ]; then
+    log "github_token=<set>; starting the contribute agent"
+    exec 3<&0
+    (
+        until node /opt/saezuri/addon/contribute-agent.mjs <&3; do
+            log "contribute agent exited; restarting in 30s"
+            sleep 30
+        done
+    ) &
+    exec 3<&-
+fi
+
 # The image's own entrypoint runs its /docker-entrypoint.d hooks (install the
 # port-80 config, launch the refresh service) with the environment now populated.
 exec /docker-entrypoint.sh nginx -g "daemon off;"

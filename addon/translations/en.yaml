@@ -48,6 +48,23 @@ configuration:
     description: >-
       No longer used — illustrations are now generated one at a time. Safe to
       remove from your configuration.
+  github_token:
+    name: GitHub token for contributing
+    description: >-
+      Optional. Set it to be offered, now and then, to share the illustrations
+      this app generated with everyone else, as a pull request. See the
+      documentation for the token to create.
+  contribute_notify:
+    name: Contribution notifications
+    description: >-
+      Notify service of the Companion app to send offers to, for example
+      mobile_app_my_phone, so a tap on Contribute opens the pull request. Empty
+      uses Home Assistant's own notifications instead.
+  contribute_min_species:
+    name: Species per contribution
+    description: >-
+      How many new species have to be ready before you are offered to
+      contribute them. Defaults to 10.
   call_providers:
     name: Recording archives
     description: >-

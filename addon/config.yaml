@@ -11,6 +11,11 @@ startup: services
 boot: auto
 ingress: true
 ingress_port: 8099
+# Both for contributing generated art (contribute-agent.mjs), and both idle unless
+# the github_token option is set: stdin carries the hassio.addon_stdin action, and
+# the Core API carries the notifications and the phone's Contribute action.
+stdin: true
+homeassistant_api: true
 panel_admin: false
 panel_icon: mdi:bird
 panel_title: Saezuri
@@ -50,6 +55,11 @@ schema:
   # to cap. Kept in the schema only so an existing configuration still validates;
   # remove it from your options at your convenience.
   generate_max_per_cycle: int(1,64)?
+  # Setting it opts in to offering this app's generated art to the shared
+  # illustrations repo. See DOCS.md.
+  github_token: password?
+  contribute_notify: str?
+  contribute_min_species: int(1,500)?
   call_providers: str?
   calls_max_per_cycle: int(1,64)
   frame_width: int(100,4000)

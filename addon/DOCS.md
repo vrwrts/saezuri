@@ -102,17 +102,40 @@ everyone draws from. If a note fixes a bird the repository gets wrong, please
 [contribute it there](https://github.com/vrwrts/saezuri-illustrations) so every
 installation benefits.
 
-The illustrations this app generated can go there too. The image ships a
-`saezuri-contribute` command that opens the pull request for you, but Home Assistant
-gives you no shell inside an app. You can reach it from a terminal app that has Docker
-access (for example *Advanced SSH & Web Terminal* with protection mode off):
+### Sharing the illustrations you generated
 
-```bash
-docker exec -it -e GITHUB_TOKEN=<your-github-token> \
-  $(docker ps -qf name=saezuri) saezuri-contribute
-```
+Every bird your Gemini key paid to draw is one the shared illustrations repository
+lacks. Set a GitHub token and this app offers, now and then, to contribute them as a
+pull request — so other installations get them for free.
 
-Add `--dry-run` to just see what it would contribute.
+| Option | Default | What it does |
+| ------ | ------- | ------------ |
+| **GitHub token for contributing** | unset | Turns this on. Unset, the app never contacts GitHub on your behalf. |
+| **Contribution notifications** | unset | A Companion app notify service, like `mobile_app_my_phone`. Offers then arrive on your phone with a **Contribute** button. Empty uses Home Assistant's own notifications. |
+| **Species per contribution** | `10` | How many new species have to be ready before you are offered to contribute them. |
+
+How it behaves:
+
+- **It waits for a batch.** The app checks once a day, and offers only once enough new
+  species are ready — one pull request of a dozen birds is much easier to review than a
+  dozen of one. An ignored offer comes back at most weekly, and only once more birds
+  are ready.
+- **One tap.** On your phone, tap **Contribute** on the notification; a moment later a
+  second notification links to the pull request it opened. Without a phone configured,
+  the offer appears in Home Assistant's notifications and tells you which action to run.
+- **Any time, by hand.** The `hassio.addon_stdin` action (Developer tools → Actions)
+  with this app and `input: contribute` contributes straight away; `input: check` asks
+  what is ready right now, regardless of the threshold.
+- **Only what is new.** It offers the illustrations this app generated — never ones it
+  downloaded — that the repository doesn't have and no open pull request already adds,
+  and holds back anything the repository's checks would reject.
+- **Licensing.** Contributed illustrations are published under CC-BY-NC-SA-4.0, like
+  the rest of the repository. Setting the token is your agreement to that.
+
+For the token, create a [classic personal access
+token](https://github.com/settings/tokens/new?scopes=public_repo&description=Saezuri)
+with only the **public_repo** scope. The pull request comes from your own fork of the
+repository, which the app creates the first time.
 
 ### Reference recordings
 

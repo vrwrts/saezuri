@@ -16,6 +16,7 @@ RUN apk add --no-cache jq curl
 
 COPY nginx/ingress.conf /opt/saezuri/addon/ingress.conf
 COPY run.sh /run.sh
+COPY contribute-agent.mjs /opt/saezuri/addon/contribute-agent.mjs
 RUN chmod +x /run.sh
 
 # The base image inherits nginx's ENTRYPOINT ["/docker-entrypoint.sh"]. Left in
