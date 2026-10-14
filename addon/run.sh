@@ -110,8 +110,26 @@ export FRAME_HTML_DIR=/usr/share/nginx/html
 export CACHE_DIR=/data/cache
 
 # The image already points the html root's asset directories at /data, so mounting
-# the persistent volume is the whole of it: no symlink surgery, no moving files.
-mkdir -p /data/illustrations /data/calls /data/cache
+# the persistent volume is the whole of it for calls and the cache.
+mkdir -p /data/calls /data/cache
+
+# Illustrations are the exception: they go in the app's config folder (see `map` in
+# config.yaml), which a user can browse, rather than /data, which they can't. Releases
+# before this one kept them in /data, so move them once. File by file, because busybox
+# `cp -n src/. dst/` copies nothing at all once dst exists. A file only leaves /data
+# after it fully arrived, so an interrupted start resumes next time, overwriting any
+# half-copied file with the original that is still there.
+ILLUSTRATIONS_DIR=/config/illustrations
+mkdir -p "$ILLUSTRATIONS_DIR"
+if [ -d /data/illustrations ]; then
+    log "moving illustrations from /data/illustrations to ${ILLUSTRATIONS_DIR}"
+    for f in /data/illustrations/* /data/illustrations/.[!.]*; do
+        [ -e "$f" ] || continue
+        mv -f "$f" "$ILLUSTRATIONS_DIR/" || log "could not move ${f}; retrying next start"
+    done
+    rmdir /data/illustrations 2>/dev/null || true
+fi
+ln -sfn "$ILLUSTRATIONS_DIR" /usr/share/nginx/html/assets/illustrations
 
 # --- BirdNET-Go detection ----------------------------------------------------
 

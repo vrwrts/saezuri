@@ -11,6 +11,12 @@ startup: services
 boot: auto
 ingress: true
 ingress_port: 8099
+# Mounted at /config. The illustrations live there rather than in the private /data
+# so a user can reach them over Samba or the File editor, e.g. to contribute the art
+# they generated to the illustrations repo.
+map:
+  - type: addon_config
+    read_only: false
 panel_admin: false
 panel_icon: mdi:bird
 panel_title: Saezuri
