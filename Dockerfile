@@ -62,6 +62,13 @@ COPY --from=build /app/dist-server/refresh.mjs /opt/saezuri/server/refresh.mjs
 COPY --from=build /opt/canvas/node_modules /opt/saezuri/server/node_modules
 RUN cd /opt/saezuri/server && node -e "require('@napi-rs/canvas')"
 
+# `docker exec <container> saezuri-contribute`: offers the art this container generated
+# to the illustrations repo as a pull request. Run by hand, never by the service.
+COPY --from=build /app/dist-server/contribute.mjs /opt/saezuri/server/contribute.mjs
+RUN printf '#!/bin/sh\nexec node /opt/saezuri/server/contribute.mjs "$@"\n' \
+        > /usr/local/bin/saezuri-contribute \
+    && chmod +x /usr/local/bin/saezuri-contribute
+
 # Static bundle.
 COPY --from=build /app/dist /usr/share/nginx/html
 

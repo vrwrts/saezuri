@@ -283,8 +283,46 @@ How it behaves:
 - **Licensing.** The illustrations (and the generation pipeline the image bundles) are
   **CC-BY-NC-SA-4.0** — non-commercial. See the illustrations repo and *Credits and licensing* below.
 
-Want to contribute art for more species? Generate them with your key and open a PR — see the
-[saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) repo.
+Want to contribute art for more species? If you run with a generation key, Saezuri can open the
+PR for you — see [Contribute your generated art](#contribute-your-generated-art).
+
+## Contribute your generated art
+
+Every bird your key paid to generate is one the shared repo lacks, so every other deployment
+still shows it as a silhouette. `saezuri-contribute`, bundled in the image, turns those renders
+into a pull request against the
+[saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) repo:
+
+```bash
+# See what would be offered — no token needed, nothing is pushed:
+docker exec saezuri saezuri-contribute --dry-run
+
+# Open the pull request (asks before it pushes anything):
+docker exec -it -e GITHUB_TOKEN="$(gh auth token)" saezuri saezuri-contribute
+```
+
+What it does:
+
+- **Offers only art this deployment generated**: the poses `_art-state.json` records as
+  generated, never anything downloaded from the repo. It then drops whatever the repo already
+  has, or an open pull request already adds, so running it again (or after someone else
+  contributed the same bird) never opens a duplicate.
+- **Holds back what the repo's lint would reject**: a species missing one of its two poses,
+  a render that never got its cutout (no transparency), and a truncated file. Each one is
+  listed with the reason.
+- **Forks the repo for you** if you don't have one yet, pushes a branch built on the repo's
+  latest commit, and opens the pull request. The description previews every image and lists
+  any of your [species notes](#species-notes) that the pipeline doesn't ship yet, so
+  maintainers can adopt those too.
+- **Needs a GitHub token only while it runs**: pass it with `-e` on the `docker exec`,
+  never in the container's own environment. A classic token with the `public_repo` scope
+  works, as does the [GitHub CLI](https://cli.github.com)'s `gh auth token`.
+- **Licensing.** Contributed art is published under **CC-BY-NC-SA-4.0**, as the repo's
+  `ATTRIBUTION.md` describes. The command asks you to agree before pushing.
+
+Narrow it with `--only` / `--exclude` (comma-separated slugs or scientific names), or
+`--no-pr` to push the branch and open the pull request yourself; `--help` lists everything.
+It contributes to `ILLUSTRATIONS_REPO`, the same repo the art is downloaded from.
 
 ## Reference calls
 
@@ -341,7 +379,8 @@ frames into `./public`, and downloads (or generates) art as species come in — 
 does in the container. `refresh:dev` bundles the service first via `build:server`. Copying
 [`.env.example`](.env.example) is still a useful reference for what to set, but it is not loaded
 automatically; `node --env-file=.env.local dist-server/refresh.mjs` works if you'd rather keep the
-values in a file.
+values in a file. `FRAME_HTML_DIR=./public pnpm contribute:dev --dry-run` runs the contribute
+command against the art that run collected.
 
 In `dev:mock` there is no backend and so no real recordings; `node src/dev/mockCalls.mjs` writes
 short synthetic tones and a matching call manifest into `./public` so playback can be exercised.

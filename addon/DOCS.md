@@ -102,6 +102,18 @@ everyone draws from. If a note fixes a bird the repository gets wrong, please
 [contribute it there](https://github.com/vrwrts/saezuri-illustrations) so every
 installation benefits.
 
+The illustrations this app generated can go there too. The image ships a
+`saezuri-contribute` command that opens the pull request for you, but Home Assistant
+gives you no shell inside an app. You can reach it from a terminal app that has Docker
+access (for example *Advanced SSH & Web Terminal* with protection mode off):
+
+```bash
+docker exec -it -e GITHUB_TOKEN=<your-github-token> \
+  $(docker ps -qf name=saezuri) saezuri-contribute
+```
+
+Add `--dry-run` to just see what it would contribute.
+
 ### Reference recordings
 
 When a species is heard, Saezuri looks up a freely-licensed recording of its call and

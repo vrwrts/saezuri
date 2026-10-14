@@ -163,6 +163,14 @@ Where things live, so a change lands in the right place fast.
   truth — a bad entry must degrade to "probe again", never to "skip forever". The generate lane
   owns the rate limit (`GENERATE_SLEEP`): the pipeline is invoked once per pose, so its own
   inter-call sleep never fires.
+- **Contributing art upstream:** `src/server/contribute.ts` is the `saezuri-contribute` CLI
+  (bundled beside `refresh.mjs`, run by hand via `docker exec`, never by the service);
+  `contribution.ts` holds the logic. It offers only poses `_art-state.json` marks
+  `source: 'generated'`, drops what the repo or an open PR already has, holds back what the
+  repo's `scripts/validate.sh` would fail, and opens the PR over the GitHub REST API from a
+  fork (`github.ts`, plain fetch — the image has no git). The token is per-invocation, so
+  the web-facing service never holds a GitHub credential. `artConfig.ts` is the shared
+  source for where art lives and which repo it comes from.
 - **Reference calls:** `src/server/calls.ts` (`CallLibrary`) queues a lookup per newly-heard
   species, mirroring `generate.ts`; `callProviders/` holds one provider per archive behind a
   common interface — `find()` resolves null for "nothing here" (cacheable) and **throws** for
