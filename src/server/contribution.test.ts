@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { deflateSync } from 'node:zlib'
+import { crc32, deflateSync } from 'node:zlib'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   contribute,
@@ -19,16 +19,8 @@ import {
 } from './contribution.ts'
 import { type GitHubClient, GitHubError } from './github.ts'
 
-const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
-  let c = n
-  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
-  return c >>> 0
-})
-const crc32 = (b: Buffer) => {
-  let c = ~0
-  for (const x of b) c = CRC_TABLE[(c ^ x) & 0xff] ^ (c >>> 8)
-  return ~c >>> 0
-}
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+
 const chunk = (type: string, data: Buffer) => {
   const len = Buffer.alloc(4)
   len.writeUInt32BE(data.length)
@@ -38,19 +30,27 @@ const chunk = (type: string, data: Buffer) => {
   return Buffer.concat([len, body, crc])
 }
 
-/** A real 1x1 PNG of the given colour type, optionally carrying a tRNS chunk. */
-function png(colorType: number, opts: { trns?: boolean; width?: number } = {}): Buffer {
+const SAMPLES: Record<number, number> = { 2: 3, 3: 1, 4: 2, 6: 4 }
+
+/** A real 8-bit, one-row PNG of the given colour type. `scanline` replaces the
+ *  well-formed pixel row, and `idat` the whole compressed stream. */
+function png(
+  colorType: number,
+  opts: { trns?: boolean; width?: number; scanline?: Buffer; idat?: Buffer } = {},
+): Buffer {
+  const width = opts.width ?? 1
   const ihdr = Buffer.alloc(13)
-  ihdr.writeUInt32BE(opts.width ?? 1, 0)
+  ihdr.writeUInt32BE(width, 0)
   ihdr.writeUInt32BE(1, 4)
   ihdr[8] = 8
   ihdr[9] = colorType
+  const scanline = opts.scanline ?? Buffer.alloc(1 + width * SAMPLES[colorType])
   return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    PNG_SIGNATURE,
     chunk('IHDR', ihdr),
     ...(colorType === 3 ? [chunk('PLTE', Buffer.from([0, 0, 0]))] : []),
     ...(opts.trns ? [chunk('tRNS', Buffer.from([0]))] : []),
-    chunk('IDAT', deflateSync(Buffer.alloc(5))),
+    chunk('IDAT', opts.idat ?? deflateSync(scanline)),
     chunk('IEND', Buffer.alloc(0)),
   ])
 }
@@ -77,7 +77,33 @@ describe('pngProblem', () => {
   })
 
   it('rejects an image past the lint pixel cap', () => {
-    expect(pngProblem(png(6, { width: 50_000_000 }))).toMatch(/exceeds/)
+    // Refused at the header, before any image data is read.
+    expect(pngProblem(png(6, { width: 50_000_000, idat: Buffer.alloc(0) }))).toMatch(/exceeds/)
+  })
+
+  it('rejects a chunk whose CRC does not match', () => {
+    const corrupt = Buffer.from(RGBA)
+    corrupt[corrupt.length - 20] ^= 0xff // inside the IDAT data
+    expect(pngProblem(corrupt)).toMatch(/CRC mismatch/)
+  })
+
+  it('rejects a short header without throwing', () => {
+    const shortHeader = Buffer.concat([PNG_SIGNATURE, chunk('IHDR', Buffer.alloc(4))])
+    expect(pngProblem(shortHeader)).toBe('malformed PNG header')
+  })
+
+  it('rejects a complete-looking file whose image data does not decode', () => {
+    const cutShort = deflateSync(Buffer.alloc(5)).subarray(0, -4)
+    expect(pngProblem(png(6, { idat: cutShort }))).toMatch(/^corrupt image data/)
+  })
+
+  it('rejects image data that does not fill the image', () => {
+    expect(pngProblem(png(6, { scanline: Buffer.alloc(3) }))).toBe('truncated image data')
+    expect(pngProblem(png(6, { scanline: Buffer.alloc(9) }))).toMatch(/^corrupt image data/)
+  })
+
+  it('rejects a scanline with an unknown filter', () => {
+    expect(pngProblem(png(6, { scanline: Buffer.from([9, 0, 0, 0, 0]) }))).toMatch(/filter/)
   })
 })
 

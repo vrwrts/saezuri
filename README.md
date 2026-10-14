@@ -308,8 +308,8 @@ What it does:
   has, or an open pull request already adds, so running it again (or after someone else
   contributed the same bird) never opens a duplicate.
 - **Holds back what the repo's lint would reject**: a species missing one of its two poses,
-  a render that never got its cutout (no transparency), and a truncated file. Each one is
-  listed with the reason.
+  a render that never got its cutout (no transparency), and a truncated or corrupt file.
+  Each one is listed with the reason.
 - **Forks the repo for you** if you don't have one yet, pushes a branch built on the repo's
   latest commit, and opens the pull request. The description previews every image and lists
   any of your [species notes](#species-notes) that the pipeline doesn't ship yet, so

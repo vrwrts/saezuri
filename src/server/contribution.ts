@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { crc32, inflateSync } from 'node:zlib'
 import { FLIGHT_SUFFIX } from '../domain/asset.ts'
 import { fnv1a } from '../lib/hash.ts'
 import { parseArtState, STATE_FILE } from './generate.ts'
@@ -25,9 +26,27 @@ const MAX_PIXELS = 40_000_000
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 /** Chunk framing: 4-byte length + 4-byte type, then data, then a 4-byte CRC. */
 const CHUNK_OVERHEAD = 12
+const IHDR_LENGTH = 13
 const COLOR_TYPE_GRAY_ALPHA = 4
 const COLOR_TYPE_RGBA = 6
 const COLOR_TYPE_PALETTE = 3
+/** Samples per pixel, by colour type. */
+const CHANNELS: Record<number, number> = { 0: 1, 2: 3, [COLOR_TYPE_PALETTE]: 1, 4: 2, 6: 4 }
+const BIT_DEPTHS = new Set([1, 2, 4, 8, 16])
+const INTERLACE_ADAM7 = 1
+/** [x0, y0, dx, dy] of each interlace pass: where its first pixel sits and its stride. */
+const ADAM7_PASSES = [
+  [0, 0, 8, 8],
+  [4, 0, 8, 8],
+  [0, 4, 4, 8],
+  [2, 0, 4, 4],
+  [0, 2, 2, 4],
+  [1, 0, 2, 2],
+  [0, 1, 1, 2],
+] as const
+const NO_INTERLACE_PASS = [0, 0, 1, 1] as const
+/** None, Sub, Up, Average, Paeth. */
+const MAX_FILTER_TYPE = 4
 
 /** Forking is asynchronous: GitHub answers the request before the fork's git data is
  *  readable. A fresh fork of a small repo is usually ready within seconds. */
@@ -72,28 +91,51 @@ export function toPose(stem: string): Pose {
 const poseName = (pose: Pose) => (pose.flight ? 'flight' : 'perched')
 const counterpartStem = (pose: Pose) => (pose.flight ? pose.slug : `${pose.slug}${FLIGHT_SUFFIX}`)
 
-/** Why a file would fail the repo's lint, or undefined when it would pass. Walks the
- *  chunks rather than trusting the header, so a truncated download or an interrupted
- *  write — which leaves a valid header — is caught too. */
+interface PngHeader {
+  width: number
+  height: number
+  bitDepth: number
+  colorType: number
+  interlaced: boolean
+}
+
+/** Why a file would fail the repo's lint, or undefined when it would pass.
+ *
+ *  The lint fully decodes every image, so this does too, short of unfiltering pixels:
+ *  every chunk's CRC, then the image data inflated and measured against the header.
+ *  A truncated download or an interrupted write leaves a valid header, and a flipped
+ *  byte can leave a file that still ends in IEND — neither is caught by the header. */
 export function pngProblem(buf: Buffer): string | undefined {
   if (buf.length < PNG_SIGNATURE.length || !buf.subarray(0, 8).equals(PNG_SIGNATURE)) {
     return 'not a PNG'
   }
   let offset = PNG_SIGNATURE.length
-  let colorType: number | undefined
+  let header: PngHeader | undefined
   let hasTransparencyChunk = false
+  const imageData: Buffer[] = []
   while (offset + CHUNK_OVERHEAD <= buf.length) {
     const length = buf.readUInt32BE(offset)
+    const end = offset + CHUNK_OVERHEAD + length
+    if (end > buf.length) break
     const type = buf.toString('latin1', offset + 4, offset + 8)
-    const data = offset + 8
+    const data = buf.subarray(offset + 8, end - 4)
+    if (crc32(buf.subarray(offset + 4, end - 4)) !== buf.readUInt32BE(end - 4)) {
+      return `corrupt ${type} chunk (CRC mismatch)`
+    }
+    if (!header && type !== 'IHDR') return 'malformed PNG (IHDR is not first)'
     if (type === 'IHDR') {
-      const width = buf.readUInt32BE(data)
-      const height = buf.readUInt32BE(data + 4)
+      header = parseHeader(data)
+      if (!header) return 'malformed PNG header'
+      const { width, height } = header
       if (width * height > MAX_PIXELS) return `${width}x${height} exceeds the ${MAX_PIXELS}px cap`
-      colorType = buf[data + 9]
     } else if (type === 'tRNS') {
       hasTransparencyChunk = true
-    } else if (type === 'IEND') {
+    } else if (type === 'IDAT') {
+      imageData.push(data)
+    } else if (type === 'IEND' && header) {
+      const dataProblem = imageDataProblem(header, Buffer.concat(imageData))
+      if (dataProblem) return dataProblem
+      const { colorType } = header
       const hasAlpha =
         colorType === COLOR_TYPE_RGBA ||
         colorType === COLOR_TYPE_GRAY_ALPHA ||
@@ -102,9 +144,61 @@ export function pngProblem(buf: Buffer): string | undefined {
       // rectangle, which nobody wants in the shared set.
       return hasAlpha ? undefined : 'no transparency (the cutout step did not run on it)'
     }
-    offset = data + length + 4
+    offset = end
   }
   return 'truncated PNG'
+}
+
+function parseHeader(data: Buffer): PngHeader | undefined {
+  if (data.length !== IHDR_LENGTH) return undefined
+  const header = {
+    width: data.readUInt32BE(0),
+    height: data.readUInt32BE(4),
+    bitDepth: data[8],
+    colorType: data[9],
+    interlaced: data[12] === INTERLACE_ADAM7,
+  }
+  const valid =
+    header.width > 0 &&
+    header.height > 0 &&
+    CHANNELS[header.colorType] !== undefined &&
+    BIT_DEPTHS.has(header.bitDepth) &&
+    data[12] <= INTERLACE_ADAM7
+  return valid ? header : undefined
+}
+
+/** Byte length of each scanline, filter byte included, in the order they are stored. */
+function scanlineLengths({ width, height, bitDepth, colorType, interlaced }: PngHeader): number[] {
+  const bitsPerPixel = bitDepth * CHANNELS[colorType]
+  const lengths: number[] = []
+  for (const [x0, y0, dx, dy] of interlaced ? ADAM7_PASSES : [NO_INTERLACE_PASS]) {
+    const passWidth = Math.ceil((width - x0) / dx)
+    const passHeight = Math.ceil((height - y0) / dy)
+    // A pass with no pixels (a narrow or short image) stores no scanlines at all.
+    if (passWidth <= 0 || passHeight <= 0) continue
+    const rowLength = 1 + Math.ceil((passWidth * bitsPerPixel) / 8)
+    for (let row = 0; row < passHeight; row++) lengths.push(rowLength)
+  }
+  return lengths
+}
+
+function imageDataProblem(header: PngHeader, compressed: Buffer): string | undefined {
+  const rows = scanlineLengths(header)
+  const expected = rows.reduce((sum, n) => sum + n, 0)
+  let raw: Buffer
+  try {
+    // Capped at what the header promises, so a crafted stream can't balloon in memory.
+    raw = inflateSync(compressed, { maxOutputLength: expected })
+  } catch (e) {
+    return `corrupt image data (${e instanceof Error ? e.message : String(e)})`
+  }
+  if (raw.length !== expected) return 'truncated image data'
+  let offset = 0
+  for (const length of rows) {
+    if (raw[offset] > MAX_FILTER_TYPE) return 'corrupt image data (unknown scanline filter)'
+    offset += length
+  }
+  return undefined
 }
 
 /** Every pose this deployment generated that is still on disk and would pass the
