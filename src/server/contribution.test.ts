@@ -370,13 +370,35 @@ describe('contribute', () => {
     expect(calls.some((c) => c.key.endsWith('/pulls'))).toBe(false)
   })
 
-  it('explains a branch that was already pushed', async () => {
-    const { gh } = fakeGitHub({
+  const branch = contributionBranch(species)
+  const branchExists = () => {
+    throw new GitHubError(422, 'refs', 'Reference already exists')
+  }
+  const prsFromBranch = `GET /repos/up/art/pulls?state=all&head=${encodeURIComponent(`up:${branch}`)}`
+
+  it('reuses a branch left behind without a pull request, so a failed run can be retried', async () => {
+    const { gh, calls } = fakeGitHub({
       ...writeRoutes('up/art'),
-      'POST /repos/up/art/git/refs': () => {
-        throw new GitHubError(422, 'refs', 'Reference already exists')
-      },
+      'POST /repos/up/art/git/refs': branchExists,
+      [prsFromBranch]: () => [],
+      [`PATCH /repos/up/art/git/refs/heads/${branch}`]: () => ({}),
+      'POST /repos/up/art/pulls': () => ({ html_url: 'https://pr' }),
     })
-    await expect(contribute(gh, opts(true))).rejects.toThrow(/already exists/)
+    const result = await contribute(gh, opts(true))
+    expect(result.prUrl).toBe('https://pr')
+    expect(calls.find((c) => c.key.startsWith('PATCH'))?.body).toEqual({
+      sha: 'commit',
+      force: true,
+    })
+  })
+
+  it('leaves alone a branch a pull request was already opened from', async () => {
+    const { gh, calls } = fakeGitHub({
+      ...writeRoutes('up/art'),
+      'POST /repos/up/art/git/refs': branchExists,
+      [prsFromBranch]: () => [{ number: 12 }],
+    })
+    await expect(contribute(gh, opts(true))).rejects.toThrow(/already proposed in #12/)
+    expect(calls.some((c) => c.key.startsWith('PATCH'))).toBe(false)
   })
 })

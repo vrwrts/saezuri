@@ -489,20 +489,7 @@ export async function contribute(
   })
 
   const branch = contributionBranch(species)
-  try {
-    await gh.request('POST', `/repos/${headRepo}/git/refs`, {
-      ref: `refs/heads/${branch}`,
-      sha: commit.sha,
-    })
-  } catch (e) {
-    if (e instanceof GitHubError && e.status === 422) {
-      throw new Error(
-        `branch ${branch} already exists in ${headRepo} — this exact set was pushed before. ` +
-          'Open or check its pull request, or delete the branch to push it again.',
-      )
-    }
-    throw e
-  }
+  await pushBranch(gh, upstream.repo, headRepo, branch, commit.sha)
 
   const compareUrl =
     `https://github.com/${upstream.repo}/compare/${upstream.defaultBranch}...` +
@@ -524,6 +511,38 @@ export async function contribute(
     ...(fromFork ? { maintainer_can_modify: true } : {}),
   })
   return { headRepo, branch, compareUrl, prUrl: pr.html_url }
+}
+
+/** Points the branch at the commit. The name is derived from the art set, so it can
+ *  already exist: left by a run that pushed but never opened its pull request (it
+ *  failed, or ran with --no-pr), it is reused so that run can simply be retried. A
+ *  branch any pull request was opened from is left alone — that exact set was proposed
+ *  before, and an open one would have been filtered out already, so it was closed. */
+async function pushBranch(
+  gh: GitHubClient,
+  upstreamRepo: string,
+  headRepo: string,
+  branch: string,
+  sha: string,
+): Promise<void> {
+  try {
+    await gh.request('POST', `/repos/${headRepo}/git/refs`, { ref: `refs/heads/${branch}`, sha })
+    return
+  } catch (e) {
+    if (!(e instanceof GitHubError && e.status === 422)) throw e
+  }
+  const head = encodeURIComponent(`${headRepo.split('/')[0]}:${branch}`)
+  const [pr] = await gh.request<Array<{ number: number }>>(
+    'GET',
+    `/repos/${upstreamRepo}/pulls?state=all&head=${head}`,
+  )
+  if (pr) {
+    throw new Error(
+      `branch ${branch} in ${headRepo} was already proposed in #${pr.number}. ` +
+        'Delete the branch to propose this exact set again.',
+    )
+  }
+  await gh.request('PATCH', `/repos/${headRepo}/git/refs/heads/${branch}`, { sha, force: true })
 }
 
 /** The token owner's fork of the upstream repo, created if need be. Asking GitHub to
