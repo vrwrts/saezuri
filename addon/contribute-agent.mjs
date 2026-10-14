@@ -170,7 +170,7 @@ class Agent {
 
   /** Delivers one message to the phone when one is configured, else to Home
    *  Assistant's own notifications. `offer` adds the way to act on it; `url` is where
-   *  tapping the notification goes. */
+   *  tapping the notification goes. Resolves whether it was delivered. */
   async notify(message, { offer = false, url } = {}) {
     try {
       if (this.notifyTarget) {
@@ -179,7 +179,7 @@ class Agent {
         // `url` is the iOS spelling and `clickAction` the Android one.
         if (url) Object.assign(data, { url, clickAction: url })
         await this.callService('notify', this.notifyTarget, { title: 'Saezuri', message, data })
-        return
+        return true
       }
       const hint = offer
         ? '\n\nTo open a pull request with them, run the `hassio.addon_stdin` action ' +
@@ -191,8 +191,10 @@ class Agent {
         title: 'Saezuri',
         message: `${message}${hint}${link}`,
       })
+      return true
     } catch (e) {
       log(`could not notify: ${e instanceof Error ? e.message : String(e)}`)
+      return false
     }
   }
 
@@ -211,8 +213,11 @@ class Agent {
         return
       }
       log(`offering ${count} species`)
-      await this.notify(messages.offer(report), { offer: true })
-      await saveState({ notifiedAt: Date.now(), notifiedCount: count })
+      // Recorded only once delivered: shouldNotify stays quiet about a set it thinks was
+      // offered, so a missed delivery would otherwise hide the offer for good.
+      if (await this.notify(messages.offer(report), { offer: true })) {
+        await saveState({ notifiedAt: Date.now(), notifiedCount: count })
+      }
     } catch (e) {
       log(e instanceof Error ? e.message : String(e))
       if (force) await this.notify(messages.failed(e))
