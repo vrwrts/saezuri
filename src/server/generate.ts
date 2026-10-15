@@ -17,13 +17,13 @@ import type { ArtRepair } from './reconcile.ts'
 // cheap one.
 //
 // Two sources compose, in a fixed precedence: a ready-made cutout from the
-// saezuri-illustrations repo (free, no key) first, and on-demand Gemini generation only
+// saezuri-illustrations repo (free, no key) first, and on-demand model generation only
 // for what the repo lacks. The repo is meant to be the state of the art, so it always
 // wins; species notes tune the generation fallback and never override the repo.
 //
 // They run as independent LANES so a cheap repo download never queues behind an
 // expensive render. The generate lane is serial and paces its own calls, because the
-// constraint there is the image API's rate limit, not worker count.
+// constraint there is the model provider's rate limit, not worker count.
 
 /** '' = base (perched) pose, FLIGHT_SUFFIX = flight pose. Perched first: it is the
  *  pose that makes a species visible, so it should never wait behind flight. */
@@ -63,7 +63,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /** One pose of one species: the unit both lanes queue and dedupe on. `sci` is absent
  *  when the slug came off disk and we could not name its bird — downloadable by slug,
- *  but never generated, because we won't spend a Gemini call on a guessed name. */
+ *  but never generated, because we won't spend a paid render on a guessed name. */
 interface PoseRequest extends ArtRepair {
   suffix: string
   /** Re-render even though the file exists — set only when a note changed. */
@@ -95,14 +95,14 @@ export interface GeneratorOptions {
   workerScript: string
   assetsDir: string
   cacheDir: string
-  /** GEMINI_API_KEY present — otherwise on-demand generation is skipped. */
+  /** GENERATE_API_KEY present — otherwise on-demand generation is skipped. */
   enabled: boolean
   /** Base URL for downloading pre-made cutouts (repo root; the illustrations dir is
    *  appended). Empty ⇒ download disabled. e.g. https://cdn.jsdelivr.net/gh/<repo>@<ref> */
   downloadBaseUrl: string
   /** Notes files, layered in order (bundled pipeline file first, operator's over it). */
   notesPaths: readonly string[]
-  /** Gap between image-API calls. The generate lane owns the rate limit: it asks the
+  /** Gap between model calls. The generate lane owns the rate limit: it asks the
    *  pipeline for one pose at a time, so the pipeline's own inter-call sleep never
    *  applies here. */
   generateGapMs: number
@@ -179,7 +179,7 @@ export class Generator {
    *  as unowned and re-enqueue it.
    *
    *  A repair with no `sci` stops here: it is downloadable by slug, but naming its bird
-   *  is guesswork and a Gemini call on a guessed name is worse than no art. */
+   *  is guesswork and a paid render of a guessed name is worse than no art. */
   private handToGenerate(stem: string, pose: PoseRequest): void {
     if (!this.opts.enabled || !pose.sci) return
     if (this.genInFlight.has(stem) || this.genQueue.has(stem)) return

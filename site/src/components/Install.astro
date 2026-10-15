@@ -127,19 +127,24 @@ volumes:
             <td>Overrides the download base URL entirely. For testing against a local file server.</td>
           </tr>
           <tr>
-            <td><code>GEMINI_API_KEY</code></td>
+            <td><code>GENERATE_API_KEY</code></td>
             <td>unset</td>
-            <td>Google AI key. Set it to also generate art, in the same style, for species the library lacks. Uses the paid image API with your key.</td>
+            <td>API key for the image model. Set it to also generate art, in the same style, for species the library lacks. You pay for what it generates.</td>
           </tr>
           <tr>
-            <td><code>GENERATE_MAX_PER_CYCLE</code></td>
-            <td><code>4</code></td>
-            <td>Cap on species generated per run.</td>
+            <td><code>GENERATE_API_URL</code></td>
+            <td><code>https://openrouter.ai/api/v1</code></td>
+            <td>Any OpenAI-compatible <code>chat/completions</code> base URL, including one on your own network — which is how you generate art locally.</td>
+          </tr>
+          <tr>
+            <td><code>GENERATE_MODEL</code></td>
+            <td><code>google/gemini-2.5-flash-image</code></td>
+            <td>Which model draws the birds. The default is the one the style was tuned against.</td>
           </tr>
           <tr>
             <td><code>GENERATE_SLEEP</code></td>
             <td><code>6</code></td>
-            <td>Seconds between image-API calls, to stay under the Gemini free tier. Read by the bundled pipeline.</td>
+            <td>Seconds between model calls, to stay under your provider's rate limit. The throughput knob.</td>
           </tr>
         </tbody>
       </table>
