@@ -102,6 +102,13 @@ everyone draws from. If a note fixes a bird the repository gets wrong, please
 [contribute it there](https://github.com/vrwrts/saezuri-illustrations) so every
 installation benefits.
 
+### Contributing the illustrations you generated
+
+Art your Gemini key generated is only on your installation. To share it, copy the PNGs
+from the illustrations folder (see [Storage](#storage)) into a clone of the
+illustrations repository and open a pull request. The
+[README](https://github.com/vrwrts/saezuri#contributing-generated-art) walks through it.
+
 ### Reference recordings
 
 When a species is heard, Saezuri looks up a freely-licensed recording of its call and
@@ -163,9 +170,14 @@ panel, re-open it with the steps above once after updating.
 
 ## Storage
 
-Downloaded illustrations, cached recordings and the working cache live in the app's
-`/data`, which the Supervisor keeps across restarts and updates. They are included in
-a Home Assistant backup, so a large illustration set makes for larger backups.
+Illustrations live in the app's config folder, `addon_configs/<prefix>_saezuri/illustrations`
+(the prefix depends on where you installed the app from), which you can browse over Samba
+or with the File editor. Cached recordings and the working cache live in the app's private
+`/data`. The Supervisor keeps both across restarts and updates, and both are included in a
+Home Assistant backup, so a large illustration set makes for larger backups.
+
+Earlier releases kept the illustrations in `/data` too. The first start after updating
+moves them across, which can take a moment with a large set.
 
 ## Licensing
 

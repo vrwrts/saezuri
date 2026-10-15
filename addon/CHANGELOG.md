@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/vrwrts/saezuri/compare/v1.1.3...v1.2.0) (2026-10-14)
+
+
+### Features
+
+* **addon:** keep illustrations in the browsable app config folder ([#56](https://github.com/vrwrts/saezuri/issues/56)) ([dc5020c](https://github.com/vrwrts/saezuri/commit/dc5020cc02caaa91c5f48d6a93149c96abd6bf8b))
+
 ## [1.1.3](https://github.com/vrwrts/saezuri/compare/v1.1.2...v1.1.3) (2026-10-14)
 
 
