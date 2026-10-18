@@ -272,7 +272,12 @@ class Refresher {
     // Manifests first, then the snapshot, then the frames — a client (or the
     // frame) never references art or audio the manifests don't yet describe.
     await this.safe('call-manifest', async () => {
-      await publishCallManifest(this.cfg.htmlDir, this.cfg.callsDir, this.cfg.birdnetUiBaseUrl)
+      await publishCallManifest(
+        this.cfg.htmlDir,
+        this.cfg.callsDir,
+        this.cfg.callProviders,
+        this.cfg.birdnetUiBaseUrl,
+      )
     })
     await writeSnapshot(this.cfg.htmlDir, snapshot)
     await this.renderFrames(snapshot)

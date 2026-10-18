@@ -13,7 +13,9 @@ import { USER_AGENT } from './userAgent.ts'
 //
 // Each recording is stored as two files: the audio, and a `<slug>.json` sidecar
 // holding its CallRecord and private cache provenance. The sidecar sits beside
-// the audio so the two travel in the same persistent volume.
+// the audio because archive credit is a licence obligation and must travel in
+// the same persistent volume as the file it credits. Station clips are the
+// operator's own recordings and need no archive attribution.
 
 /** Without a memory of misses every publish cycle would repeat settled lookups. */
 const MISS_TTL_MS = 7 * 24 * 60 * 60 * 1000
@@ -193,9 +195,8 @@ export class CallLibrary {
         return true
       } catch (e) {
         // Not a settled miss by contract (see CallProvider.find), so leave it
-        // unrecorded and let the next cycle try again.
+        // unrecorded for retry next cycle, but still try the next provider now.
         logErr(e)
-        return false
       }
     }
 
@@ -204,9 +205,15 @@ export class CallLibrary {
 
   private async readStored(slug: string): Promise<StoredCallRecord | null> {
     try {
-      return JSON.parse(
+      const record = JSON.parse(
         await readFile(join(this.opts.callsDir, `${slug}.json`), 'utf8'),
       ) as StoredCallRecord
+      // Disabled station clips cannot be used as the current recording: archive
+      // providers must be free to fill the gap without inheriting station state.
+      if (record.provider === 'birdnet' && !this.opts.providers.some((p) => p.name === 'birdnet')) {
+        return null
+      }
+      return record
     } catch {
       return null
     }
@@ -259,6 +266,7 @@ async function download(audioUrl: string, maxBytes = 16 * 1024 * 1024): Promise<
 export async function publishCallManifest(
   htmlDir: string,
   callsDir: string,
+  providers: readonly string[],
   birdnetUiBaseUrl?: string,
 ): Promise<CallManifest> {
   const calls: Record<string, CallRecord> = {}
@@ -275,6 +283,9 @@ export async function publishCallManifest(
     try {
       const rec = JSON.parse(await readFile(join(callsDir, name), 'utf8')) as StoredCallRecord
       if (!rec?.ext || !rec.sourceName) continue
+      // Station audio is opt-in on every publish, including after acquisition
+      // is disabled or Commons cannot provide a replacement for a cached clip.
+      if (rec.provider === 'birdnet' && !providers.includes('birdnet')) continue
       if (rec.provider !== 'birdnet' && (!rec.license || !rec.sourceUrl)) continue
       if (!existsSync(join(callsDir, `${slug}.${rec.ext}`))) continue
       const { provider: _provider, sourceKey: _sourceKey, ...published } = rec

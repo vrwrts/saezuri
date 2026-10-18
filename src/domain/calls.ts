@@ -5,9 +5,11 @@ import { slugify } from './slug.ts'
 // describes it here, so the browser plays audio from Saezuri's own origin like
 // every other asset and never reaches the source directly.
 //
-// Archive recordings carry attribution alongside the play control. A station's
-// own BirdNET-Go clip has no archive licence or named recordist, and its source
-// link is shown only when a browser-reachable BirdNET-Go URL is configured.
+// Archive attribution is a licence obligation, not decoration: CC licences
+// require the recordist be credited wherever the recording plays, so the UI
+// must show the credit alongside the play control. A station's own BirdNET-Go
+// clip needs no archive licence or named recordist; its source link is shown
+// only when a browser-reachable BirdNET-Go URL is configured.
 
 export const CALLS_BASE = withBase('/assets/calls')
 

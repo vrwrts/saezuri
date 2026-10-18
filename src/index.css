@@ -276,7 +276,9 @@ body {
   letter-spacing: 0.04em;
   color: var(--ink-soft);
 }
-/* Recording source and, for archive calls, the required licence credit. */
+/* Recording source and archive licence credit. Not decoration: CC licences
+   require the recordist be named wherever an archive recording plays.
+   The operator's own station recordings need no archive credit. */
 .card-credit {
   font-size: 10px;
   letter-spacing: 0.03em;

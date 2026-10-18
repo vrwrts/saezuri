@@ -1,3 +1,8 @@
+// Archive recordings carry CC licences obliging us to name the recordist
+// wherever the recording plays. Archive candidates must carry the credit needed
+// to meet that obligation: a candidate we cannot credit is not a candidate.
+// Station clips are the operator's own recordings and need no archive credit.
+
 export interface CallDetection {
   id: number
   /** Basename only; an empty name means BirdNET-Go did not save a clip. */
