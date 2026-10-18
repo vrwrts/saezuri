@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, stat, unlink, utimes, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { CallManifest, CallRecord } from '../domain/calls.ts'
+import { type CallManifest, type CallRecord, callFilename } from '../domain/calls.ts'
 import { slugify } from '../domain/slug.ts'
 import type { CallDetection, CallLookup, CallProvider } from './callProviders/types.ts'
 import { USER_AGENT } from './userAgent.ts'
@@ -22,6 +22,12 @@ const MISS_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 /** Politeness gap between provider lookups. */
 const DEFAULT_LOOKUP_GAP_MS = 250
+
+// Older manifests need a grace period, but retaining each station update
+// indefinitely would fill the persistent volume. Current and legacy files stay.
+const OLD_AUDIO_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const AUDIO_PRUNE_INTERVAL_MS = 60 * 60 * 1000
+const VERSIONED_AUDIO = /^.+\.[a-f0-9]{64}\.(mp3|ogg|oga|opus|wav|flac|m4a)$/
 
 /** Leading underscore keeps it out of the manifest scan, matching the
  *  `_fallback.png` convention in the illustrations dir. */
@@ -43,7 +49,7 @@ async function writeAtomic(path: string, data: Buffer | string): Promise<void> {
 /** Over the bytes rather than the URL, so a recording re-uploaded to the same
  *  URL still busts the immutable cache. */
 function contentHash(bytes: Buffer): string {
-  return createHash('sha1').update(bytes).digest('hex').slice(0, 8)
+  return createHash('sha256').update(bytes).digest('hex')
 }
 
 export interface CallLibraryOptions {
@@ -68,6 +74,7 @@ export class CallLibrary {
   private busy = false
   private missedAtByKey = new Map<string, number>()
   private missesLoaded = false
+  private nextAudioPruneAt = 0
 
   constructor(private opts: CallLibraryOptions) {}
 
@@ -108,6 +115,7 @@ export class CallLibrary {
             if (await this.acquire(slug, lookup)) acquired++
           }
           await this.saveMisses()
+          await this.pruneAudio()
           // Republish before clearing inFlight, so a detection arriving mid-flight
           // sees the finished manifest rather than re-queueing the same species.
           if (acquired > 0) await this.opts.onAcquired()
@@ -124,7 +132,13 @@ export class CallLibrary {
 
   /** True when a new recording landed on disk. */
   private async acquire(slug: string, lookup: CallLookup): Promise<boolean> {
-    const existing = await this.readStored(slug)
+    const stored = await this.readStored(slug)
+    // Disabled station state must not influence archive acquisition, but keep
+    // its filename so retirement still protects clients with an older manifest.
+    const existing =
+      stored?.provider === 'birdnet' && !this.opts.providers.some((p) => p.name === 'birdnet')
+        ? null
+        : stored
     // Sidecars from before provider provenance identify Commons by source name;
     // recognizing them avoids re-downloading every cached call on upgrade.
     const currentProvider =
@@ -172,9 +186,11 @@ export class CallLibrary {
         }
 
         await mkdir(this.opts.callsDir, { recursive: true })
+        const ver = contentHash(bytes)
         const record: StoredCallRecord = {
+          audioFile: `${slug}.${ver}.${found.ext}`,
           ext: found.ext,
-          ver: contentHash(bytes),
+          ver,
           recordist: found.recordist,
           license: found.license,
           licenseUrl: found.licenseUrl,
@@ -183,10 +199,21 @@ export class CallLibrary {
           provider: provider.name,
           sourceKey: found.sourceKey,
         }
-        // Audio before sidecar: the manifest scan keys off the sidecar, so this
-        // order leaves a half-finished acquisition invisible rather than
-        // published without its audio.
-        await writeAtomic(join(this.opts.callsDir, `${slug}.${found.ext}`), bytes)
+        // Never overwrite bytes referenced by an older manifest or sidecar.
+        // A failed metadata commit may orphan the new file, but cannot publish
+        // it under the previous recording's provenance or archive credit.
+        await writeAtomic(join(this.opts.callsDir, callFilename(slug, record)), bytes)
+        if (stored?.audioFile && stored.audioFile !== record.audioFile) {
+          // Grace starts at retirement, even for a current recording acquired
+          // months ago. Touch before committing metadata: a failed commit only
+          // extends retention, and cannot expose the replacement's bytes.
+          const retiredAt = new Date()
+          try {
+            await utimes(join(this.opts.callsDir, stored.audioFile), retiredAt, retiredAt)
+          } catch (e) {
+            if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e
+          }
+        }
         await writeAtomic(join(this.opts.callsDir, `${slug}.json`), JSON.stringify(record))
         this.missedAtByKey.delete(missKey)
         log(
@@ -208,14 +235,39 @@ export class CallLibrary {
       const record = JSON.parse(
         await readFile(join(this.opts.callsDir, `${slug}.json`), 'utf8'),
       ) as StoredCallRecord
-      // Disabled station clips cannot be used as the current recording: archive
-      // providers must be free to fill the gap without inheriting station state.
-      if (record.provider === 'birdnet' && !this.opts.providers.some((p) => p.name === 'birdnet')) {
-        return null
-      }
       return record
     } catch {
       return null
+    }
+  }
+
+  private async pruneAudio(): Promise<void> {
+    const now = Date.now()
+    if (now < this.nextAudioPruneAt) return
+    this.nextAudioPruneAt = now + AUDIO_PRUNE_INTERVAL_MS
+    try {
+      const names = await readdir(this.opts.callsDir)
+      const referenced = new Set<string>()
+      for (const name of names) {
+        if (!name.endsWith('.json') || name.startsWith('_')) continue
+        const record = JSON.parse(
+          await readFile(join(this.opts.callsDir, name), 'utf8'),
+        ) as StoredCallRecord
+        // Includes disabled providers: their current cache can be reused later.
+        // An unreadable sidecar aborts cleanup rather than risking its audio.
+        if (!record?.ext || !record.sourceName) return
+        referenced.add(callFilename(name.slice(0, -'.json'.length), record))
+      }
+      // This runs inside the serialized acquisition queue, so a new sidecar
+      // cannot start referencing a retired file between its stat and unlink.
+      for (const name of names) {
+        if (!VERSIONED_AUDIO.test(name) || referenced.has(name)) continue
+        const path = join(this.opts.callsDir, name)
+        const info = await stat(path)
+        if (info.isFile() && info.mtimeMs < now - OLD_AUDIO_TTL_MS) await unlink(path)
+      }
+    } catch (e) {
+      logErr(e) // Cleanup must not prevent publication of an acquired recording.
     }
   }
 
@@ -287,7 +339,7 @@ export async function publishCallManifest(
       // is disabled or Commons cannot provide a replacement for a cached clip.
       if (rec.provider === 'birdnet' && !providers.includes('birdnet')) continue
       if (rec.provider !== 'birdnet' && (!rec.license || !rec.sourceUrl)) continue
-      if (!existsSync(join(callsDir, `${slug}.${rec.ext}`))) continue
+      if (!existsSync(join(callsDir, callFilename(slug, rec)))) continue
       const { provider: _provider, sourceKey: _sourceKey, ...published } = rec
       if (rec.provider === 'birdnet') {
         // Detection links are opt-in and derived from the browser-reachable base;

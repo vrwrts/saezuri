@@ -14,10 +14,12 @@ import { slugify } from './slug.ts'
 export const CALLS_BASE = withBase('/assets/calls')
 
 export interface CallRecord {
+  /** Immutable content-versioned basename; absent on legacy caches and dev tones. */
+  audioFile?: string
   /** Archives serve mixed formats and we re-encode nothing — re-encoding a
    *  CC-ND recording would make it a derivative — so it varies per species. */
   ext: string
-  /** Short content hash; see `imagePath` in asset.ts for the `?v=` convention. */
+  /** Content hash; legacy caches may carry a shorter fingerprint. */
   ver: string
   /** Empty when the archive names none. */
   recordist: string
@@ -34,8 +36,12 @@ export interface CallManifest {
 
 export const EMPTY_CALL_MANIFEST: CallManifest = { calls: {} }
 
+export function callFilename(slug: string, rec: CallRecord): string {
+  return rec.audioFile ?? `${slug}.${rec.ext}`
+}
+
 export function callPath(scientificName: string, rec: CallRecord): string {
-  const url = `${CALLS_BASE}/${slugify(scientificName)}.${rec.ext}`
+  const url = `${CALLS_BASE}/${callFilename(slugify(scientificName), rec)}`
   return rec.ver ? `${url}?v=${rec.ver}` : url
 }
 

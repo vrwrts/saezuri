@@ -1,7 +1,7 @@
 import { Play, Square, X } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { type CallRecord, callPath } from '../domain/calls.ts'
-import { toggleCall, useCallPlayback } from './callPlayer.ts'
+import { stopCall, toggleCall, useCallPlayback } from './callPlayer.ts'
 
 // Both transport glyphs are filled — a hairline outline reads as a smudge at this
 // size. The stop square is drawn smaller than the play triangle because a filled
@@ -82,6 +82,14 @@ export function SpeciesCard({
   }, [sci, autoFocus])
 
   const url = call ? callPath(sci, call) : null
+  // A manifest update or card removal must not leave audio playing after its
+  // credit and Stop control disappear. Only stop the recording this card owned.
+  useLayoutEffect(
+    () => () => {
+      if (url) stopCall(url)
+    },
+    [url],
+  )
   const state = url && playback.url === url ? playback.state : 'idle'
   const heard = formatHeard(firstSeenMs, lastSeenMs)
   const credit = call ? [call.recordist, call.license].filter(Boolean).join(' · ') : null

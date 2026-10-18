@@ -20,6 +20,7 @@ const IDLE: Playback = { url: null, state: 'idle' }
 
 let current: Playback = IDLE
 let audio: HTMLAudioElement | null = null
+let playRequest = 0
 const listeners = new Set<() => void>()
 
 function publish(next: Playback): void {
@@ -54,18 +55,26 @@ export function toggleCall(url: string): void {
     stopCall()
     return
   }
+  const request = ++playRequest
   publish({ url, state: 'loading' })
   try {
     const el = element()
     el.src = url
     // Older Safari returns undefined rather than a promise.
-    void el.play()?.catch(() => publish({ url, state: 'error' }))
+    void el.play()?.catch(() => {
+      // Pausing a pending play rejects its promise. A superseded request must
+      // not restore stale playback state after a card update or a new press.
+      if (request === playRequest) publish({ url, state: 'error' })
+    })
   } catch {
     publish({ url, state: 'error' })
   }
 }
 
-export function stopCall(): void {
+/** An expected URL lets a departing card leave another recording alone. */
+export function stopCall(expectedUrl?: string): void {
+  if (expectedUrl !== undefined && current.url !== expectedUrl) return
+  playRequest++
   if (audio) {
     audio.pause()
     audio.currentTime = 0

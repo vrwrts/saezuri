@@ -169,7 +169,8 @@ Where things live, so a change lands in the right place fast.
   common interface — `find()` resolves null for "nothing here" (cacheable) and **throws** for
   anything that is not a settled miss, so a rate limit or configuration error is retried rather
   than written off. Audio lands in
-  `assets/calls/<slug>.<ext>` beside a `<slug>.json` sidecar holding its `CallRecord`; the
+  `assets/calls/<slug>.<content-hash>.<ext>` beside a `<slug>.json` sidecar holding its
+  `CallRecord` and immutable audio filename (legacy `<slug>.<ext>` caches still work); the
   sidecar sits there, not in `cacheDir`, because archive credit is a licence obligation and
   must travel in the same volume as the file it credits — no credit, no archive playback.
   The operator's own station recordings need no archive credit. The sidecar also holds

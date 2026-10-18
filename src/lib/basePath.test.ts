@@ -43,5 +43,13 @@ describe('withBase', () => {
     expect(withBase('/assets/illustrations/turdus-merula.png')).toBe(
       '/api/hassio_ingress/abc123/assets/illustrations/turdus-merula.png',
     )
+    const { callPath } = await import('../domain/calls.ts')
+    const call = { ext: 'mp3', ver: 'hash', recordist: '', sourceName: 'BirdNET-Go' }
+    expect(callPath('Turdus merula', call)).toBe(
+      '/api/hassio_ingress/abc123/assets/calls/turdus-merula.mp3?v=hash',
+    )
+    expect(callPath('Turdus merula', { ...call, audioFile: 'turdus-merula.hash.mp3' })).toBe(
+      '/api/hassio_ingress/abc123/assets/calls/turdus-merula.hash.mp3?v=hash',
+    )
   })
 })

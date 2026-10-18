@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
-import type { CallRecord } from '../domain/calls.ts'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { type CallRecord, callPath } from '../domain/calls.ts'
+import { stopCall } from './callPlayer.ts'
 import { formatCalls, formatHeard, SpeciesCard } from './SpeciesCard.tsx'
 
 describe('formatCalls', () => {
@@ -83,6 +84,88 @@ function renderCard(call: CallRecord | null, com = 'Eurasian Blackbird') {
 }
 
 describe('SpeciesCard', () => {
+  let audio: HTMLAudioElement
+  beforeEach(() => {
+    // The player owns one element across card mounts, just as in the browser.
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(async function (
+      this: HTMLMediaElement,
+    ) {
+      audio = this
+      this.dispatchEvent(new Event('playing'))
+    })
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+  })
+  afterEach(() => {
+    act(() => stopCall())
+    vi.restoreAllMocks()
+  })
+
+  it.each([
+    'station',
+    'newer',
+    'removed',
+  ])('stops the previous recording when a manifest update changes it to %s', async (change) => {
+    const initial: CallRecord =
+      change === 'newer'
+        ? { ...REC, recordist: '', license: undefined, sourceName: 'BirdNET-Go' }
+        : REC
+    const { rerender } = renderCard(initial)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Play Eurasian Blackbird call' }))
+    })
+    expect(screen.getByRole('button', { name: 'Stop Eurasian Blackbird call' })).toBeInTheDocument()
+    const previousAudio = audio
+    const next =
+      change === 'removed'
+        ? null
+        : {
+            ...initial,
+            ver: 'v2',
+            recordist: '',
+            license: undefined,
+            sourceUrl: undefined,
+            sourceName: 'BirdNET-Go',
+          }
+    rerender(
+      <SpeciesCard
+        sci="Turdus merula"
+        com="Eurasian Blackbird"
+        n={12}
+        call={next}
+        onClose={() => {}}
+      />,
+    )
+    expect(previousAudio.pause).toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: /Stop/ })).not.toBeInTheDocument()
+    if (next) {
+      fireEvent.click(screen.getByRole('button', { name: 'Play Eurasian Blackbird call' }))
+      expect(previousAudio.src).toContain(callPath('Turdus merula', next))
+    }
+  })
+
+  it('keeps playing when a manifest refresh only changes metadata', async () => {
+    const { rerender, unmount } = renderCard(REC)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Play Eurasian Blackbird call' }))
+    })
+    const previousAudio = audio
+    vi.mocked(previousAudio.pause).mockClear()
+    rerender(
+      <SpeciesCard
+        sci="Turdus merula"
+        com="Eurasian Blackbird"
+        n={13}
+        call={{ ...REC }}
+        onClose={() => {}}
+      />,
+    )
+    expect(previousAudio.pause).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Stop Eurasian Blackbird call' })).toBeInTheDocument()
+    expect(screen.getByText(/A\. Recordist/)).toBeInTheDocument()
+    unmount()
+    expect(previousAudio.pause).toHaveBeenCalled()
+  })
+
   it('names the bird and reports its window activity', () => {
     renderCard(null)
     expect(screen.getByText('Eurasian Blackbird')).toBeInTheDocument()

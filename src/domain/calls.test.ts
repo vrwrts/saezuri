@@ -11,6 +11,15 @@ const REC: CallRecord = {
 }
 
 describe('callPath', () => {
+  it('uses the immutable audio filename published by the refresh service', () => {
+    expect(
+      callPath('Turdus merula', {
+        ...REC,
+        audioFile: 'turdus-merula.content-hash.mp3',
+      }),
+    ).toBe('/assets/calls/turdus-merula.content-hash.mp3?v=a1b2c3')
+  })
+
   it('slugifies the scientific name and keeps the published extension', () => {
     expect(callPath('Turdus merula', REC)).toBe('/assets/calls/turdus-merula.mp3?v=a1b2c3')
     expect(callPath('Turdus merula', { ...REC, ext: 'ogg' })).toBe(

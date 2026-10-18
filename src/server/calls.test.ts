@@ -1,8 +1,8 @@
-import { mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CallManifest } from '../domain/calls.ts'
+import { type CallManifest, callPath } from '../domain/calls.ts'
 import { birdnetProvider } from './callProviders/birdnet.ts'
 import { parseCallProviders } from './callProviders/config.ts'
 import type { CallCandidate, CallLookup, CallProvider } from './callProviders/types.ts'
@@ -72,7 +72,186 @@ async function settle(): Promise<void> {
 
 const has = (dir: string, name: string) => async () => (await readdir(dir)).includes(name)
 
+async function storedAudioPath(callsDir: string, slug = 'turdus-merula'): Promise<string> {
+  const rec = JSON.parse(await readFile(join(callsDir, `${slug}.json`), 'utf8'))
+  const url = new URL(callPath(slug, rec), 'http://saezuri')
+  return join(callsDir, url.pathname.split('/').at(-1) as string)
+}
+
+const hasAudio = (callsDir: string) => async () => {
+  try {
+    await readFile(await storedAudioPath(callsDir))
+    return true
+  } catch {
+    return false
+  }
+}
+
 describe('CallLibrary', () => {
+  it.each([
+    false,
+    true,
+  ])('starts the grace period when an aged current recording is replaced (station disabled: %s)', async (disableStation) => {
+    const htmlDir = await tmpDir('saezuri-html-')
+    const callsDir = await tmpDir('saezuri-calls-')
+    const birdnet: CallProvider = {
+      name: 'birdnet',
+      sourceKey: ({ detections }) => String(detections[0]?.id),
+      find: async ({ detections }) => ({
+        bytes: new Uint8Array([detections[0].id]),
+        ext: 'mp3',
+        recordist: '',
+        sourceName: 'BirdNET-Go',
+        sourceKey: String(detections[0].id),
+      }),
+    }
+    let acquired = false
+    new CallLibrary({
+      callsDir,
+      providers: [birdnet],
+      maxPerCycle: 4,
+      lookupGapMs: 0,
+      onAcquired: () => {
+        acquired = true
+      },
+    }).enqueue('Turdus merula', [{ id: 42, clipName: 'old.mp3' }])
+    await until(() => acquired, 'original station acquisition')
+    await publishCallManifest(htmlDir, callsDir, ['birdnet'])
+    const previousAudio = await storedAudioPath(callsDir)
+    const old = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+    await utimes(previousAudio, old, old)
+    const beforeRetirement = Date.now()
+    const providers = disableStation ? [stubProvider(async () => CANDIDATE, 'commons')] : [birdnet]
+    let bytesBeforePublish: Buffer | null = null
+    acquired = false
+    new CallLibrary({
+      callsDir,
+      providers,
+      maxPerCycle: 4,
+      lookupGapMs: 0,
+      onAcquired: async () => {
+        bytesBeforePublish = await readFile(previousAudio).catch(() => null)
+        await publishCallManifest(
+          htmlDir,
+          callsDir,
+          providers.map((p) => p.name),
+        )
+        acquired = true
+      },
+    }).enqueue('Turdus merula', [{ id: 43, clipName: 'new.mp3' }])
+    await until(() => acquired, 'replacement and publication')
+    expect(bytesBeforePublish).toEqual(Buffer.from([42]))
+    expect(await readFile(previousAudio)).toEqual(Buffer.from([42]))
+    const { mtimeMs } = await stat(previousAudio)
+    expect(mtimeMs).toBeGreaterThanOrEqual(beforeRetirement - 1)
+    expect(await readFile(await storedAudioPath(callsDir))).toEqual(
+      Buffer.from(disableStation ? [1, 2, 3, 4] : [43]),
+    )
+  })
+
+  it.each([
+    false,
+    true,
+  ])('retires expired unreferenced versions conservatively (unreadable metadata: %s)', async (unreadableMetadata) => {
+    const callsDir = await tmpDir('saezuri-calls-')
+    const current = `turdus-merula.${'a'.repeat(64)}.mp3`
+    const expired = `turdus-merula.${'b'.repeat(64)}.mp3`
+    const recent = `turdus-merula.${'c'.repeat(64)}.mp3`
+    const legacy = 'turdus-merula.wav'
+    const old = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+    for (const name of [current, expired, recent, legacy]) {
+      await writeFile(join(callsDir, name), name)
+      if (name !== recent) await utimes(join(callsDir, name), old, old)
+    }
+    await writeFile(
+      join(callsDir, 'turdus-merula.json'),
+      JSON.stringify({
+        audioFile: current,
+        ext: 'mp3',
+        ver: 'a'.repeat(64),
+        recordist: '',
+        sourceName: 'BirdNET-Go',
+        provider: 'birdnet',
+        sourceKey: '42',
+      }),
+    )
+    if (unreadableMetadata) await writeFile(join(callsDir, 'other-species.json'), '{')
+    const acquired = vi.fn()
+    new CallLibrary({
+      callsDir,
+      providers: [stubProvider(async () => CANDIDATE, 'commons')],
+      maxPerCycle: 4,
+      lookupGapMs: 0,
+      onAcquired: acquired,
+    }).enqueue('Parus major')
+    await until(() => acquired.mock.calls.length === 1, 'acquisition and retirement')
+    const names = await readdir(callsDir)
+    expect(names).toEqual(expect.arrayContaining([current, recent, legacy]))
+    expect(names.includes(expired)).toBe(unreadableMetadata)
+    expect(await readFile(await storedAudioPath(callsDir, 'parus-major'))).toEqual(
+      Buffer.from([1, 2, 3, 4]),
+    )
+  })
+
+  it.each([
+    false,
+    true,
+  ])('preserves published audio and provenance through same-format replacement (failed sidecar: %s)', async (failSidecar) => {
+    const htmlDir = await tmpDir('saezuri-html-')
+    const callsDir = await tmpDir('saezuri-calls-')
+    const slug = 'turdus-merula'
+    const legacy = { ...CANDIDATE, ver: 'legacy', provider: 'commons' }
+    await writeFile(join(callsDir, `${slug}.mp3`), 'archive bytes')
+    await writeFile(join(callsDir, `${slug}.json`), JSON.stringify(legacy))
+    const initial = await publishCallManifest(htmlDir, callsDir, ['birdnet', 'commons'])
+    const diskPath = (url: string) =>
+      join(callsDir, new URL(url, 'http://saezuri').pathname.split('/').at(-1) as string)
+    const oldUrl = callPath('Turdus merula', initial.calls[slug])
+    if (failSidecar) await mkdir(join(callsDir, `${slug}.json.tmp`))
+    const birdnet = stubProvider(
+      async () => ({
+        bytes: Buffer.from('station bytes'),
+        ext: 'mp3',
+        sourceKey: '42',
+        recordist: '',
+        sourceName: 'BirdNET-Go',
+      }),
+      'birdnet',
+    )
+    const opts = {
+      callsDir,
+      providers: [birdnet],
+      maxPerCycle: 4,
+      lookupGapMs: 0,
+      onAcquired: () => {},
+    }
+    new CallLibrary(opts).enqueue('Turdus merula', [{ id: 42, clipName: 'station.mp3' }])
+    await until(has(callsDir, '_misses.json'), 'completed acquisition batch')
+
+    expect(await readFile(diskPath(oldUrl), 'utf8')).toBe('archive bytes')
+    if (failSidecar) {
+      const stored = JSON.parse(await readFile(join(callsDir, `${slug}.json`), 'utf8'))
+      expect(stored).toEqual(legacy)
+      const disabled = await publishCallManifest(htmlDir, callsDir, ['commons'])
+      expect(disabled.calls[slug].sourceName).toBe('Wikimedia Commons')
+      expect(
+        await readFile(diskPath(callPath('Turdus merula', disabled.calls[slug])), 'utf8'),
+      ).toBe('archive bytes')
+      await rm(join(callsDir, `${slug}.json.tmp`), { recursive: true })
+      await rm(join(callsDir, '_misses.json'))
+      new CallLibrary(opts).enqueue('Turdus merula', [{ id: 42, clipName: 'station.mp3' }])
+      await until(has(callsDir, '_misses.json'), 'retried acquisition batch')
+    }
+
+    const published = await publishCallManifest(htmlDir, callsDir, ['birdnet'])
+    const newUrl = callPath('Turdus merula', published.calls[slug])
+    expect(newUrl).not.toBe(oldUrl)
+    expect(diskPath(newUrl)).not.toBe(diskPath(oldUrl))
+    expect(await readFile(diskPath(oldUrl), 'utf8')).toBe('archive bytes')
+    expect(await readFile(diskPath(newUrl), 'utf8')).toBe('station bytes')
+    expect((await publishCallManifest(htmlDir, callsDir, ['commons'])).calls).toEqual({})
+  })
+
   it('caches the audio and its credit side by side', async () => {
     const callsDir = await tmpDir('saezuri-calls-')
     const provider = stubProvider(async () => CANDIDATE)
@@ -88,11 +267,12 @@ describe('CallLibrary', () => {
     await until(has(callsDir, 'turdus-merula.json'), 'turdus-merula.json')
 
     const names = await readdir(callsDir)
-    expect(names).toContain('turdus-merula.mp3')
     expect(names).toContain('turdus-merula.json')
     const rec = JSON.parse(await readFile(join(callsDir, 'turdus-merula.json'), 'utf8'))
     expect(rec).toMatchObject({ ext: 'mp3', recordist: 'A. Recordist', license: 'CC BY-SA 4.0' })
-    expect(rec.ver).toMatch(/^[0-9a-f]{8}$/)
+    expect(rec.ver).toMatch(/^[0-9a-f]{64}$/)
+    expect(rec.audioFile).toBe(`turdus-merula.${rec.ver}.mp3`)
+    expect(await readFile(await storedAudioPath(callsDir))).toEqual(Buffer.from([1, 2, 3, 4]))
   })
 
   it('does nothing at all when no providers are configured', async () => {
@@ -209,8 +389,7 @@ describe('CallLibrary', () => {
     // A rate limit must leave the species retryable, not written off for a week.
     const second = new CallLibrary(opts)
     second.enqueue('Turdus merula')
-    await until(has(callsDir, 'turdus-merula.mp3'), 'turdus-merula.mp3')
-    expect(await readdir(callsDir)).toContain('turdus-merula.mp3')
+    await until(hasAudio(callsDir), 'cached audio')
   })
 
   it('falls through to the next provider when the first has nothing', async () => {
@@ -226,11 +405,11 @@ describe('CallLibrary', () => {
     })
 
     lib.enqueue('Turdus merula')
-    await until(has(callsDir, 'turdus-merula.mp3'), 'turdus-merula.mp3')
+    await until(hasAudio(callsDir), 'cached audio')
 
     expect(empty.calls).toHaveLength(1)
     expect(stocked.calls).toHaveLength(1)
-    expect(await readdir(callsDir)).toContain('turdus-merula.mp3')
+    expect(await readFile(await storedAudioPath(callsDir))).toEqual(Buffer.from([1, 2, 3, 4]))
   })
 
   it.each([
@@ -361,6 +540,7 @@ describe('CallLibrary', () => {
 
     new CallLibrary(opts).enqueue('Turdus merula', [{ id: 42, clipName: 'first.wav' }])
     await until(has(callsDir, 'turdus-merula.json'), 'first BirdNET recording')
+    const firstAudioPath = await storedAudioPath(callsDir)
 
     new CallLibrary(opts).enqueue('Turdus merula', [{ id: 42, clipName: 'first.wav' }])
     await settle()
@@ -374,6 +554,9 @@ describe('CallLibrary', () => {
 
     expect(find).toHaveBeenCalledTimes(2)
     expect(fetchMock).not.toHaveBeenCalled()
+    expect(await readFile(firstAudioPath)).toEqual(Buffer.from([42]))
+    expect(await readFile(await storedAudioPath(callsDir))).toEqual(Buffer.from([43]))
+    expect(await storedAudioPath(callsDir)).not.toBe(firstAudioPath)
   })
 
   it('upgrades a cached Commons call when BirdNET is configured first', async () => {
@@ -400,6 +583,7 @@ describe('CallLibrary', () => {
       lookupGapMs: 0,
     }).enqueue('Turdus merula')
     await until(has(callsDir, 'turdus-merula.json'), 'Commons recording')
+    const commonsAudioPath = await storedAudioPath(callsDir)
 
     new CallLibrary({
       callsDir,
@@ -414,7 +598,7 @@ describe('CallLibrary', () => {
     }, 'BirdNET upgrade')
 
     expect(commons.calls).toEqual(['Turdus merula'])
-    expect(await readdir(callsDir)).toContain('turdus-merula.mp3')
+    expect(await readFile(commonsAudioPath)).toEqual(Buffer.from([1, 2, 3, 4]))
   })
 
   it('replaces a cached BirdNET recording when only Commons remains configured', async () => {
@@ -439,7 +623,8 @@ describe('CallLibrary', () => {
       onAcquired: () => {},
       lookupGapMs: 0,
     }).enqueue('Turdus merula', [{ id: 42, clipName: 'station.wav' }])
-    await until(has(callsDir, 'turdus-merula.wav'), 'BirdNET recording')
+    await until(hasAudio(callsDir), 'BirdNET recording')
+    const stationAudioPath = await storedAudioPath(callsDir)
 
     const find = vi.fn(async (_lookup: CallLookup) => CANDIDATE)
     const commons: CallProvider = { name: 'commons', find }
@@ -468,14 +653,36 @@ describe('CallLibrary', () => {
       detections: [],
       current: undefined,
     })
-    expect(await readdir(callsDir)).toEqual(
-      expect.arrayContaining(['turdus-merula.mp3', 'turdus-merula.json']),
-    )
-    expect(await readdir(callsDir)).toContain('turdus-merula.wav')
+    expect(await readFile(await storedAudioPath(callsDir))).toEqual(Buffer.from([1, 2, 3, 4]))
+    expect(await readFile(stationAudioPath)).toEqual(Buffer.from([9, 8, 7]))
   })
 })
 
 describe('publishCallManifest', () => {
+  it('requires the exact versioned audio file instead of falling back to legacy bytes', async () => {
+    const htmlDir = await tmpDir('saezuri-html-')
+    const callsDir = await tmpDir('saezuri-calls-')
+    const rec = {
+      ext: 'mp3',
+      ver: 'content-hash',
+      audioFile: 'turdus-merula.content-hash.mp3',
+      recordist: '',
+      provider: 'birdnet',
+      sourceKey: '42',
+      sourceName: 'BirdNET-Go',
+    }
+    await writeFile(join(callsDir, 'turdus-merula.mp3'), 'legacy archive')
+    await writeFile(join(callsDir, 'turdus-merula.json'), JSON.stringify(rec))
+    expect((await publishCallManifest(htmlDir, callsDir, ['birdnet'])).calls).toEqual({})
+    await writeFile(join(callsDir, rec.audioFile), 'station audio')
+    await publishCallManifest(htmlDir, callsDir, ['birdnet'])
+    const published = JSON.parse(await readFile(join(htmlDir, 'calls-manifest.json'), 'utf8'))
+    expect(published.calls['turdus-merula'].audioFile).toBe(rec.audioFile)
+    expect(published.calls['turdus-merula']).not.toHaveProperty('provider')
+    expect(published.calls['turdus-merula']).not.toHaveProperty('sourceKey')
+    expect(await readFile(await storedAudioPath(callsDir), 'utf8')).toBe('station audio')
+  })
+
   it('publishes an empty manifest when nothing has been acquired', async () => {
     const htmlDir = await tmpDir('saezuri-html-')
     const manifest = await publishCallManifest(htmlDir, join(htmlDir, 'assets', 'calls'), [])
