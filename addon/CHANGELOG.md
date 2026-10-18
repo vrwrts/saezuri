@@ -1,3 +1,31 @@
+## [1.2.1](https://github.com/vrwrts/saezuri/compare/v1.2.0...v1.2.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* run on CPUs without AVX or ARMv8.2 ([#52](https://github.com/vrwrts/saezuri/issues/52)) ([bc7b1a8](https://github.com/vrwrts/saezuri/commit/bc7b1a8e1f9428f1e3aa71c88e32f5671dc39001)), closes [#51](https://github.com/vrwrts/saezuri/issues/51)
+
+# [1.2.0](https://github.com/vrwrts/saezuri/compare/v1.1.3...v1.2.0) (2026-10-14)
+
+
+### Features
+
+* **addon:** keep illustrations in the browsable app config folder ([#56](https://github.com/vrwrts/saezuri/issues/56)) ([dc5020c](https://github.com/vrwrts/saezuri/commit/dc5020cc02caaa91c5f48d6a93149c96abd6bf8b))
+
+## [1.1.3](https://github.com/vrwrts/saezuri/compare/v1.1.2...v1.1.3) (2026-10-14)
+
+
+### Bug Fixes
+
+* bloom each bird in only once its image has loaded ([#54](https://github.com/vrwrts/saezuri/issues/54)) ([ff86938](https://github.com/vrwrts/saezuri/commit/ff86938e72f5fe00f9aa8490ecf243f8aabc915a)), closes [#36](https://github.com/vrwrts/saezuri/issues/36)
+
+## [1.1.2](https://github.com/vrwrts/saezuri/compare/v1.1.1...v1.1.2) (2026-10-14)
+
+
+### Bug Fixes
+
+* hold the collage layout while pinch-zoomed ([#53](https://github.com/vrwrts/saezuri/issues/53)) ([7144b4c](https://github.com/vrwrts/saezuri/commit/7144b4c7c7754525fbae51834ffd44b1373a41ee)), closes [#50](https://github.com/vrwrts/saezuri/issues/50)
+
 ## [1.1.1](https://github.com/vrwrts/saezuri/compare/v1.1.0...v1.1.1) (2026-08-25)
 
 

@@ -9,10 +9,11 @@ FROM ${BUILD_FROM}
 # root, so one instruction covers build and runtime alike.
 USER root
 
-# jq reads options.json. curl (not busybox wget) because the BirdNET-Go probe has
-# to tell an authentication failure apart from an unreachable host, and busybox
-# wget cannot report an HTTP status code.
-RUN apk add --no-cache jq curl
+# jq reads options.json. curl (not wget) because the BirdNET-Go probe has to tell
+# an authentication failure apart from an unreachable host by HTTP status code.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends jq curl \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY nginx/ingress.conf /opt/saezuri/addon/ingress.conf
 COPY run.sh /run.sh

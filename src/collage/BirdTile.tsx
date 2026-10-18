@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { LaidTile } from './layout.ts'
 
 interface Props {
@@ -6,6 +6,8 @@ interface Props {
   animate: boolean
   /** Entrance-bloom delay, staggered by distance from center. */
   delayMs: number
+  /** Fires once this tile has something to show, i.e. it starts to bloom. */
+  onLoaded?: () => void
   /** Generic silhouette to show if the tile's image fails to load. */
   fallbackUrl: string
   /** Cursor is over this bird's silhouette — hit-tested by the collage container,
@@ -23,6 +25,7 @@ export function BirdTile({
   tile,
   animate,
   delayMs,
+  onLoaded,
   fallbackUrl,
   hovered,
   selected,
@@ -30,11 +33,23 @@ export function BirdTile({
 }: Props) {
   const [errored, setErrored] = useState(false)
   const src = errored ? fallbackUrl : tile.imageUrl
+  // The bloom waits for the image, or a slow connection blooms an empty box and
+  // the bird pops in afterwards. Whatever part of the stagger the load already
+  // used up is subtracted, so a slow image blooms as soon as it arrives.
+  const mountedAt = useRef(performance.now())
+  const [bloomDelayMs, setBloomDelayMs] = useState<number | null>(null)
+  const loaded = bloomDelayMs !== null
+
+  const onLoad = () => {
+    if (loaded) return
+    setBloomDelayMs(Math.max(0, delayMs - (performance.now() - mountedAt.current)))
+    onLoaded?.()
+  }
 
   return (
     <button
       type="button"
-      className={`gtile${animate ? ' entering' : ''}${hovered ? ' is-hover' : ''}${selected ? ' is-selected' : ''}`}
+      className={`gtile${animate ? (loaded ? ' entering' : ' pending') : ''}${hovered ? ' is-hover' : ''}${selected ? ' is-selected' : ''}`}
       onClick={() => onSelect?.(tile.sci)}
       aria-expanded={selected}
       style={{
@@ -42,7 +57,7 @@ export function BirdTile({
         top: `${tile.y}px`,
         width: `${tile.w}px`,
         height: `${tile.h}px`,
-        animationDelay: animate ? `${delayMs}ms` : undefined,
+        animationDelay: animate && loaded ? `${bloomDelayMs}ms` : undefined,
       }}
       aria-label={tile.com}
     >
@@ -52,7 +67,10 @@ export function BirdTile({
         loading="lazy"
         decoding="async"
         draggable={false}
-        onError={() => setErrored(true)}
+        onLoad={onLoad}
+        // A broken fallback leaves nothing better to wait for, so stop holding
+        // the tile (and the loading indicator) back.
+        onError={() => (errored ? onLoad() : setErrored(true))}
       />
     </button>
   )

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Runs from /docker-entrypoint.d/ before nginx starts (nginx:alpine convention).
+# Runs from /docker-entrypoint.d/ before nginx starts (nginx image convention).
 # Installs the server config. The browser only ever reads static files Saezuri
 # publishes — nginx no longer proxies BirdNET-Go — so there is nothing to
 # substitute and nginx holds no upstream credentials. BIRDNETGO_URL /

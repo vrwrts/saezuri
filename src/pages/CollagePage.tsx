@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Collage } from '../collage/Collage.tsx'
 import { CollageLoading } from '../components/CollageLoading.tsx'
@@ -70,7 +70,12 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   // The first snapshot fetch shows the loading indicator instead of the empty
   // nest; once loaded, switching windows is instant (one file, all windows), so
   // this stays false. Mock mode synthesizes species synchronously — no loading.
-  const loading = USE_MOCK ? false : live.loading
+  const snapshotLoading = USE_MOCK ? false : live.loading
+  // The snapshot alone is not enough to show: on a slow connection the bird
+  // images trail it, and the stage would sit blank. Keep loading until the
+  // collage has its first bird on screen (or an empty state).
+  const [plateReady, setPlateReady] = useState(false)
+  const loading = snapshotLoading || !plateReady
 
   // `loading` gates the collage either way; this only decides whether the
   // indicator shows during it.
@@ -108,9 +113,11 @@ function CollageView({ preset }: { preset: WindowPreset }) {
       </div>
 
       <main className="view">
-        {loading ? (
+        {snapshotLoading ? (
           showLoadingIndicator && <CollageLoading />
         ) : (
+          // The indicator sits inside the boundary so a render failure replaces
+          // it too, rather than leaving it over the error message forever.
           <ErrorBoundary>
             <Collage
               species={species}
@@ -118,7 +125,9 @@ function CollageView({ preset }: { preset: WindowPreset }) {
               calls={calls}
               blossomKey={preset}
               emptyState={emptyState}
+              onReadyChange={setPlateReady}
             />
+            {showLoadingIndicator && <CollageLoading />}
           </ErrorBoundary>
         )}
       </main>

@@ -1,7 +1,12 @@
 # syntax=docker/dockerfile:1
 
 # --- Build stage: compile the static bundle + the Node refresh service ---
-FROM node:22-alpine AS build
+# Debian, not Alpine: @napi-rs/canvas's linux-musl prebuilts are compiled for a
+# newer CPU floor than its glibc ones (Sandy Bridge/AVX on x64, Cortex-A78 on
+# arm64), so on an older Celeron or a Raspberry Pi 4 the refresh service died on
+# load with "Illegal instruction". Same Debian release as the runtime's nginx
+# image, because the runtime copies this stage's node binary.
+FROM node:22-trixie-slim AS build
 WORKDIR /app
 # corepack provides the pnpm version pinned in package.json's packageManager.
 RUN corepack enable
@@ -11,9 +16,9 @@ COPY . .
 # Browser bundle (dist/) + the refresh service bundled to one .mjs (dist-server/).
 RUN pnpm build && pnpm build:server
 # A flat, copyable node_modules holding just the native rasterizer. Installed
-# here in node:22-alpine so npm fetches the linux-musl prebuilt matching the
-# runtime's libc/arch; the refresh bundle marks @napi-rs/canvas external and
-# resolves it from this tree. Smoke-test the binary loads.
+# here so npm fetches the linux-gnu prebuilt matching the runtime's libc/arch;
+# the refresh bundle marks @napi-rs/canvas external and resolves it from this
+# tree. Smoke-test the binary loads.
 RUN mkdir -p /opt/canvas && cd /opt/canvas \
     && npm init -y >/dev/null 2>&1 \
     && npm install --omit=dev --no-audit --no-fund \
@@ -25,7 +30,9 @@ RUN mkdir -p /opt/canvas && cd /opt/canvas \
 # stays lean. Bumping PIPELINE_VERSION (a normal app commit) adopts a new pipeline.
 # NOTE: the illustrations repo must have published this release first.
 ARG PIPELINE_VERSION=v1.1.0
-RUN apk add --no-cache curl \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /build \
     && curl -fSL "https://github.com/vrwrts/saezuri-illustrations/releases/download/${PIPELINE_VERSION}/pipeline.tar.gz" \
        | tar -xz -C /build \
@@ -35,14 +42,19 @@ RUN apk add --no-cache curl \
 #     Node refresh service runs beside it (SSE → snapshot + e-ink frames +
 #     species dictionaries + on-demand art). ---
 #
-# alpine base: the cutout step is matte.py (numpy + scipy + Pillow, all with musl
-# wheels), so the image needs no glibc-only wheels or baked matting model. The
-# generator toolchain + Node service ship in every image; a display-only
-# container (no GEMINI_API_KEY) still publishes, it just skips generation.
-FROM nginx:alpine AS runtime
+# The cutout step is matte.py (numpy + scipy + Pillow), so the image needs no
+# baked matting model. The generator toolchain + Node service ship in every
+# image; a display-only container (no GEMINI_API_KEY) still publishes, it just
+# skips generation.
+FROM nginx:mainline AS runtime
 
-# Python (pipeline: numpy / scipy / Pillow) + Node (the refresh service).
-RUN apk add --no-cache python3 py3-pip nodejs
+# Python (pipeline: numpy / scipy / Pillow) + Node (the refresh service). Node
+# comes from the build stage: Debian's own nodejs package is older than the
+# node22 target the refresh bundle is built for.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /usr/local/bin/node /usr/local/bin/node
 
 # The vendored pipeline (pinned illustrations release, from the build stage) + its
 # deps. Includes the generation scripts + bundled reference art (styles/anti-refs).
@@ -113,8 +125,8 @@ RUN chmod +x /docker-entrypoint.d/40-saezuri.sh \
 # uid on Debian hosts. The stock conf.d/default.conf goes because entrypoint.sh
 # copies over that path and O_TRUNC on a root-owned file is not granted by a
 # writable parent; the pid file leaves root-owned /run for the same reason.
-RUN addgroup -g 1000 saezuri \
-    && adduser -D -u 1000 -G saezuri saezuri \
+RUN groupadd -g 1000 saezuri \
+    && useradd -u 1000 -g saezuri -M -s /usr/sbin/nologin saezuri \
     && rm -f /etc/nginx/conf.d/default.conf \
     && sed -i 's,^pid .*,pid /tmp/nginx.pid;,' /etc/nginx/nginx.conf \
     && mkdir -p /var/cache/saezuri/references \
@@ -129,4 +141,4 @@ ENV HOME=/tmp
 USER saezuri
 
 EXPOSE 8080
-# nginx:alpine's own entrypoint runs /docker-entrypoint.d/* then starts nginx.
+# The nginx image's own entrypoint runs /docker-entrypoint.d/* then starts nginx.
