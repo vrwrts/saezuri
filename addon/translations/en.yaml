@@ -57,7 +57,8 @@ configuration:
     name: Recording sources
     description: >-
       Comma-separated sources in priority order: birdnet for saved detection
-      clips and commons for representative calls. Empty disables recordings.
+      clips and commons for representative calls. Empty disables new lookups
+      and unpublishes station clips; cached archive recordings remain available.
   calls_max_per_cycle:
     name: Recordings per cycle
     description: How many recordings to look up at a time.

@@ -119,11 +119,13 @@ Set **BirdNET-Go browser URL** to its browser-reachable root, without `/ui`, to 
 to the exact detection. Saezuri hides the BirdNET-Go source line when this is not configured.
 Station clips are served to everyone who can access Saezuri, even when fetched with a PrivateMode
 token. Enable them only where access to Saezuri is trusted. Removing `birdnet` stops future
-lookups; clear the app's cached calls data to revoke clips already downloaded.
+station lookups and removes station clips from the playback manifest on the next publish,
+even if Commons has no replacement. Cached files remain reachable by their existing URLs;
+clear the app's cached calls data to remove those files.
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| **Recording sources** | `commons` | Comma-separated sources in priority order: `birdnet` and/or `commons`. Empty turns recordings off. |
+| **Recording sources** | `commons` | Comma-separated sources in priority order: `birdnet` and/or `commons`. Empty disables new lookups and unpublishes station clips; cached archive recordings remain available. |
 | **Recordings per cycle** | `4` | How many to look up at a time. |
 
 ### E-ink frames

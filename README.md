@@ -347,8 +347,10 @@ How it behaves:
   mentions the species is never picked. Playing the wrong call is worse than playing none.
 - **Avoid repeated work.** Recordings and settled misses are cached. BirdNET misses are keyed by
   detection ID, so a new detection is still tried; archive misses are retried after a week.
-- **Disable new lookups** with `CALL_PROVIDERS=` (empty). Cached recordings remain published;
-  clear the calls volume to remove them, including when revoking BirdNET station audio.
+- **Disable new lookups** with `CALL_PROVIDERS=` (empty). Cached archive recordings remain
+  published. Removing `birdnet` also removes station recordings from the playback manifest on
+  the next publish, even if Commons has no replacement. Cached files remain on disk and can
+  still be reached by their existing URLs; clear the calls volume to remove those files.
 
 Not every species has a recording, and that's expected — the card simply offers no playback.
 
