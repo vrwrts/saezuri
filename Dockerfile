@@ -6,7 +6,7 @@
 # arm64), so on an older Celeron or a Raspberry Pi 4 the refresh service died on
 # load with "Illegal instruction". Same Debian release as the runtime's nginx
 # image, because the runtime copies this stage's node binary.
-FROM node:22-trixie-slim AS build
+FROM node:26-trixie-slim AS build
 WORKDIR /app
 # corepack provides the pnpm version pinned in package.json's packageManager.
 RUN corepack enable
