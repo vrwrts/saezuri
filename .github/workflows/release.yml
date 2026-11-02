@@ -22,6 +22,10 @@ on:
   # can be retried once that is fixed, without inventing a code commit to push.
   # semantic-release is idempotent — with nothing releasable it exits doing nothing.
   workflow_dispatch:
+  # Monthly sweep for dependency updates that no feat/fix has released yet; see
+  # the "Release pending dependency updates" step.
+  schedule:
+    - cron: '0 6 1 * *'
 
 concurrency:
   group: release
@@ -59,6 +63,18 @@ jobs:
           # Don't leave GITHUB_TOKEN in .git/config: semantic-release would then
           # push with it instead of RELEASE_TOKEN and be rejected.
           persist-credentials: false
+      # Dependabot commits as chore(deps), which never releases on push: an
+      # update rides along with the next feat/fix. Only this monthly run counts
+      # chore(deps) as a patch, so updates still reach users in a quiet month
+      # without each merge cutting its own release. The edit stays in this
+      # checkout; the git plugin commits only the addon/ assets.
+      - name: Release pending dependency updates
+        if: github.event_name == 'schedule'
+        run: |
+          jq '.plugins |= map(if . == "@semantic-release/commit-analyzer"
+                then [., {releaseRules: [{type: "chore", scope: "deps", release: "patch"}]}]
+                else . end)' .releaserc.json > .releaserc.tmp
+          mv .releaserc.tmp .releaserc.json
       - uses: cycjimmy/semantic-release-action@v4
         id: semantic
         with:

@@ -1,0 +1,47 @@
+version: 2
+
+# Commit prefixes are load-bearing for releases. A merged update never releases
+# on its own (chore is not a releasable type); it ships with the next feat/fix.
+# The monthly scheduled run in release.yml additionally counts chore(deps) as a
+# patch, so only what ships in the image uses that scope. Site and CI updates
+# use other scopes so they never cut an app release.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      app:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      docker:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /site
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore(site)
+    groups:
+      site:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore(ci)
+    groups:
+      actions:
+        update-types: [minor, patch]
