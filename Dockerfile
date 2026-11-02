@@ -29,7 +29,7 @@ RUN mkdir -p /opt/canvas && cd /opt/canvas \
 # We fetch only the pipeline.tar.gz asset (not the whole art repo), so the build
 # stays lean. Bumping PIPELINE_VERSION (a normal app commit) adopts a new pipeline.
 # NOTE: the illustrations repo must have published this release first.
-ARG PIPELINE_VERSION=v1.1.0
+ARG PIPELINE_VERSION=v2.0.0
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
@@ -44,7 +44,7 @@ RUN apt-get update \
 #
 # The cutout step is matte.py (numpy + scipy + Pillow), so the image needs no
 # baked matting model. The generator toolchain + Node service ship in every
-# image; a display-only container (no GEMINI_API_KEY) still publishes, it just
+# image; a display-only container (no GENERATE_API_KEY) still publishes, it just
 # skips generation.
 FROM nginx:mainline AS runtime
 
