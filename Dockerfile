@@ -6,12 +6,14 @@
 # arm64), so on an older Celeron or a Raspberry Pi 4 the refresh service died on
 # load with "Illegal instruction". Same Debian release as the runtime's nginx
 # image, because the runtime copies this stage's node binary.
-FROM node:22-trixie-slim AS build
+FROM node:26-trixie-slim AS build
 WORKDIR /app
-# corepack provides the pnpm version pinned in package.json's packageManager.
-RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+# Node 25+ no longer bundles corepack, so install the pnpm version pinned in
+# package.json's packageManager directly.
+RUN npm install -g --no-audit --no-fund \
+        "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")" \
+    && pnpm install --frozen-lockfile
 COPY . .
 # Browser bundle (dist/) + the refresh service bundled to one .mjs (dist-server/).
 RUN pnpm build && pnpm build:server
@@ -50,9 +52,10 @@ FROM nginx:mainline AS runtime
 
 # Python (pipeline: numpy / scipy / Pillow) + Node (the refresh service). Node
 # comes from the build stage: Debian's own nodejs package is older than the
-# node22 target the refresh bundle is built for.
+# node22 target the refresh bundle is built for. The copied node binary links
+# libatomic, which the nginx image doesn't ship.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-pip \
+    && apt-get install -y --no-install-recommends python3 python3-pip libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /usr/local/bin/node /usr/local/bin/node
 
