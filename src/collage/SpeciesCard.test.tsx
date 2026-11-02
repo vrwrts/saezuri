@@ -100,48 +100,49 @@ describe('SpeciesCard', () => {
     vi.restoreAllMocks()
   })
 
-  it.each([
-    'station',
-    'newer',
-    'removed',
-  ])('stops the previous recording when a manifest update changes it to %s', async (change) => {
-    const initial: CallRecord =
-      change === 'newer'
-        ? { ...REC, recordist: '', license: undefined, sourceName: 'BirdNET-Go' }
-        : REC
-    const { rerender } = renderCard(initial)
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Play Eurasian Blackbird call' }))
-    })
-    expect(screen.getByRole('button', { name: 'Stop Eurasian Blackbird call' })).toBeInTheDocument()
-    const previousAudio = audio
-    const next =
-      change === 'removed'
-        ? null
-        : {
-            ...initial,
-            ver: 'v2',
-            recordist: '',
-            license: undefined,
-            sourceUrl: undefined,
-            sourceName: 'BirdNET-Go',
-          }
-    rerender(
-      <SpeciesCard
-        sci="Turdus merula"
-        com="Eurasian Blackbird"
-        n={12}
-        call={next}
-        onClose={() => {}}
-      />,
-    )
-    expect(previousAudio.pause).toHaveBeenCalled()
-    expect(screen.queryByRole('button', { name: /Stop/ })).not.toBeInTheDocument()
-    if (next) {
-      fireEvent.click(screen.getByRole('button', { name: 'Play Eurasian Blackbird call' }))
-      expect(previousAudio.src).toContain(callPath('Turdus merula', next))
-    }
-  })
+  it.each(['station', 'newer', 'removed'])(
+    'stops the previous recording when a manifest update changes it to %s',
+    async (change) => {
+      const initial: CallRecord =
+        change === 'newer'
+          ? { ...REC, recordist: '', license: undefined, sourceName: 'BirdNET-Go' }
+          : REC
+      const { rerender } = renderCard(initial)
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Play Eurasian Blackbird call' }))
+      })
+      expect(
+        screen.getByRole('button', { name: 'Stop Eurasian Blackbird call' }),
+      ).toBeInTheDocument()
+      const previousAudio = audio
+      const next =
+        change === 'removed'
+          ? null
+          : {
+              ...initial,
+              ver: 'v2',
+              recordist: '',
+              license: undefined,
+              sourceUrl: undefined,
+              sourceName: 'BirdNET-Go',
+            }
+      rerender(
+        <SpeciesCard
+          sci="Turdus merula"
+          com="Eurasian Blackbird"
+          n={12}
+          call={next}
+          onClose={() => {}}
+        />,
+      )
+      expect(previousAudio.pause).toHaveBeenCalled()
+      expect(screen.queryByRole('button', { name: /Stop/ })).not.toBeInTheDocument()
+      if (next) {
+        fireEvent.click(screen.getByRole('button', { name: 'Play Eurasian Blackbird call' }))
+        expect(previousAudio.src).toContain(callPath('Turdus merula', next))
+      }
+    },
+  )
 
   it('keeps playing when a manifest refresh only changes metadata', async () => {
     const { rerender, unmount } = renderCard(REC)
