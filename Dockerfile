@@ -52,9 +52,10 @@ FROM nginx:mainline AS runtime
 
 # Python (pipeline: numpy / scipy / Pillow) + Node (the refresh service). Node
 # comes from the build stage: Debian's own nodejs package is older than the
-# node22 target the refresh bundle is built for.
+# node22 target the refresh bundle is built for. The copied node binary links
+# libatomic, which the nginx image doesn't ship.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-pip \
+    && apt-get install -y --no-install-recommends python3 python3-pip libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /usr/local/bin/node /usr/local/bin/node
 
