@@ -11,9 +11,9 @@ on:
   push:
     branches-ignore: [main]
     paths-ignore:
-      - 'site/**'
-      - 'fixtures/**'
-      - '**.md'
+      - "site/**"
+      - "fixtures/**"
+      - "**.md"
 
 concurrency:
   group: preview-${{ github.ref }}

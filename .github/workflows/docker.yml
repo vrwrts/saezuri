@@ -9,9 +9,9 @@ name: Docker build
 on:
   pull_request:
     paths-ignore:
-      - 'site/**'
-      - 'fixtures/**'
-      - '**.md'
+      - "site/**"
+      - "fixtures/**"
+      - "**.md"
       # The build vendors the pipeline.tar.gz release asset from the public
       # saezuri-illustrations repo (pinned by PIPELINE_VERSION) — no secret needed,
       # so fork PRs build fine.
