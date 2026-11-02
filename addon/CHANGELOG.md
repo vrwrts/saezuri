@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/vrwrts/saezuri/compare/v2.0.0...v2.0.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **deps:** vendor pipeline v2.0.1 ([#72](https://github.com/vrwrts/saezuri/issues/72)) ([799bfe7](https://github.com/vrwrts/saezuri/commit/799bfe7f8d67744305453c3a65745b382dd851ee))
+
 # [2.0.0](https://github.com/vrwrts/saezuri/compare/v1.3.0...v2.0.0) (2026-11-02)
 
 
