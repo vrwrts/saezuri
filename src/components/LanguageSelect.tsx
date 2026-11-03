@@ -1,9 +1,8 @@
-import type { DictLocale } from '../domain/locale.ts'
-import type { DisplayLanguage } from '../hooks/useLanguagePreference.ts'
+import type { DictLocale, DisplayLanguage } from '../domain/locale.ts'
 
 interface Props {
   locales: readonly DictLocale[]
-  value: DisplayLanguage | null
+  value: DisplayLanguage
   onChange: (locale: DisplayLanguage) => void
 }
 
@@ -20,13 +19,15 @@ function endonym(code: DictLocale): string {
 }
 
 /** Native styled dropdown of the published display languages, plus the station's
- *  own names. Available even when the backend published no dictionaries. */
+ *  own names. Hidden when no dictionaries are published. */
 export function LanguageSelect({ locales, value, onChange }: Props) {
+  if (locales.length === 0) return null
+
   return (
     <select
       className="lang-select mono"
       aria-label="Display language"
-      value={value ?? ''}
+      value={value}
       onChange={(e) => onChange(e.target.value as DisplayLanguage)}
     >
       <option value="station">Station language</option>

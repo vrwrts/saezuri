@@ -17,10 +17,10 @@ describe('useLanguagePreference', () => {
     expect(result.current.lang).toBe('de')
   })
 
-  it('falls back to the station default when the browser language is not published', () => {
+  it('falls back to station names when the browser language is not published', () => {
     setLanguages(['ja'])
     const { result } = renderHook(() => useLanguagePreference(['de', 'nl'], 'nl'))
-    expect(result.current.lang).toBe('nl')
+    expect(result.current.lang).toBe('station')
   })
 
   it('honors a remembered choice over the browser and default', () => {
@@ -38,10 +38,10 @@ describe('useLanguagePreference', () => {
     expect(localStorage.getItem('saezuri:lang')).toBe('nl')
   })
 
-  it('is null when nothing is published', () => {
+  it('uses station names when nothing is published', () => {
     setLanguages(['de-DE'])
     const { result } = renderHook(() => useLanguagePreference([], null))
-    expect(result.current.lang).toBeNull()
+    expect(result.current.lang).toBe('station')
   })
 
   it('remembers the explicit station language choice', () => {
@@ -78,5 +78,65 @@ describe('useLanguagePreference', () => {
     rerender({ locales: ['de', 'nl'] })
 
     expect(result.current.lang).toBe('station')
+  })
+
+  it('selects the browser dictionary when it arrives asynchronously', () => {
+    setLanguages(['de-DE'])
+    const { result, rerender } = renderHook(
+      ({ locales }: { locales: ('de' | 'nl')[] }) => useLanguagePreference(locales, null),
+      { initialProps: { locales: [] as ('de' | 'nl')[] } },
+    )
+    expect(result.current.lang).toBe('station')
+    rerender({ locales: ['de', 'nl'] })
+    expect(result.current.lang).toBe('de')
+  })
+
+  it('restores a saved dictionary choice when it arrives asynchronously', () => {
+    localStorage.setItem('saezuri:lang', 'nl')
+    setLanguages(['de-DE'])
+    const { result, rerender } = renderHook(
+      ({ locales }: { locales: ('de' | 'nl')[] }) => useLanguagePreference(locales, null),
+      { initialProps: { locales: [] as ('de' | 'nl')[] } },
+    )
+    expect(result.current.lang).toBe('station')
+    rerender({ locales: ['de', 'nl'] })
+    expect(result.current.lang).toBe('nl')
+  })
+
+  it('keeps a manual station choice when storage fails and dictionaries arrive', () => {
+    setLanguages(['de-DE'])
+    const { result, rerender } = renderHook(
+      ({ locales }: { locales: ('de' | 'nl')[] }) => useLanguagePreference(locales, null),
+      { initialProps: { locales: [] as ('de' | 'nl')[] } },
+    )
+
+    expect(result.current.lang).toBe('station')
+
+    const originalSetItem = Storage.prototype.setItem
+    Storage.prototype.setItem = () => {
+      throw new Error('Storage unavailable')
+    }
+
+    try {
+      act(() => result.current.setLang('station'))
+      rerender({ locales: ['de', 'nl'] })
+      expect(result.current.lang).toBe('station')
+    } finally {
+      Storage.prototype.setItem = originalSetItem
+    }
+  })
+
+  it('falls back when a manually selected dictionary disappears', () => {
+    setLanguages(['de-DE'])
+    const { result, rerender } = renderHook(
+      ({ locales }: { locales: ('de' | 'nl')[] }) => useLanguagePreference(locales, null),
+      { initialProps: { locales: ['de', 'nl'] as ('de' | 'nl')[] } },
+    )
+
+    act(() => result.current.setLang('nl'))
+    expect(result.current.lang).toBe('nl')
+
+    rerender({ locales: ['de'] })
+    expect(result.current.lang).toBe('de')
   })
 })

@@ -18,7 +18,7 @@ describe('SettingsMenu', () => {
     expect(screen.getAllByRole('radio')).toHaveLength(3)
   })
 
-  it('keeps the language dropdown available without published dictionaries', () => {
+  it('hides the language dropdown when no dictionaries are published', () => {
     const { rerender } = render(<SettingsMenu locales={['de']} lang="de" onLang={() => {}} />)
 
     openMenu()
@@ -32,13 +32,8 @@ describe('SettingsMenu', () => {
 
     rerender(<SettingsMenu locales={[]} lang="station" onLang={() => {}} />)
 
-    const stationSelect = screen.getByRole('combobox', {
-      name: 'Display language',
-    }) as HTMLSelectElement
-
-    expect(stationSelect.options).toHaveLength(1)
-    expect(stationSelect.options[0].value).toBe('station')
-    expect(stationSelect.value).toBe('station')
+    expect(screen.queryByRole('combobox', { name: 'Display language' })).toBeNull()
+    expect(screen.getByRole('radiogroup', { name: 'Theme' })).toBeInTheDocument()
   })
 
   it('closes on Escape and on outside click', () => {
@@ -58,7 +53,7 @@ describe('SettingsMenu', () => {
   })
 
   it('applies a theme choice to <html> and persists it', () => {
-    render(<SettingsMenu locales={[]} lang={null} onLang={() => {}} />)
+    render(<SettingsMenu locales={[]} lang="station" onLang={() => {}} />)
     openMenu()
     fireEvent.click(screen.getByRole('radio', { name: 'Dark' }))
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')

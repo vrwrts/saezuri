@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
-import { browserLanguages, type DictLocale, pickDictionaryLocale } from '../domain/locale.ts'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  browserLanguages,
+  type DictLocale,
+  type DisplayLanguage,
+  pickDictionaryLocale,
+} from '../domain/locale.ts'
 
 const STORAGE_KEY = 'saezuri:lang'
-
-export type DisplayLanguage = DictLocale | 'station'
 
 function storedLang(): string | null {
   try {
@@ -13,56 +16,54 @@ function storedLang(): string | null {
   }
 }
 
-/** The initial display language when nothing is stored. A stored choice is checked
- *  first so the preference survives the async arrival of `locales`; English is a
- *  deliberate universally-legible fallback, ahead of an arbitrary first-published
- *  locale. Null ⇒ nothing published ⇒ the caller shows the station's own names.
- *  An explicit 'station' choice always uses the station's own names. */
+/** Resolve the display language from a saved preference, then the browser's
+ *  preferred published dictionary. When no browser language is published,
+ *  use the station's own names instead of an unrelated dictionary. */
 export function resolveInitialLang(
   locales: readonly DictLocale[],
-  defaultLocale: DictLocale | null,
-): DisplayLanguage | null {
+  _defaultLocale: DictLocale | null,
+): DisplayLanguage {
   const stored = storedLang()
-
-  // Station names are always available, even without published dictionaries.
   if (stored === 'station') return 'station'
-
-  if (locales.length === 0) return null
-
   if (stored && locales.includes(stored as DictLocale)) return stored as DictLocale
 
-  const browser = pickDictionaryLocale(browserLanguages(), locales)
-  if (browser) return browser
-
-  if (defaultLocale && locales.includes(defaultLocale)) return defaultLocale
-  if (locales.includes('en')) return 'en'
-  return locales[0]
+  return pickDictionaryLocale(browserLanguages(), locales) ?? 'station'
 }
 
-/** The remembered display-language choice, plus a setter that persists it (like the
- *  theme). Preselects from the browser / station default the first time, recomputes
- *  when the published set arrives or changes, and always keeps a valid selection
- *  (or null when nothing is published), preserving an explicit 'station' choice. */
+/** The remembered display-language choice, plus a setter that persists it
+ *  (like the theme). Preserves explicit choices across updates. */
 export function useLanguagePreference(
   locales: readonly DictLocale[],
   defaultLocale: DictLocale | null,
 ): {
-  lang: DisplayLanguage | null
+  lang: DisplayLanguage
   setLang: (locale: DisplayLanguage) => void
 } {
-  const [lang, setLangState] = useState<DisplayLanguage | null>(null)
+  const [lang, setLangState] = useState<DisplayLanguage>(() =>
+    resolveInitialLang(locales, defaultLocale),
+  )
+  const manuallySelected = useRef(false)
 
   // `locales` arrives asynchronously (index.json) and can change (backend upgrade /
   // narrowed set). Keep an explicit valid choice; otherwise re-resolve.
   useEffect(() => {
-    setLangState((cur) =>
-      cur === 'station' || (cur && locales.includes(cur))
-        ? cur
-        : resolveInitialLang(locales, defaultLocale),
-    )
+    setLangState((cur) => {
+      if (manuallySelected.current) {
+        if (cur === 'station' || (cur && locales.includes(cur))) return cur
+        manuallySelected.current = false
+      }
+      const stored = storedLang()
+      if (stored === 'station') return 'station'
+      if (stored && locales.includes(stored as DictLocale)) {
+        return stored as DictLocale
+      }
+      if (cur && cur !== 'station' && locales.includes(cur)) return cur
+      return resolveInitialLang(locales, defaultLocale)
+    })
   }, [locales, defaultLocale])
 
   const setLang = useCallback((locale: DisplayLanguage) => {
+    manuallySelected.current = true
     setLangState(locale)
     try {
       localStorage.setItem(STORAGE_KEY, locale)

@@ -33,12 +33,9 @@ describe('LanguageSelect', () => {
     expect(onChange).toHaveBeenCalledWith('station')
   })
 
-  it('shows station language even when no dictionaries are published', () => {
+  it('renders nothing when no dictionaries are published', () => {
     render(<LanguageSelect locales={[]} value="station" onChange={() => {}} />)
 
-    const select = screen.getByRole('combobox') as HTMLSelectElement
-    expect(select.options).toHaveLength(1)
-    expect(select.options[0].value).toBe('station')
-    expect(select.value).toBe('station')
+    expect(screen.queryByRole('combobox')).toBeNull()
   })
 })
