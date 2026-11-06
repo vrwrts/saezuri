@@ -28,6 +28,7 @@ export const SUPPORTED_DICT_LOCALES = [
 ] as const
 
 export type DictLocale = (typeof SUPPORTED_DICT_LOCALES)[number]
+export type DisplayLanguage = DictLocale | 'station'
 
 /** Reduce a tag to its dictionary base code, folding Norwegian onto `nb`: browsers
  *  send `no` (macrolanguage) or `nn` (Nynorsk), but the dictionary set uses `nb`
