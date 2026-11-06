@@ -53,8 +53,8 @@ function CollageView({ preset }: { preset: WindowPreset }) {
   const live = useRecentSpecies(preset)
   // Localization is a non-blocking overlay on top of the snapshot: a slow or absent
   // dictionary never gates the collage — names just swap in once it arrives.
-  const { locales, default: defaultLocale } = useDictionaryIndex()
-  const { lang, setLang } = useLanguagePreference(locales, defaultLocale)
+  const { locales } = useDictionaryIndex()
+  const { lang, setLang } = useLanguagePreference(locales)
   const dict = useSpeciesDictionary(lang === 'station' ? null : lang)
   const baseSpecies: Species[] = USE_MOCK ? mockSpecies(manifest) : live.species
   const species = useMemo(() => localizeCommonNames(baseSpecies, dict), [baseSpecies, dict])

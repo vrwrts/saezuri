@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   browserLanguages,
   type DictLocale,
@@ -19,10 +19,7 @@ function storedLang(): string | null {
 /** Resolve the display language from a saved preference, then the browser's
  *  preferred published dictionary. When no browser language is published,
  *  use the station's own names instead of an unrelated dictionary. */
-export function resolveInitialLang(
-  locales: readonly DictLocale[],
-  _defaultLocale: DictLocale | null,
-): DisplayLanguage {
+export function resolveInitialLang(locales: readonly DictLocale[]): DisplayLanguage {
   const stored = storedLang()
   if (stored === 'station') return 'station'
   if (stored && locales.includes(stored as DictLocale)) return stored as DictLocale
@@ -31,39 +28,18 @@ export function resolveInitialLang(
 }
 
 /** The remembered display-language choice, plus a setter that persists it
- *  (like the theme). Preserves explicit choices across updates. */
-export function useLanguagePreference(
-  locales: readonly DictLocale[],
-  defaultLocale: DictLocale | null,
-): {
+ *  (like the theme). */
+export function useLanguagePreference(locales: readonly DictLocale[]): {
   lang: DisplayLanguage
   setLang: (locale: DisplayLanguage) => void
 } {
-  const [lang, setLangState] = useState<DisplayLanguage>(() =>
-    resolveInitialLang(locales, defaultLocale),
-  )
-  const manuallySelected = useRef(false)
+  const [lang, setLangState] = useState<DisplayLanguage>(() => resolveInitialLang(locales))
 
-  // `locales` arrives asynchronously (index.json) and can change (backend upgrade /
-  // narrowed set). Keep an explicit valid choice; otherwise re-resolve.
   useEffect(() => {
-    setLangState((cur) => {
-      if (manuallySelected.current) {
-        if (cur === 'station' || (cur && locales.includes(cur))) return cur
-        manuallySelected.current = false
-      }
-      const stored = storedLang()
-      if (stored === 'station') return 'station'
-      if (stored && locales.includes(stored as DictLocale)) {
-        return stored as DictLocale
-      }
-      if (cur && cur !== 'station' && locales.includes(cur)) return cur
-      return resolveInitialLang(locales, defaultLocale)
-    })
-  }, [locales, defaultLocale])
+    setLangState(resolveInitialLang(locales))
+  }, [locales])
 
   const setLang = useCallback((locale: DisplayLanguage) => {
-    manuallySelected.current = true
     setLangState(locale)
     try {
       localStorage.setItem(STORAGE_KEY, locale)
