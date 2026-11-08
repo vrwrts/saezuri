@@ -16,14 +16,13 @@ const notFound = () => ({ ok: false, status: 404, json: async () => ({}) })
 const tmpHtmlDir = () => mkdtemp(join(tmpdir(), 'saezuri-dict-'))
 
 describe('publishDictionaries', () => {
-  it('writes a file per fetched locale, an index, and the station default', async () => {
+  it('writes a file per fetched locale, and an index', async () => {
     const htmlDir = await tmpHtmlDir()
     fetchMock.mockImplementation((url: string) => {
       if (url.endsWith('/species/dictionary/de'))
         return Promise.resolve(ok({ 'Turdus merula': 'Amsel' }))
       if (url.endsWith('/species/dictionary/nl'))
         return Promise.resolve(ok({ 'Turdus merula': 'Merel' }))
-      if (url.endsWith('/settings/dashboard')) return Promise.resolve(ok({ locale: 'nl' }))
       return Promise.resolve(notFound())
     })
 
@@ -33,11 +32,11 @@ describe('publishDictionaries', () => {
       locales: ['de', 'nl'],
     })
 
-    expect(index).toEqual({ locales: ['de', 'nl'], default: 'nl' })
+    expect(index).toEqual({ locales: ['de', 'nl'] })
     const de = JSON.parse(await readFile(join(htmlDir, 'species-dict', 'de.json'), 'utf8'))
     expect(de['Turdus merula']).toBe('Amsel')
     const written = JSON.parse(await readFile(join(htmlDir, 'species-dict', 'index.json'), 'utf8'))
-    expect(written).toEqual({ locales: ['de', 'nl'], default: 'nl' })
+    expect(written).toEqual({ locales: ['de', 'nl'] })
   })
 
   it('skips locales the backend does not have (404)', async () => {
@@ -53,7 +52,6 @@ describe('publishDictionaries', () => {
     })
 
     expect(index.locales).toEqual(['de'])
-    expect(index.default).toBeNull()
     await expect(readFile(join(htmlDir, 'species-dict', 'nl.json'), 'utf8')).rejects.toThrow()
   })
 
