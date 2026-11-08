@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/vrwrts/saezuri/compare/v2.0.1...v2.1.0) (2026-11-08)
+
+
+### Features
+
+* add station language display option ([#57](https://github.com/vrwrts/saezuri/issues/57)) ([f8e1c1b](https://github.com/vrwrts/saezuri/commit/f8e1c1b03d16a0fb4c541e42a5ce7ca0843902e6))
+
 ## [2.0.1](https://github.com/vrwrts/saezuri/compare/v2.0.0...v2.0.1) (2026-11-02)
 
 
