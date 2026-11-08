@@ -17,7 +17,7 @@ vi.mock('../hooks/useLayoutManifest.ts', () => ({
 // Localization hooks stubbed too, so the routing tests never fetch a dictionary
 // (jsdom's navigator.language would otherwise resolve a locale and request one).
 vi.mock('../hooks/useDictionaryIndex.ts', () => ({
-  useDictionaryIndex: () => ({ locales: [], default: null, loading: false }),
+  useDictionaryIndex: () => ({ locales: [], loading: false }),
 }))
 vi.mock('../hooks/useLanguagePreference.ts', () => ({
   useLanguagePreference: () => ({ lang: null, setLang: () => {} }),

@@ -92,9 +92,8 @@ Two read-only clones live under `reference/`. They are for study only.
   fixtures as the source of truth for shapes, ahead of anything inferred from source.
 - Consume only public read endpoints under `/api/v2`: detections and analytics (the
   species set); detection audio (`/media/audio?id=<id>`); the per-locale species-name
-  dictionaries (`/species/dictionary/:locale`); and the public dashboard locale
-  (`/settings/dashboard`, a read only — for the default display language) for
-  browser-language localization. No auth beyond the optional bearer token. No writes.
+  dictionaries (`/species/dictionary/:locale`) for browser-language localization.
+  No auth beyond the optional bearer token. No writes.
   All of these are called **server-side** by the refresh service; the browser reads the
   republished static files.
 - BirdNET-Go ships as rolling nightlies and its v2 API takes occasional breaking
@@ -104,9 +103,7 @@ Two read-only clones live under `reference/`. They are for study only.
 ## Out of scope for v1
 
 - Admin or settings control. Saezuri is read-only for now. The BirdNET-Go settings
-  API is a later, separate piece and must not creep into v1. (The one narrow
-  exception is a server-side _read_ of the public `/settings/dashboard` locale to pick
-  a default display language — a read, never a write, and never settings control.)
+  API is a later, separate piece and must not creep into v1.
 - Producing the full illustration set. Art is contributed as PRs to the
   `saezuri-illustrations` repo (a flat folder the app auto-downloads per detected
   species); the AvianVisitors cutouts under `public/assets/` remain gitignored dev

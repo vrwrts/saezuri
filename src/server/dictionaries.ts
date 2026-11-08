@@ -1,7 +1,7 @@
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { DictionaryIndex } from '../domain/dictionary.ts'
-import { type DictLocale, reduceToDictLocale, SUPPORTED_DICT_LOCALES } from '../domain/locale.ts'
+import { type DictLocale, SUPPORTED_DICT_LOCALES } from '../domain/locale.ts'
 import { slugify } from '../domain/slug.ts'
 import { birdnetFetch } from './birdnet.ts'
 
@@ -24,23 +24,6 @@ async function writeJson(path: string, data: unknown): Promise<void> {
   const tmp = `${path}.tmp`
   await writeFile(tmp, JSON.stringify(data))
   await rename(tmp, path)
-}
-
-/** Best-effort read of the station's configured language from the PUBLIC dashboard
- *  settings (the `locale` field), reduced to a dictionary code. Used only as the
- *  fallback preselect when the viewer's browser language isn't published; a failure
- *  or a non-dictionary locale just yields null. (The precise name-resolution locale,
- *  BirdNET.Locale, lives behind an auth-gated endpoint; the public dashboard locale
- *  is the same in typical single-language setups and is all we need here.) */
-async function fetchStationDefault(baseUrl: string, token?: string): Promise<DictLocale | null> {
-  try {
-    const res = await birdnetFetch(baseUrl, token, '/settings/dashboard')
-    if (!res.ok) return null
-    const data = (await res.json()) as { locale?: string }
-    return data.locale ? reduceToDictLocale(data.locale, SUPPORTED_DICT_LOCALES) : null
-  } catch {
-    return null
-  }
 }
 
 export interface PublishedDictionaries {
@@ -71,7 +54,7 @@ function buildSciBySlug(
 
 /** Download each requested species dictionary from BirdNET-Go and publish it as a
  *  static file under <htmlDir>/species-dict/, plus an index.json listing what was
- *  published and the station's default language. Locales the backend lacks (404) or
+ *  published. Locales the backend lacks (404) or
  *  that fail are skipped, so an older build simply yields an empty index and the
  *  browser falls back to the station's own names. Returns the published index plus
  *  a slug index (see buildSciBySlug). */
@@ -97,13 +80,8 @@ export async function publishDictionaries(
     }
   }
 
-  const index: DictionaryIndex = {
-    locales: published,
-    default: await fetchStationDefault(cfg.baseUrl, cfg.token),
-  }
+  const index: DictionaryIndex = { locales: published }
   await writeJson(join(dir, 'index.json'), index)
-  log(
-    `published ${published.length}/${wanted.length} dictionaries (default: ${index.default ?? 'none'})`,
-  )
+  log(`published ${published.length}/${wanted.length} dictionaries`)
   return { index, sciBySlug: buildSciBySlug(published, maps) }
 }

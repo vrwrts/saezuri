@@ -26,11 +26,10 @@ describe('useDictionaryIndex', () => {
   it('parses the published index (cacheable fetch)', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ locales: ['de', 'nl'], default: 'en' }),
+      json: async () => ({ locales: ['de', 'nl'] }),
     })
     const { result } = renderHook(() => useDictionaryIndex(), { wrapper })
     await waitFor(() => expect(result.current.locales).toEqual(['de', 'nl']))
-    expect(result.current.default).toBe('en')
     // Single-arg call ⇒ no `cache: 'no-store'`; the index is safe to HTTP-cache.
     expect(fetchMock).toHaveBeenCalledWith('/species-dict/index.json')
   })
@@ -40,6 +39,5 @@ describe('useDictionaryIndex', () => {
     const { result } = renderHook(() => useDictionaryIndex(), { wrapper })
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.locales).toEqual([])
-    expect(result.current.default).toBeNull()
   })
 })
