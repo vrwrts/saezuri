@@ -1,18 +1,18 @@
 # Saezuri
- 
+
 Saezuri is a self-hosted web frontend that renders a live bird collage in the visual
 style of the AvianVisitors project, driven by a BirdNET-Go instance's HTTP API. It is
 a display surface, not a detector: BirdNET-Go does the listening and identification,
 Saezuri just visualizes recent detections.
- 
+
 ## What this is and is not
- 
+
 - It is an original, clean-room reimplementation of a collage frontend.
 - It is not a fork of AvianVisitors and shares none of its source. It matches the look
   and feel and reuses only the backend-agnostic illustration pipeline (see below).
 - It talks to BirdNET-Go, not BirdNET-Pi. There is no PHP and no BirdNET-Pi anywhere.
 ## Stack (decided, do not re-litigate)
- 
+
 - React + Vite + TypeScript + Tailwind. Single-page app. No SSR.
 - Production: multi-stage Docker build, served by nginx. nginx serves the static
   bundle and reverse-proxies `/api/` to a BirdNET-Go base URL from the `BIRDNETGO_URL`
@@ -25,7 +25,7 @@ Saezuri just visualizes recent detections.
   used. Don't hand-roll SVGs and don't use emoji glyphs as icons — emoji render at the
   mercy of the platform's font, which is what they replaced.
 ## Architecture invariants
- 
+
 - The browser only ever talks to Saezuri's own origin, and reads **only static files
   Saezuri publishes** (snapshot, layout manifest, species-name dictionaries, e-ink
   frames, cutouts, cached call recordings). All outbound access is **backend-only**:
@@ -42,9 +42,9 @@ Saezuri just visualizes recent detections.
 - Keep modules small and well-typed. Favor code that is easy to read and review over
   code that is short or clever.
 ## Code style
- 
+
 - **Comments explain WHY, not WHAT.** Delete comments that restate what the code already
-  says. Keep comments that explain *why* the code is the way it is — a rationale, an
+  says. Keep comments that explain _why_ the code is the way it is — a rationale, an
   external-system or wire-contract quirk, a security or attribution/licence constraint,
   cross-file coordination, a non-obvious math invariant, or a deliberate trade-off. When
   unsure whether a comment is a "why", keep it.
@@ -56,15 +56,15 @@ Saezuri just visualizes recent detections.
   wraps it, and the call site — put it in the canonical place and let the others be silent.
 - Never strip licence, security, or wire-contract "why" notes — those are load-bearing.
 ## Reference material (critical rules)
- 
+
 Two read-only clones live under `reference/`. They are for study only.
- 
+
 - `reference/avianvisitors/` shows the design, the kacho-e collage aesthetic, the
   silhouette-mask packing and layout logic, and the illustration pipeline.
 - `reference/birdnet-go/` is the backend we target. Use its frontend source and API
   handlers to understand the `/api/v2` endpoints and shapes.
-Rules:
- 
+  Rules:
+
 1. Never copy source from `reference/` into the app. Reimplement in our own code.
 2. Never commit anything under `reference/`. It is gitignored. If `git status` ever
    shows files under `reference/`, stop and fix `.gitignore` before committing.
@@ -78,7 +78,7 @@ Rules:
    `Dockerfile`) for on-demand generation, and at runtime downloads pre-generated
    illustrations from that repo per detected species.
 ## Attribution and licensing
- 
+
 - `README.md` must credit AvianVisitors and, through it, BirdNET-Pi.
 - Preserve license headers on the ported illustration tooling (now in the
   `saezuri-illustrations` repo, vendored into the image) and on any illustration assets
@@ -87,7 +87,7 @@ Rules:
   confirm the license and its obligations. Purely local, personal use does not trigger
   distribution terms, but publishing does.
 ## Data contract
- 
+
 - `fixtures/` holds real `/api/v2` responses captured from a running instance. Treat
   fixtures as the source of truth for shapes, ahead of anything inferred from source.
 - Consume only public read endpoints under `/api/v2`: detections and analytics (the
@@ -102,19 +102,19 @@ Rules:
   note in the client which fixture and roughly which BirdNET-Go build it was derived
   from.
 ## Out of scope for v1
- 
+
 - Admin or settings control. Saezuri is read-only for now. The BirdNET-Go settings
   API is a later, separate piece and must not creep into v1. (The one narrow
-  exception is a server-side *read* of the public `/settings/dashboard` locale to pick
+  exception is a server-side _read_ of the public `/settings/dashboard` locale to pick
   a default display language — a read, never a write, and never settings control.)
 - Producing the full illustration set. Art is contributed as PRs to the
   `saezuri-illustrations` repo (a flat folder the app auto-downloads per detected
   species); the AvianVisitors cutouts under `public/assets/` remain gitignored dev
   placeholders so the UI is testable locally. Growing that set is ongoing, not a v1 gate.
 ## Code map
- 
+
 Where things live, so a change lands in the right place fast.
- 
+
 - **Collage render path:** `src/pages/CollagePage.tsx` fetches the data and renders
   `src/collage/Collage.tsx`, which measures the viewport, resolves each species to art,
   packs the tiles, and maps them to `src/collage/BirdTile.tsx` (one absolutely-positioned
@@ -154,10 +154,14 @@ Where things live, so a change lands in the right place fast.
 - **Art acquisition:** `src/server/generate.ts` (`Generator`). The unit of work is a **pose**,
   not a species: a perched-only species already renders (`resolveArt`), so perched is what
   lifts it off the fallback silhouette and flight only changes the 15% that roll for it.
-  Two independent lanes — repo download (concurrent, cheap) and Gemini generation (serial) —
-  so free art never queues behind a paid render. Precedence is fixed and deliberate: file on
+  Two independent lanes — repo download (concurrent, cheap) and model generation (serial) —
+  so free art never queues behind a paid render. The model is not baked in: the vendored
+  pipeline calls an OpenAI-compatible `chat/completions` endpoint, so `GENERATE_API_URL` /
+  `GENERATE_MODEL` reach OpenRouter by default and a local server just as well. The app itself
+  never calls a model — it reads `GENERATE_API_KEY` only as a feature gate and passes the
+  environment through to the pipeline. Precedence is fixed and deliberate: file on
   disk > illustrations repo > local generation > fallback silhouette. The repo is the state of
-  the art, so `species-notes.json` (`notes.ts`) tunes the *generation* fallback only and never
+  the art, so `species-notes.json` (`notes.ts`) tunes the _generation_ fallback only and never
   replaces downloaded art; a changed note re-renders a pose only when `source: 'generated'`.
   `_art-state.json` in `assetsDir` records per pose: repo 404s (7-day TTL, so the repo isn't
   re-probed every publish), provenance, and the note version. It is a cache, never a source of
@@ -176,15 +180,15 @@ Where things live, so a change lands in the right place fast.
   The operator's own station recordings need no archive credit. The sidecar also holds
   provider provenance so newer station detections can replace older clips without repeating
   downloads. A recording with no sidecar (or vice versa) is never published.
- 
+
 ## Common commands
- 
+
 - `npm run dev` (Vite dev server) / `npm run dev:mock` (`VITE_MOCK=1`, synthesizes species
   from the local manifest so the collage runs with no backend).
 - `npm test` (vitest), `npm run typecheck` (`tsc --noEmit`), `npm run check` (Biome).
 - `npm run build` for the production bundle; `npm run refresh:dev` runs the refresh service.
 - `docker compose up --build` to run the container against a configured `BIRDNETGO_URL`.
 ## Git hygiene
- 
+
 - Confirm `reference/` is ignored before the first commit.
 - Small, focused commits with clear messages, so each change is reviewable on its own.

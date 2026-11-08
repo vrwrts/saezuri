@@ -53,66 +53,68 @@ annotated copy of every setting.
 
 ### Core
 
-| Variable                | Default | Description                                                                                                                              |
-| ----------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `BIRDNETGO_URL`         | —       | **Required.** Base URL of your BirdNET-Go instance, e.g. `http://192.168.1.10:8080`.                                                     |
-| `BIRDNETGO_TOKEN`       | unset   | Auth token for an instance running with `Security.PrivateMode`. Used only by the refresh service, for the API and the SSE detection stream; it never reaches the browser. |
+| Variable                | Default | Description                                                                                                                                                                            |
+| ----------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BIRDNETGO_URL`         | —       | **Required.** Base URL of your BirdNET-Go instance, e.g. `http://192.168.1.10:8080`.                                                                                                   |
+| `BIRDNETGO_TOKEN`       | unset   | Auth token for an instance running with `Security.PrivateMode`. Used only by the refresh service, for the API and the SSE detection stream; it never reaches the browser.              |
 | `BIRDNETGO_UI_BASE_URL` | unset   | Browser-reachable root URL of BirdNET-Go, without `/ui`, e.g. `http://192.168.1.10:8080`. Adds a link from station audio to its exact detection; leave unset to hide that source line. |
 
 ### Illustrations
 
-| Variable                 | Default                       | Description                                                                                                                    |
-| ------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `ILLUSTRATIONS_REPO`     | `vrwrts/saezuri-illustrations` | Source repo for the free pre-made cutouts, downloaded per detected species. Set it **empty** to turn downloading off entirely. |
-| `ILLUSTRATIONS_REF`      | `main`                        | Branch or release tag to pull art from. Pin a tag for a fixed art set.                                                         |
-| `ILLUSTRATIONS_BASE_URL` | derived jsDelivr URL          | Overrides the whole download base URL, and wins over the two above. For testing against a local file server.                   |
-| `GEMINI_API_KEY`         | unset                         | Google AI (Gemini) key. Set it to *also* generate art for species the repo lacks (see below); unset relies on downloads only.   |
-| `GENERATE_SLEEP`         | `6`                           | Seconds between image-API calls, to stay under the Gemini free tier. **The throughput knob**: lower it on a paid tier, raise it if you get throttled, `0` to remove the gap. |
-| `SPECIES_NOTES`          | `_species-notes.json` beside the art | Prompt addenda for species that keep coming out wrong (see below). Layered over the set bundled with the pipeline. |
+| Variable                 | Default                              | Description                                                                                                                                                                         |
+| ------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ILLUSTRATIONS_REPO`     | `vrwrts/saezuri-illustrations`       | Source repo for the free pre-made cutouts, downloaded per detected species. Set it **empty** to turn downloading off entirely.                                                      |
+| `ILLUSTRATIONS_REF`      | `main`                               | Branch or release tag to pull art from. Pin a tag for a fixed art set.                                                                                                              |
+| `ILLUSTRATIONS_BASE_URL` | derived jsDelivr URL                 | Overrides the whole download base URL, and wins over the two above. For testing against a local file server.                                                                        |
+| `GENERATE_API_KEY`       | unset                                | API key for the image model. Set it to _also_ generate art for species the repo lacks (see below); unset relies on downloads only.                                                  |
+| `GENERATE_API_URL`       | `https://openrouter.ai/api/v1`       | Any OpenAI-compatible `chat/completions` base URL — including one on your own network, which is how you generate art locally.                                                       |
+| `GENERATE_MODEL`         | `google/gemini-2.5-flash-image`      | Which model draws the birds. The default is the one the style was tuned against; see the caveat below before changing it.                                                           |
+| `GENERATE_SLEEP`         | `6`                                  | Seconds between model calls, to stay under your provider's rate limit. **The throughput knob**: lower it if your plan allows, raise it if you get throttled, `0` to remove the gap. |
+| `SPECIES_NOTES`          | `_species-notes.json` beside the art | Prompt addenda for species that keep coming out wrong (see below). Layered over the set bundled with the pipeline.                                                                  |
 
 ### Call recordings
 
-| Variable              | Default   | Description                                                                                                                     |
-| --------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Variable              | Default   | Description                                                                                                                                                                                                                                    |
+| --------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `CALL_PROVIDERS`      | `commons` | Comma-list of recording sources, tried in order: `birdnet` for saved detection clips and `commons` for representative calls. Use `birdnet,commons` for station audio with Commons fallback. Set it **empty** to disable all recording lookups. |
-| `CALLS_MAX_PER_CYCLE` | `4`       | Cap on species looked up per batch.                                                                                             |
+| `CALLS_MAX_PER_CYCLE` | `4`       | Cap on species looked up per batch.                                                                                                                                                                                                            |
 
 ### e-ink frames
 
-| Variable       | Default            | Description                                                                                                  |
-| -------------- | ------------------ | ------------------------------------------------------------------------------------------------------------ |
-| `FRAME_WIDTH`  | `800`              | Frame width in device pixels. Set it to your panel (a Waveshare 7.3" 7-colour is `800`×`480`). A width of 700 or less switches to portrait packing. |
-| `FRAME_HEIGHT` | `480`              | Frame height in device pixels.                                                                               |
-| `FRAME_BG`     | `#fcfcfb`          | Background fill. Use something like `#17181c` for a dark panel.                                              |
-| `FRAME_SHADOW` | `1`                | Per-tile drop shadow; `0` disables it (some quantized panels muddy it).                                      |
-| `FRAME_WINDOWS`| all five           | Comma-list of `1h,12h,24h,7d,all` to render. Narrow it if the panel only ever shows one.                     |
+| Variable        | Default   | Description                                                                                                                                         |
+| --------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FRAME_WIDTH`   | `800`     | Frame width in device pixels. Set it to your panel (a Waveshare 7.3" 7-colour is `800`×`480`). A width of 700 or less switches to portrait packing. |
+| `FRAME_HEIGHT`  | `480`     | Frame height in device pixels.                                                                                                                      |
+| `FRAME_BG`      | `#fcfcfb` | Background fill. Use something like `#17181c` for a dark panel.                                                                                     |
+| `FRAME_SHADOW`  | `1`       | Per-tile drop shadow; `0` disables it (some quantized panels muddy it).                                                                             |
+| `FRAME_WINDOWS` | all five  | Comma-list of `1h,12h,24h,7d,all` to render. Narrow it if the panel only ever shows one.                                                            |
 
 ### Display languages
 
-| Variable                | Default   | Description                                                                                                                    |
-| ----------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `SPECIES_DICT_LOCALES`  | all 16    | Comma-list of the BirdNET-Go dictionary locales to publish for browser localization (`cs,da,de,en,es,fi,fr,hu,it,lv,nb,nl,pl,pt,sk,sv`). Narrow it to save disk and bandwidth, e.g. `de,nl,en`. |
+| Variable               | Default | Description                                                                                                                                                                                     |
+| ---------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SPECIES_DICT_LOCALES` | all 16  | Comma-list of the BirdNET-Go dictionary locales to publish for browser localization (`cs,da,de,en,es,fi,fr,hu,it,lv,nb,nl,pl,pt,sk,sv`). Narrow it to save disk and bandwidth, e.g. `de,nl,en`. |
 
 ### Refresh cadence (rarely needs tuning)
 
-| Variable              | Default             | Description                                                              |
-| --------------------- | ------------------- | ------------------------------------------------------------------------ |
-| `PUBLISH_DEBOUNCE_MS` | `20000`             | Minimum gap between publishes triggered by new detections.               |
-| `AGING_INTERVAL_MS`   | `120000`            | Periodic republish, so bounded windows shed detections that aged out.    |
-| `SUMMARY_INTERVAL_MS` | `1800000`           | How often the all-time species summary — the one expensive call — is refreshed. |
+| Variable              | Default   | Description                                                                     |
+| --------------------- | --------- | ------------------------------------------------------------------------------- |
+| `PUBLISH_DEBOUNCE_MS` | `20000`   | Minimum gap between publishes triggered by new detections.                      |
+| `AGING_INTERVAL_MS`   | `120000`  | Periodic republish, so bounded windows shed detections that aged out.           |
+| `SUMMARY_INTERVAL_MS` | `1800000` | How often the all-time species summary — the one expensive call — is refreshed. |
 
 ### Paths (advanced)
 
-| Variable         | Default                            | Description                                                                     |
-| ---------------- | ---------------------------------- | ------------------------------------------------------------------------------- |
-| `FRAME_HTML_DIR` | `/usr/share/nginx/html`            | Root the service publishes into. Set it to `./public` to run the service in dev. |
-| `CACHE_DIR`      | `/var/cache/saezuri`               | Scratch directory for the illustration pipeline.                                 |
-| `PYTHON_BIN`     | `python3`                          | Interpreter used to run the pipeline.                                            |
-| `WORKER_SCRIPT`  | `/opt/saezuri/pipeline/worker.py`  | Pipeline entry script.                                                           |
+| Variable         | Default                           | Description                                                                      |
+| ---------------- | --------------------------------- | -------------------------------------------------------------------------------- |
+| `FRAME_HTML_DIR` | `/usr/share/nginx/html`           | Root the service publishes into. Set it to `./public` to run the service in dev. |
+| `CACHE_DIR`      | `/var/cache/saezuri`              | Scratch directory for the illustration pipeline.                                 |
+| `PYTHON_BIN`     | `python3`                         | Interpreter used to run the pipeline.                                            |
+| `WORKER_SCRIPT`  | `/opt/saezuri/pipeline/worker.py` | Pipeline entry script.                                                           |
 
 Two parsing quirks worth knowing, because neither fails loudly: a numeric setting that isn't a
 number greater than zero falls back to its default, and a comma-list that names nothing valid
-falls back to the full set — so `FRAME_WINDOWS=6h` renders *every* window rather than erroring.
+falls back to the full set — so `FRAME_WINDOWS=6h` renders _every_ window rather than erroring.
 `CALL_PROVIDERS` is the documented exception: empty means off.
 
 `BIRDNETGO_URL` must be reachable **from inside the container**, and its host is forwarded
@@ -134,7 +136,7 @@ docker run -d -p 8090:8080 \
 ```
 
 Then open <http://localhost:8090>. The container listens on 8080, which is unprivileged so it
-never needs root to bind. The *host* port is 8090 rather than 8080 on purpose: 8080 is
+never needs root to bind. The _host_ port is 8090 rather than 8080 on purpose: 8080 is
 BirdNET-Go's own default, so the two would collide whenever they share a host, which is the
 common case. Images are published multi-arch (amd64 + arm64), so they run on a Raspberry Pi as
 well as an x86 host. The two volumes keep the illustrations
@@ -172,13 +174,14 @@ rewrites `/etc/nginx/nginx.conf`, which an unprivileged container cannot do.
 
 ## On-demand generation (optional)
 
-The free downloads above only cover species someone has contributed art for. To *also* fill in
-anything the repo doesn't have — generated fresh in the same kachō-e style — set `GEMINI_API_KEY`:
+The free downloads above only cover species someone has contributed art for. To _also_ fill in
+anything the repo doesn't have — generated fresh in the same kachō-e style — set
+`GENERATE_API_KEY`:
 
 ```bash
 docker run -d -p 8090:8080 \
   -e BIRDNETGO_URL=http://<birdnet-go-host>:8080 \
-  -e GEMINI_API_KEY=<your-google-ai-key> \
+  -e GENERATE_API_KEY=<your-openrouter-key> \
   -v saezuri-illustrations:/data/illustrations \
   ghcr.io/vrwrts/saezuri:latest
 ```
@@ -193,12 +196,31 @@ stop being a silhouette, so that render lands and shows up before the flight pos
 The free downloads and the paid generation run independently, so a species whose art is already in
 the repo appears immediately rather than queueing behind someone else's render.
 
+### Choosing a model
+
+Saezuri talks to an OpenAI-compatible `chat/completions` endpoint, so you are not tied to one
+vendor. `GENERATE_API_URL` defaults to [OpenRouter](https://openrouter.ai), which fronts most
+image-output models behind one account, and `GENERATE_MODEL` picks one from it. Point
+`GENERATE_API_URL` at a local server instead and generation never leaves your network:
+
+```bash
+-e GENERATE_API_URL=http://192.168.1.10:1234/v1 \
+-e GENERATE_MODEL=<the-model-your-server-serves> \
+-e GENERATE_API_KEY=<whatever-your-server-accepts>
+```
+
+One real constraint on the model: **it has to honour the magenta background.** No image model
+emits transparency, so the prompt asks for the bird on a flat `#FF00FF` ground and Saezuri cuts
+that away afterwards. A model that ignores the instruction gives you a magenta rectangle rather
+than a bird. `google/gemini-2.5-flash-image` is the default because the style was tuned against
+it; anything else is worth checking on a species or two before you leave it running.
+
 Things to know:
 
-- **It uses the paid Gemini image API with _your_ key** — you pay for what it generates.
-  Only detected species the repo doesn't already have are generated (typically a handful).
-  Generation is paced by `GENERATE_SLEEP` (default 6s) to stay under the free tier; that gap is
-  the only throughput control, since the limit here is the API's request rate.
+- **You pay for what it generates, with _your_ key.** Only detected species the repo doesn't
+  already have are generated (typically a handful). Generation is paced by `GENERATE_SLEEP`
+  (default 6s); that gap is the only throughput control, since the limit here is the provider's
+  request rate.
 - **A pose the model declines is left alone for a day** rather than re-attempted every
   refresh, so a stubborn species can't quietly drain quota. See
   [Free illustrations](#free-illustrations) for how gaps are remembered.
@@ -207,7 +229,7 @@ Things to know:
 - **The generator is bundled in every image** — vendored at build time from the
   [saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations) pipeline at a pinned
   version (numpy/scipy cutout, no ML model, so the image stays modest).
-  `GEMINI_API_KEY` unset simply means the worker never generates; the container is otherwise identical.
+  `GENERATE_API_KEY` unset simply means the worker never generates; the container is otherwise identical.
 - **A species that keeps coming out wrong** needs a better prompt, not more attempts — see
   [Species notes](#species-notes).
 - **Licensing.** Generating art locally for your own display is personal use. The style
@@ -217,7 +239,7 @@ Things to know:
 ## Species notes
 
 Sometimes a species comes out wrong no matter how many times you regenerate it — the model's prior
-is simply off, and re-rolling the dice won't fix it. A *note* is a sentence or two appended to that
+is simply off, and re-rolling the dice won't fix it. A _note_ is a sentence or two appended to that
 species' prompt only:
 
 ```json
@@ -242,7 +264,7 @@ How it behaves:
   upstream](https://github.com/vrwrts/saezuri-illustrations) rather than keeping the fix local — the
   pipeline ships its own `species-notes.json` that yours is layered over, and that is the file to
   send a PR to.
-- **It needs `GEMINI_API_KEY`.** A note is an instruction to the generator; with no key there is
+- **It needs `GENERATE_API_KEY`.** A note is an instruction to the generator; with no key there is
   nothing to instruct.
 
 ## Free illustrations
@@ -265,8 +287,8 @@ How it behaves:
   it is first heard and kept in the volume, so a restart re-downloads nothing. A species only
   appears once it has both. A fresh display fills in over the first hours
   as birds are heard (not all at t=0).
-- **Composes with on-demand generation.** Download is tried first (free); if `GEMINI_API_KEY`
-  is set, a species the repo *doesn't* have still falls back to Gemini generation.
+- **Composes with on-demand generation.** Download is tried first (free); if `GENERATE_API_KEY`
+  is set, a species the repo _doesn't_ have still falls back to local generation.
 - **Requires `BIRDNETGO_URL`** — the refresh service (which fetches art and builds the manifest)
   only runs when it's set.
 - **Offline-safe / disable.** A failed fetch is non-fatal (silhouette until art exists). Set
@@ -282,7 +304,7 @@ How it behaves:
   refresh compares what's on disk against what should be there and repairs the difference, at
   startup as well as while running.
 - **Licensing.** The illustrations (and the generation pipeline the image bundles) are
-  **CC-BY-NC-SA-4.0** — non-commercial. See the illustrations repo and *Credits and licensing* below.
+  **CC-BY-NC-SA-4.0** — non-commercial. See the illustrations repo and _Credits and licensing_ below.
 
 ### Contributing generated art
 
@@ -448,12 +470,12 @@ image, and deploys to Cloudflare Pages — see [`site/README.md`](site/README.md
   `GITHUB_TOKEN` cannot do this while `main` requires a pull request. The workflow therefore
   authenticates semantic-release with a `RELEASE_TOKEN` secret, and fails fast with a clear
   message if it is missing. To set it up:
-  1. Create a **fine-grained PAT** with *Contents: read and write* on this repo (a GitHub App
+  1. Create a **fine-grained PAT** with _Contents: read and write_ on this repo (a GitHub App
      installation token works too, and is preferable if you would rather not tie releases to a
      personal account).
   2. Add it as the repository secret `RELEASE_TOKEN`.
-  3. In **Settings → Branches → `main`**, add that identity to *Allow specified actors to bypass
-     required pull requests*.
+  3. In **Settings → Branches → `main`**, add that identity to _Allow specified actors to bypass
+     required pull requests_.
 
   The release commit carries `[skip ci]`. That matters here: a push authenticated with a PAT
   triggers workflows, where one with `GITHUB_TOKEN` does not, so without it every release would

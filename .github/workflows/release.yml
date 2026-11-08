@@ -10,10 +10,10 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - 'site/**'      # the landing site deploys itself via Cloudflare; never releases the app
-      - 'fixtures/**'
-      - '.github/**'
-      - '**.md'
+      - "site/**" # the landing site deploys itself via Cloudflare; never releases the app
+      - "fixtures/**"
+      - ".github/**"
+      - "**.md"
       # The generation pipeline lives in the saezuri-illustrations repo (versioned there);
       # the app adopts a new one by bumping PIPELINE_VERSION in the Dockerfile, which is a
       # normal releasable app change.
@@ -22,6 +22,10 @@ on:
   # can be retried once that is fixed, without inventing a code commit to push.
   # semantic-release is idempotent — with nothing releasable it exits doing nothing.
   workflow_dispatch:
+  # Monthly sweep for dependency updates that no feat/fix has released yet; see
+  # the "Release pending dependency updates" step.
+  schedule:
+    - cron: "0 6 1 * *"
 
 concurrency:
   group: release
@@ -31,8 +35,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write        # create the tag + GitHub Release
-      issues: write          # semantic-release comments on released issues/PRs
+      contents: write # create the tag + GitHub Release
+      issues: write # semantic-release comments on released issues/PRs
       pull-requests: write
     outputs:
       published: ${{ steps.semantic.outputs.new_release_published }}
@@ -53,13 +57,25 @@ jobs:
             echo "::error::RELEASE_TOKEN is not set. semantic-release has to push the add-on version bump to main, which GITHUB_TOKEN may not do. See 'Release credentials' in README.md."
             exit 1
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
-          fetch-depth: 0     # semantic-release needs full history + tags
+          fetch-depth: 0 # semantic-release needs full history + tags
           # Don't leave GITHUB_TOKEN in .git/config: semantic-release would then
           # push with it instead of RELEASE_TOKEN and be rejected.
           persist-credentials: false
-      - uses: cycjimmy/semantic-release-action@v4
+      # Dependabot commits as chore(deps), which never releases on push: an
+      # update rides along with the next feat/fix. Only this monthly run counts
+      # chore(deps) as a patch, so updates still reach users in a quiet month
+      # without each merge cutting its own release. The edit stays in this
+      # checkout; the git plugin commits only the addon/ assets.
+      - name: Release pending dependency updates
+        if: github.event_name == 'schedule'
+        run: |
+          jq '.plugins |= map(if . == "@semantic-release/commit-analyzer"
+                then [., {releaseRules: [{type: "chore", scope: "deps", release: "patch"}]}]
+                else . end)' .releaserc.json > .releaserc.tmp
+          mv .releaserc.tmp .releaserc.json
+      - uses: cycjimmy/semantic-release-action@v8
         id: semantic
         with:
           # The app's pinned version has to be bumped in the release commit:
@@ -86,18 +102,18 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4          # triggering SHA == the released, tagged commit
+      - uses: actions/checkout@v7 # triggering SHA == the released, tagged commit
       - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Derive tags and labels
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
@@ -128,11 +144,11 @@ jobs:
       # The triggering SHA, i.e. before semantic-release's version-bump commit.
       # Fine: the wrapper's version comes from the job output below, and neither
       # config.yaml nor build.yaml is baked into the image.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

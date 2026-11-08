@@ -9,9 +9,9 @@ name: Docker build
 on:
   pull_request:
     paths-ignore:
-      - 'site/**'
-      - 'fixtures/**'
-      - '**.md'
+      - "site/**"
+      - "fixtures/**"
+      - "**.md"
       # The build vendors the pipeline.tar.gz release asset from the public
       # saezuri-illustrations repo (pinned by PIPELINE_VERSION) — no secret needed,
       # so fork PRs build fine.
@@ -22,8 +22,8 @@ jobs:
     if: github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Build (no push)
         uses: docker/build-push-action@v6
         with:

@@ -25,10 +25,10 @@ Leave **BirdNET-Go URL** empty and Saezuri looks for a BirdNET-Go app on the
 Supervisor network at startup. It tries these hostnames on port 8080, in order, and
 confirms each hit really is BirdNET-Go before using it:
 
-| Hostname | Where that app came from |
-| --- | --- |
-| `db21ed7f-birdnet-go` | the [alexbelgium add-ons](https://github.com/alexbelgium/hassio-addons) repository |
-| `local-birdnet-go` | a copy you built yourself under `/addons` |
+| Hostname              | Where that app came from                                                                       |
+| --------------------- | ---------------------------------------------------------------------------------------------- |
+| `db21ed7f-birdnet-go` | the [alexbelgium add-ons](https://github.com/alexbelgium/hassio-addons) repository             |
+| `local-birdnet-go`    | a copy you built yourself under `/addons`                                                      |
 | `a0d7b954-birdnet-go` | the [Home Assistant Community Add-ons](https://github.com/hassio-addons/repository) repository |
 
 The app log says which one it picked. If several respond, the first in that order
@@ -53,12 +53,12 @@ token** as well.
 
 ### Connection
 
-| Option | What it does |
-| --- | --- |
-| **BirdNET-Go URL** | Base URL of your instance, for example `http://192.168.1.10:8080`. Leave empty for the detection above. |
-| **BirdNET-Go token** | Bearer token. Only needed when BirdNET-Go runs in PrivateMode. |
-| **BirdNET-Go browser URL** | Browser-reachable root URL, without `/ui`. Links station recordings to their exact detection; leave empty to hide the source line. |
-| **Extra hostnames to probe** | Comma-separated hostnames tried before the built-in guesses during detection. |
+| Option                       | What it does                                                                                                                       |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **BirdNET-Go URL**           | Base URL of your instance, for example `http://192.168.1.10:8080`. Leave empty for the detection above.                            |
+| **BirdNET-Go token**         | Bearer token. Only needed when BirdNET-Go runs in PrivateMode.                                                                     |
+| **BirdNET-Go browser URL**   | Browser-reachable root URL, without `/ui`. Links station recordings to their exact detection; leave empty to hide the source line. |
+| **Extra hostnames to probe** | Comma-separated hostnames tried before the built-in guesses during detection.                                                      |
 
 ### Illustrations
 
@@ -67,17 +67,34 @@ from the [saezuri-illustrations](https://github.com/vrwrts/saezuri-illustrations
 repo. This is on by default and needs no key. Species with no contributed art get a
 generic silhouette, still labelled and still sized by their real count.
 
-| Option | Default | What it does |
-| --- | --- | --- |
-| **Illustrations repository** | `vrwrts/saezuri-illustrations` | Where cutouts are downloaded from. Empty turns downloading off. |
-| **Illustrations branch** | `main` | Branch or tag to download from. |
-| **Illustrations base URL** | derived | Overrides the two above with a direct URL. |
-| **Gemini API key** | unset | Optional. Set it to *also* generate art, in the same style, for species nobody has contributed yet. |
-| **Pause between generations** | `6` | Seconds between generated illustrations. Lower on a paid tier, raise if rate-limited. |
-| **Species notes** | none | Per-bird prompt corrections, see below. |
+| Option                        | Default                         | What it does                                                                                        |
+| ----------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **Illustrations repository**  | `vrwrts/saezuri-illustrations`  | Where cutouts are downloaded from. Empty turns downloading off.                                     |
+| **Illustrations branch**      | `main`                          | Branch or tag to download from.                                                                     |
+| **Illustrations base URL**    | derived                         | Overrides the two above with a direct URL.                                                          |
+| **Image model API key**       | unset                           | Optional. Set it to _also_ generate art, in the same style, for species nobody has contributed yet. |
+| **Image model endpoint**      | OpenRouter                      | Advanced. Any OpenAI-compatible endpoint, including one on your own network.                        |
+| **Image model**               | `google/gemini-2.5-flash-image` | Advanced. Which model draws the birds.                                                              |
+| **Pause between generations** | `6`                             | Seconds between generated illustrations. Lower if your plan allows, raise if rate-limited.          |
+| **Species notes**             | none                            | Per-bird prompt corrections, see below.                                                             |
 
-Generation costs money at Google's rates and is entirely optional. Everything works
-without a key.
+Generation costs money at your provider's rates and is entirely optional. Everything
+works without a key.
+
+The key is an [OpenRouter](https://openrouter.ai) key unless you change the endpoint.
+Setting **Image model endpoint** to a server on your own network — for example
+`http://192.168.1.10:1234/v1` for LM Studio — keeps generation local. Whatever model you
+choose has to honour the prompt's flat magenta background, which the app then cuts away;
+a model that ignores it gives you a magenta rectangle instead of a bird, which is why the
+default is the model the style was tuned against.
+
+### Upgrading from an earlier version
+
+Two options were removed: **Gemini API key** (now **Image model API key**) and
+**Generated illustrations per cycle** (unused since 0.15). Home Assistant validates your
+saved configuration against the app's options, so if either is still in yours the app
+will refuse to start until you remove it. Do that in the app's Configuration tab, then
+set the new key.
 
 Illustrations are generated one pose at a time, perched first. A bird stops being a
 silhouette as soon as its perched illustration lands, so it appears without waiting
@@ -105,7 +122,7 @@ installation benefits.
 
 ### Contributing the illustrations you generated
 
-Art your Gemini key generated is only on your installation. To share it, copy the PNGs
+Art your image model API key generated is only on your installation. To share it, copy the PNGs
 from the illustrations folder (see [Storage](#storage)) into a clone of the
 illustrations repository and open a pull request. The
 [README](https://github.com/vrwrts/saezuri#contributing-generated-art) walks through it.
@@ -123,30 +140,30 @@ station lookups and removes station clips from the playback manifest on the next
 even if Commons has no replacement. Cached files remain reachable by their existing URLs;
 clear the app's cached calls data to remove those files.
 
-| Option | Default | What it does |
-| --- | --- | --- |
-| **Recording sources** | `commons` | Comma-separated sources in priority order: `birdnet` and/or `commons`. Empty disables new lookups and unpublishes station clips; cached archive recordings remain available. |
-| **Recordings per cycle** | `4` | How many to look up at a time. |
+| Option                   | Default   | What it does                                                                                                                                                                 |
+| ------------------------ | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Recording sources**    | `commons` | Comma-separated sources in priority order: `birdnet` and/or `commons`. Empty disables new lookups and unpublishes station clips; cached archive recordings remain available. |
+| **Recordings per cycle** | `4`       | How many to look up at a time.                                                                                                                                               |
 
 ### E-ink frames
 
 Saezuri renders the same collage to a flat PNG per time window, for an e-ink panel.
 
-| Option | Default | What it does |
-| --- | --- | --- |
-| **E-ink frame width** | `800` | Width in pixels. 700 or less switches to portrait packing. |
-| **E-ink frame height** | `480` | Height in pixels. |
-| **E-ink frame background** | `#fcfcfb` | Background, as a six-digit hex colour. |
-| **E-ink frame shadows** | on | Soft shadows under the birds. |
-| **E-ink frames to render** | all five | Comma-separated, from `1h,12h,24h,7d,all`. |
+| Option                     | Default   | What it does                                               |
+| -------------------------- | --------- | ---------------------------------------------------------- |
+| **E-ink frame width**      | `800`     | Width in pixels. 700 or less switches to portrait packing. |
+| **E-ink frame height**     | `480`     | Height in pixels.                                          |
+| **E-ink frame background** | `#fcfcfb` | Background, as a six-digit hex colour.                     |
+| **E-ink frame shadows**    | on        | Soft shadows under the birds.                              |
+| **E-ink frames to render** | all five  | Comma-separated, from `1h,12h,24h,7d,all`.                 |
 
-See *Using an e-ink panel* below for how to reach them.
+See _Using an e-ink panel_ below for how to reach them.
 
 ### Display languages
 
-| Option | Default | What it does |
-| --- | --- | --- |
-| **Display languages** | all 16 | Comma-separated languages to publish species names for. The browser picks the closest match to its own language. |
+| Option                | Default | What it does                                                                                                     |
+| --------------------- | ------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Display languages** | all 16  | Comma-separated languages to publish species names for. The browser picks the closest match to its own language. |
 
 Available: `cs,da,de,en,es,fi,fr,hu,it,lv,nb,nl,pl,pt,sk,sv`.
 
@@ -154,11 +171,11 @@ Available: `cs,da,de,en,es,fi,fr,hu,it,lv,nb,nl,pl,pt,sk,sv`.
 
 Rarely worth touching.
 
-| Option | Default | What it does |
-| --- | --- | --- |
-| **Publish debounce** | `20000` ms | How long to wait after a detection before republishing, so a burst becomes one update. |
-| **Ageing interval** | `120000` ms | How often detections are dropped out of their time window. |
-| **Summary interval** | `1800000` ms | How often to recount everything from BirdNET-Go. |
+| Option               | Default      | What it does                                                                           |
+| -------------------- | ------------ | -------------------------------------------------------------------------------------- |
+| **Publish debounce** | `20000` ms   | How long to wait after a detection before republishing, so a burst becomes one update. |
+| **Ageing interval**  | `120000` ms  | How often detections are dropped out of their time window.                             |
+| **Summary interval** | `1800000` ms | How often to recount everything from BirdNET-Go.                                       |
 
 ## Using an e-ink panel
 

@@ -1,3 +1,34 @@
+## [2.0.1](https://github.com/vrwrts/saezuri/compare/v2.0.0...v2.0.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **deps:** vendor pipeline v2.0.1 ([#72](https://github.com/vrwrts/saezuri/issues/72)) ([799bfe7](https://github.com/vrwrts/saezuri/commit/799bfe7f8d67744305453c3a65745b382dd851ee))
+
+# [2.0.0](https://github.com/vrwrts/saezuri/compare/v1.3.0...v2.0.0) (2026-11-02)
+
+
+* feat!: configure the image model instead of hardcoding Gemini ([#48](https://github.com/vrwrts/saezuri/issues/48)) ([fd00c72](https://github.com/vrwrts/saezuri/commit/fd00c72ad38e3608d28877f2c7664ef944bebaa0))
+
+
+### BREAKING CHANGES
+
+* GEMINI_API_KEY is no longer read; set GENERATE_API_KEY
+instead. A Google AI key will not authenticate against OpenRouter, so
+this
+needs a new key rather than a renamed variable. The refresh service says
+so at
+startup when it finds only the old name, rather than silently leaving
+generation off.
+* the Home Assistant app's `gemini_api_key` option is now
+  `generate_api_key`, joined by `generate_api_url` and `generate_model`.
+  The
+  unused `generate_max_per_cycle` option is removed as well. Home
+  Assistant
+  validates saved options against the schema, so an app carrying either
+  removed
+  option refuses to start until it is deleted from the configuration.
+
 # [1.3.0](https://github.com/vrwrts/saezuri/compare/v1.2.1...v1.3.0) (2026-10-19)
 
 
