@@ -1,6 +1,6 @@
 import { Settings } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import type { DictLocale } from '../domain/locale.ts'
+import type { DictLocale, DisplayLanguage } from '../domain/locale.ts'
 import { type ThemePref, useThemePreference } from '../hooks/useThemePreference.ts'
 import { LanguageSelect } from './LanguageSelect.tsx'
 import { SegmentedControl } from './SegmentedControl.tsx'
@@ -24,9 +24,9 @@ function animationsOff(): boolean {
 interface Props {
   /** Published display languages (from the dictionary index). */
   locales: readonly DictLocale[]
-  /** Current display language, or null when nothing is published. */
-  lang: DictLocale | null
-  onLang: (locale: DictLocale) => void
+  /** Current display language, including the station's own names. */
+  lang: DisplayLanguage
+  onLang: (locale: DisplayLanguage) => void
 }
 
 /** Topbar settings: a menu button opening a soft popover card with the theme
