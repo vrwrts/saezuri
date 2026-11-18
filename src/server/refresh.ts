@@ -1,5 +1,6 @@
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
+import { LABEL_FONT_FILE } from '../collage/labels/font.ts'
 import { isComplete } from '../domain/asset.ts'
 import { DEFAULT_MANIFEST } from '../domain/defaultManifest.ts'
 import { fetchWindowRows, type LoadDeps, loadSpecies } from '../domain/load.ts'
@@ -330,7 +331,7 @@ class Refresher {
   private async renderFrames(snapshot: Snapshot): Promise<void> {
     for (const seg of this.cfg.frameWindows) {
       const species = snapshot.windows[seg].species
-      const sig = frameSignature(species, this.manifest)
+      const sig = frameSignature(species, this.manifest, this.cfg.birdNames)
       if (this.lastFrameSig.get(seg) === sig) continue
       try {
         const png = await renderFrame(species, this.manifest, {
@@ -339,6 +340,8 @@ class Refresher {
           background: this.cfg.frameBg,
           shadow: this.cfg.frameShadow,
           assetsDir: this.cfg.assetsDir,
+          birdNames: this.cfg.birdNames,
+          fontPath: join(this.cfg.htmlDir, LABEL_FONT_FILE),
         })
         await writeFrame(this.cfg.htmlDir, seg, png)
         this.lastFrameSig.set(seg, sig)
