@@ -89,6 +89,12 @@ annotated copy of every setting.
 | `FRAME_SHADOW`  | `1`       | Per-tile drop shadow; `0` disables it (some quantized panels muddy it).                                                                             |
 | `FRAME_WINDOWS` | all five  | Comma-list of `1h,12h,24h,7d,all` to render. Narrow it if the panel only ever shows one.                                                            |
 
+### Bird names
+
+| Variable     | Default | Description                                                                                                                                                                  |
+| ------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BIRD_NAMES` | `1`     | Write each bird's common name beside it, following the shape of its body, in the collage and the e-ink frames. `0` turns names off. The collage uses each viewer's language. |
+
 ### Display languages
 
 | Variable               | Default | Description                                                                                                                                                                                     |

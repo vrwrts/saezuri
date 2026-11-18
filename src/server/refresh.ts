@@ -78,6 +78,7 @@ interface Config {
   frameShadow: boolean
   frameWindows: WindowSegment[]
   dictLocales: DictLocale[]
+  birdNames: boolean
 }
 
 function intEnv(name: string, def: number): number {
@@ -155,6 +156,7 @@ function readConfig(): Config {
     frameWindows: parseCsvSubset(process.env.FRAME_WINDOWS, ALL_SEGMENTS),
     // Operators can narrow the dictionary set (disk/bandwidth) via SPECIES_DICT_LOCALES.
     dictLocales: parseCsvSubset(process.env.SPECIES_DICT_LOCALES, SUPPORTED_DICT_LOCALES),
+    birdNames: (process.env.BIRD_NAMES ?? '1').trim() !== '0',
   }
 }
 
@@ -268,6 +270,7 @@ class Refresher {
       allSpecies: this.allSpecies,
       manifest: this.manifest,
       now,
+      display: { birdNames: this.cfg.birdNames },
     })
     // Manifests first, then the snapshot, then the frames — a client (or the
     // frame) never references art or audio the manifests don't yet describe.

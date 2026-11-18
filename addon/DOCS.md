@@ -159,6 +159,12 @@ Saezuri renders the same collage to a flat PNG per time window, for an e-ink pan
 
 See _Using an e-ink panel_ below for how to reach them.
 
+### Bird names
+
+| Option         | Default | What it does                                                                                                                                      |
+| -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Bird names** | on      | Writes each bird's name beside it, following the shape of its body, in the collage and the e-ink frames. The collage uses each viewer's language. |
+
 ### Display languages
 
 | Option                | Default | What it does                                                                                                     |

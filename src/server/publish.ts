@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { hasArt } from '../domain/asset.ts'
 import { DEFAULT_MANIFEST } from '../domain/defaultManifest.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
-import type { Snapshot, WindowSnapshot } from '../domain/snapshot.ts'
+import type { DisplaySettings, Snapshot, WindowSnapshot } from '../domain/snapshot.ts'
 import type { Species } from '../domain/species.ts'
 import {
   presetToSegment,
@@ -19,11 +19,18 @@ export interface SnapshotInputs {
   allSpecies: Species[]
   manifest: LayoutManifest
   now: number
+  display: DisplaySettings
 }
 
 /** Build the per-window snapshot, gating each window to illustrated species and
  *  recording the withheld tail (`heard`/`notIllustrated`). Pure. */
-export function buildSnapshot({ store, allSpecies, manifest, now }: SnapshotInputs): Snapshot {
+export function buildSnapshot({
+  store,
+  allSpecies,
+  manifest,
+  now,
+  display,
+}: SnapshotInputs): Snapshot {
   const windows = {} as Record<WindowSegment, WindowSnapshot>
   for (const preset of WINDOW_PRESETS) {
     const seg = presetToSegment(preset)
@@ -45,7 +52,7 @@ export function buildSnapshot({ store, allSpecies, manifest, now }: SnapshotInpu
       notIllustrated: species.length - gated.length,
     }
   }
-  return { generatedAt: now, windows }
+  return { generatedAt: now, windows, display }
 }
 
 /** Atomically write snapshot.json into the served html dir (tmp + rename, so
