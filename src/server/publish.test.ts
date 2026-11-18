@@ -7,6 +7,7 @@ import { DetectionStore } from './store.ts'
 
 const now = Date.parse('2026-07-08T12:00:00Z')
 const H = 3_600_000
+const display = { birdNames: false }
 
 const mask: MaskRecord = { w: 1, h: 1, bits: 'AA==' }
 
@@ -49,7 +50,7 @@ describe('buildSnapshot', () => {
       { sci: 'Parus major', com: 'Great tit', n: 4 },
     ]
 
-    const snap = buildSnapshot({ store, allSpecies, manifest, now })
+    const snap = buildSnapshot({ store, allSpecies, manifest, now, display })
 
     const h1 = snap.windows['1h']
     expect(h1.species.map((s) => s.sci)).toEqual(['Turdus merula'])
@@ -63,10 +64,17 @@ describe('buildSnapshot', () => {
     expect(all.notIllustrated).toBe(1)
 
     expect(snap.generatedAt).toBe(now)
+    expect(snap.display).toEqual(display)
   })
 
   it('emits every window key', () => {
-    const snap = buildSnapshot({ store: new DetectionStore(), allSpecies: [], manifest, now })
+    const snap = buildSnapshot({
+      store: new DetectionStore(),
+      allSpecies: [],
+      manifest,
+      now,
+      display,
+    })
     expect(Object.keys(snap.windows).sort()).toEqual(['12h', '1h', '24h', '7d', 'all'])
   })
 })

@@ -128,6 +128,36 @@ body {
 .gcollage.has-selection .gtile:not(.is-selected):not(.is-hover) img {
   opacity: 0.4;
 }
+/* A bird's name rides beside it, sized to the lettering and reaching past the tile
+   (see BirdLabel.tsx). It follows its bird through hover, selection, and the recede,
+   scaling about the bird's centre so the two never drift apart. */
+.gtile-label {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+.gtile-label text {
+  fill: var(--ink-2);
+}
+.gtile.is-hover .gtile-label {
+  transform: scale(1.04);
+}
+.gtile.is-selected .gtile-label {
+  transform: scale(1.09);
+}
+.gcollage.has-selection .gtile:not(.is-selected):not(.is-hover) .gtile-label {
+  opacity: 0.4;
+}
+/* Zero-size carrier for the shared ink filters, so it can't open a line box. */
+.gtile-label-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
 .gtile.pending {
   opacity: 0;
 }

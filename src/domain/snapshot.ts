@@ -22,8 +22,19 @@ export interface WindowSnapshot {
   heard: number
 }
 
+/** Operator display settings, carried in the snapshot so every viewer follows the
+ *  deployment's choice within one poll rather than keeping a per-browser copy. */
+export interface DisplaySettings {
+  /** Letter each bird's common name along its silhouette (`BIRD_NAMES`). */
+  birdNames: boolean
+}
+
+export const DEFAULT_DISPLAY: DisplaySettings = { birdNames: true }
+
 export interface Snapshot {
   /** Epoch ms the snapshot was produced; lets the UI flag a stale service. */
   generatedAt: number
   windows: Record<WindowSegment, WindowSnapshot>
+  /** Absent from snapshots written before the field existed; read as DEFAULT_DISPLAY. */
+  display?: DisplaySettings
 }

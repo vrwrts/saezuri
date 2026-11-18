@@ -1,5 +1,6 @@
 import { fnv1a } from '../lib/hash.ts'
-import { type DecodedMask, isParked, maskPack, type PlaceableTile } from './pack.ts'
+import { type LabelOptions, planTileLabel, type TileLabel } from './labels/plan.ts'
+import { type DecodedMask, isParked, maskPack, type PlaceableTile, tileExtent } from './pack.ts'
 
 // Count-driven sizing + packing, reimplemented from study of AvianVisitors'
 // renderCollage. Pure: takes species already resolved to art (mask + aspect +
@@ -54,6 +55,14 @@ export interface LaidTile extends LayoutInput {
   w: number
   h: number
   parked: boolean
+  /** The bird's name and where it rides, tile-local. Present only when names are on. */
+  label?: TileLabel
+}
+
+export interface LayoutOptions {
+  /** Plan a name for every bird and pack around it. Off: no labels, and the layout
+   *  is exactly what it was before names existed. */
+  labels?: LabelOptions
 }
 
 export interface Viewport {
@@ -65,6 +74,7 @@ interface PackTile extends PlaceableTile {
   score: number
   area: number
   src: LayoutInput
+  label?: TileLabel
 }
 
 function clusterBounds(tiles: readonly PlaceableTile[]) {
@@ -74,15 +84,33 @@ function clusterBounds(tiles: readonly PlaceableTile[]) {
   let B = -Infinity
   for (const t of tiles) {
     if (isParked(t)) continue
-    if (t.x < L) L = t.x
-    if (t.x + t.fullW > R) R = t.x + t.fullW
-    if (t.y < T) T = t.y
-    if (t.y + t.fullH > B) B = t.y + t.fullH
+    const e = tileExtent(t)
+    if (t.x + e.x0 < L) L = t.x + e.x0
+    if (t.x + e.x1 > R) R = t.x + e.x1
+    if (t.y + e.y0 < T) T = t.y + e.y0
+    if (t.y + e.y1 > B) B = t.y + e.y1
   }
   return { L, R, T, B }
 }
 
-export function computeLayout(inputs: readonly LayoutInput[], vp: Viewport): LaidTile[] {
+/** Re-planned whenever the tiles are rescaled: the type size tracks the bird, and a
+ *  label sized for the previous pass would grow relative to shrinking birds and
+ *  stall the fit loop. */
+function assignLabels(tiles: PackTile[], opts: LabelOptions | undefined): void {
+  if (!opts) return
+  for (const t of tiles) {
+    const label = planTileLabel(t.mask, t.fullW, t.fullH, t.src.com, opts) ?? undefined
+    t.label = label
+    t.labelCells = label?.cells
+    t.labelBox = label?.box
+  }
+}
+
+export function computeLayout(
+  inputs: readonly LayoutInput[],
+  vp: Viewport,
+  opts: LayoutOptions = {},
+): LaidTile[] {
   const W = vp.width
   const H = vp.height
   if (inputs.length === 0 || W <= 0 || H <= 0) return []
@@ -129,6 +157,7 @@ export function computeLayout(inputs: readonly LayoutInput[], vp: Viewport): Lai
   const yBias = narrow ? 1.7 : 1
   const pad = narrow ? Math.max(1, COLLAGE_PAD - 1) : COLLAGE_PAD
 
+  assignLabels(tiles, opts.labels)
   let placed = maskPack(tiles, W, H, xBias, yBias, pad)
   let b = clusterBounds(placed)
 
@@ -149,6 +178,7 @@ export function computeLayout(inputs: readonly LayoutInput[], vp: Viewport): Lai
       t.fullW *= scale
       t.fullH *= scale
     }
+    assignLabels(tiles, opts.labels)
     placed = maskPack(tiles, W, H, xBias, yBias, pad)
     b = clusterBounds(placed)
   }
@@ -172,6 +202,7 @@ export function computeLayout(inputs: readonly LayoutInput[], vp: Viewport): Lai
     w: t.fullW,
     h: t.fullH,
     parked: isParked(t),
+    ...(t.label && { label: t.label }),
   }))
 }
 
@@ -182,8 +213,10 @@ export function computeLayout(inputs: readonly LayoutInput[], vp: Viewport): Lai
  *  deliberately blind to pixel coordinates — so it is stable across viewport
  *  resizes and identical polls, and changes only when the arrangement genuinely
  *  differs. The collage feeds it into the tile keys so a changed layout remounts
- *  the tiles and replays the entrance bloom (see Collage.tsx). */
+ *  the tiles and replays the entrance bloom (see Collage.tsx). With names on, the
+ *  name is part of the arrangement too: a language switch re-plans every label and
+ *  re-packs around them, which should bloom in rather than snap. */
 export function layoutSignature(tiles: readonly LaidTile[]): string {
-  const parts = tiles.map((t) => `${t.sci}:${t.n}:${t.key}`).sort()
+  const parts = tiles.map((t) => `${t.sci}:${t.n}:${t.key}${t.label ? `:${t.com}` : ''}`).sort()
   return fnv1a(parts.join('|')).toString(36)
 }

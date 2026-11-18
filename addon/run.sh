@@ -69,7 +69,7 @@ export_species_notes() {
     fi
 }
 
-# FRAME_SHADOW is read as "anything but 0", so a YAML bool has to become 1 or 0;
+# FRAME_SHADOW and BIRD_NAMES are read as "anything but 0", so a YAML bool has to become 1 or 0;
 # exporting the string "false" would silently enable the shadow.
 export_bool_opt() {
     if opt_present "$2"; then
@@ -101,6 +101,7 @@ export_opt FRAME_HEIGHT frame_height
 export_opt FRAME_BG frame_bg
 export_bool_opt FRAME_SHADOW frame_shadow
 export_opt FRAME_WINDOWS frame_windows
+export_bool_opt BIRD_NAMES bird_names
 export_opt SPECIES_DICT_LOCALES species_dict_locales
 export_opt PUBLISH_DEBOUNCE_MS publish_debounce_ms
 export_opt AGING_INTERVAL_MS aging_interval_ms

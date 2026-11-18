@@ -62,6 +62,26 @@ describe('useRecentSpecies', () => {
     expect(fetchMock).toHaveBeenCalledWith('/snapshot.json', { cache: 'no-store' })
   })
 
+  it('passes the operator display settings through', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...snapshot(), display: { birdNames: false } }),
+    })
+
+    const { result } = renderHook(() => useRecentSpecies('24H'), { wrapper })
+
+    await waitFor(() => expect(result.current.display.birdNames).toBe(false))
+  })
+
+  it('reads a snapshot without display settings as names on', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => snapshot() })
+
+    const { result } = renderHook(() => useRecentSpecies('24H'), { wrapper })
+
+    await waitFor(() => expect(result.current.species).toHaveLength(1))
+    expect(result.current.display.birdNames).toBe(true)
+  })
+
   it('reports loading on the first fetch, then clears it', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => snapshot() })
 

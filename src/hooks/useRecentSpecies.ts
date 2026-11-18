@@ -1,5 +1,10 @@
 import useSWR from 'swr'
-import type { Snapshot, WindowSnapshot } from '../domain/snapshot.ts'
+import {
+  DEFAULT_DISPLAY,
+  type DisplaySettings,
+  type Snapshot,
+  type WindowSnapshot,
+} from '../domain/snapshot.ts'
 import { presetToSegment, type WindowPreset } from '../domain/window.ts'
 import { withBase } from '../lib/basePath.ts'
 
@@ -15,6 +20,7 @@ export interface RecentSpecies extends WindowSnapshot {
   /** True only on the very first snapshot fetch. One file covers every window,
    *  so switching windows never re-loads. */
   loading: boolean
+  display: DisplaySettings
 }
 
 const EMPTY: WindowSnapshot = { species: [], truncated: false, notIllustrated: 0, heard: 0 }
@@ -42,5 +48,6 @@ export function useRecentSpecies(preset: WindowPreset): RecentSpecies {
     heard: w.heard,
     error: (error as Error | undefined) ?? null,
     loading: isLoading,
+    display: data?.display ?? DEFAULT_DISPLAY,
   }
 }

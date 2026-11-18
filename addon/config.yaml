@@ -33,6 +33,7 @@ options:
   frame_height: 480
   frame_bg: "#fcfcfb"
   frame_shadow: true
+  bird_names: true
   publish_debounce_ms: 20000
   aging_interval_ms: 120000
   summary_interval_ms: 1800000
@@ -64,6 +65,7 @@ schema:
   frame_bg: match(^#[0-9a-fA-F]{6}$)
   frame_shadow: bool
   frame_windows: str?
+  bird_names: bool
   species_dict_locales: str?
   publish_debounce_ms: int(1000,600000)
   aging_interval_ms: int(10000,3600000)

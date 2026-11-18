@@ -88,6 +88,11 @@ configuration:
     description: >-
       Comma-separated time windows to render frames for, from 1h, 12h, 24h, 7d
       and all.
+  bird_names:
+    name: Bird names
+    description: >-
+      Write each bird's name beside it, following the shape of its body, in the
+      collage and the e-ink frames.
   species_dict_locales:
     name: Display languages
     description: >-

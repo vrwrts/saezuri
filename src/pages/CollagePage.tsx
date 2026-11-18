@@ -126,6 +126,7 @@ function CollageView({ preset }: { preset: WindowPreset }) {
               blossomKey={preset}
               emptyState={emptyState}
               onReadyChange={setPlateReady}
+              birdNames={live.display.birdNames}
             />
             {showLoadingIndicator && <CollageLoading />}
           </ErrorBoundary>

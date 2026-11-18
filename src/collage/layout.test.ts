@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { fakeMeasureEm, perchedBirdMask } from './labels/testMasks.ts'
 import {
   computeLayout,
   type LaidTile,
@@ -76,6 +77,39 @@ describe('computeLayout', () => {
   })
 })
 
+describe('computeLayout with names', () => {
+  const labels = { measureEm: fakeMeasureEm, minPx: 9 }
+  const birds = [
+    'Western Bluebird',
+    'House Finch',
+    'Anna’s Hummingbird',
+    'Song Sparrow',
+    'Bushtit',
+  ].map((com, i) => ({ ...input(`s${i}`, (i + 1) * 4), com, mask: perchedBirdMask(), ar: 90 / 70 }))
+
+  it('names every bird and keeps birds and names inside the viewport', () => {
+    const tiles = computeLayout(birds, VP, { labels })
+    for (const t of tiles) {
+      expect(t.parked).toBe(false)
+      expect(t.label).toBeDefined()
+      const box = t.label?.box ?? { x0: 0, y0: 0, x1: 0, y1: 0 }
+      expect(t.x + Math.min(0, box.x0)).toBeGreaterThanOrEqual(-1)
+      expect(t.y + Math.min(0, box.y0)).toBeGreaterThanOrEqual(-1)
+      expect(t.x + Math.max(t.w, box.x1)).toBeLessThanOrEqual(VP.width + 1)
+      expect(t.y + Math.max(t.h, box.y1)).toBeLessThanOrEqual(VP.height + 1)
+    }
+  })
+
+  it('leaves the layout exactly as it was when names are off', () => {
+    expect(computeLayout(birds, VP, {})).toEqual(computeLayout(birds, VP))
+    expect(computeLayout(birds, VP).some((t) => 'label' in t)).toBe(false)
+  })
+
+  it('is deterministic', () => {
+    expect(computeLayout(birds, VP, { labels })).toEqual(computeLayout(birds, VP, { labels }))
+  })
+})
+
 function tile(sci: string, n: number, overrides: Partial<LaidTile> = {}): LaidTile {
   return { ...input(sci, n), x: 0, y: 0, w: 10, h: 10, parked: false, ...overrides }
 }
@@ -102,6 +136,16 @@ describe('layoutSignature', () => {
 
   it('changes when a species enters or leaves', () => {
     expect(layoutSignature(base)).not.toBe(layoutSignature([tile('a', 3), tile('b', 1)]))
+  })
+
+  it('ignores the common name without labels, but not with them', () => {
+    const label = { px: 12, rows: [], box: { x0: 0, y0: 0, x1: 1, y1: 1 }, cells: [] }
+    expect(layoutSignature([tile('a', 3, { com: 'Amsel' })])).toBe(
+      layoutSignature([tile('a', 3, { com: 'Blackbird' })]),
+    )
+    expect(layoutSignature([tile('a', 3, { com: 'Amsel', label })])).not.toBe(
+      layoutSignature([tile('a', 3, { com: 'Blackbird', label })]),
+    )
   })
 
   it('changes when the resolved art key changes (fallback→art, perched→flight)', () => {

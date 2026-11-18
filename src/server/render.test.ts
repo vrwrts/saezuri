@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LayoutManifest, MaskRecord } from '../domain/manifest.ts'
 import type { Species } from '../domain/species.ts'
-import { buildInputs, containRect, frameSignature } from './render.ts'
+import { buildInputs, containRect, frameSignature, inkFor } from './render.ts'
 
 const mask: MaskRecord = { w: 2, h: 2, bits: '8A==' }
 const manifest: LayoutManifest = {
@@ -26,14 +26,37 @@ describe('frameSignature', () => {
   const species: Species[] = [{ sci: 'Turdus merula', com: 'Blackbird', n: 3 }]
 
   it('changes when a count changes', () => {
-    const a = frameSignature(species, manifest)
-    const b = frameSignature([{ ...species[0], n: 4 }], manifest)
+    const a = frameSignature(species, manifest, false)
+    const b = frameSignature([{ ...species[0], n: 4 }], manifest, false)
     expect(a).not.toBe(b)
   })
 
   it('changes when the manifest art version changes', () => {
     const bumped: LayoutManifest = { ...manifest, ver: { 'turdus-merula': 'zzz999' } }
-    expect(frameSignature(species, manifest)).not.toBe(frameSignature(species, bumped))
+    expect(frameSignature(species, manifest, false)).not.toBe(
+      frameSignature(species, bumped, false),
+    )
+  })
+
+  it('changes when names are turned on or off', () => {
+    expect(frameSignature(species, manifest, false)).not.toBe(
+      frameSignature(species, manifest, true),
+    )
+  })
+
+  it('changes with the common name only when names are drawn', () => {
+    const renamed = [{ ...species[0], com: 'Amsel' }]
+    expect(frameSignature(species, manifest, false)).toBe(frameSignature(renamed, manifest, false))
+    expect(frameSignature(species, manifest, true)).not.toBe(
+      frameSignature(renamed, manifest, true),
+    )
+  })
+})
+
+describe('inkFor', () => {
+  it('writes dark on a light frame and light on a dark one', () => {
+    expect(inkFor('#fcfcfb')).toBe('#1a1612')
+    expect(inkFor('#17181c')).toBe('#ece8e1')
   })
 })
 

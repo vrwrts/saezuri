@@ -9,6 +9,11 @@ import { createPrng } from '../lib/prng.ts'
 /** Viewport px per occupancy-grid cell. Smaller = tighter packing, slower. */
 const GRID_STRIDE = 4
 
+/** Grid-cell gap dilated around a name. Lighter than a bird's own pad: lettering is
+ *  thin ink that already carries a gap of its own, and a bird-sized moat round every
+ *  word would open the plate up. */
+const LABEL_PAD = 1
+
 /** x-coordinate assigned to a tile that could not be placed. */
 const PARKED = -99999
 
@@ -27,12 +32,25 @@ export interface DecodedMask {
   cells: ReadonlyArray<readonly [number, number]>
 }
 
+/** A rectangle relative to its tile's top-left, in px. */
+export interface LocalRect {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+}
+
 export interface PlaceableTile {
   fullW: number
   fullH: number
   mask: DecodedMask
   x: number
   y: number
+  /** The bird's name, as boxes along its lettering, which may reach past the tile.
+   *  Reserved like the silhouette so no neighbour lands on the words. */
+  labelCells?: readonly LocalRect[]
+  /** Everything the lettering covers, for the viewport bounds. */
+  labelBox?: LocalRect
 }
 
 const maskCache = new Map<string, DecodedMask>()
@@ -93,6 +111,18 @@ export function maskOpaqueAt(mask: DecodedMask, mx: number, my: number): boolean
     hitGridCache.set(mask, grid)
   }
   return grid[my * mask.w + mx] === 1
+}
+
+/** Everything a tile draws, bird and name, relative to its top-left. */
+export function tileExtent(t: PlaceableTile): LocalRect {
+  const b = t.labelBox
+  if (!b) return { x0: 0, y0: 0, x1: t.fullW, y1: t.fullH }
+  return {
+    x0: Math.min(0, b.x0),
+    y0: Math.min(0, b.y0),
+    x1: Math.max(t.fullW, b.x1),
+    y1: Math.max(t.fullH, b.y1),
+  }
 }
 
 /** Spiral step per ring, as a fraction of the tile's short side (floored at GRID_STRIDE). */
@@ -158,41 +188,55 @@ export function maskPack<T extends PlaceableTile>(
     return [x0, y0, x1, y1] as const
   }
 
+  function rectRange(r: LocalRect, tx: number, ty: number) {
+    return [
+      Math.max(0, ((tx + r.x0) / GRID_STRIDE) | 0),
+      Math.max(0, ((ty + r.y0) / GRID_STRIDE) | 0),
+      Math.min(GW - 1, ((tx + r.x1) / GRID_STRIDE) | 0),
+      Math.min(GH - 1, ((ty + r.y1) / GRID_STRIDE) | 0),
+    ] as const
+  }
+
+  function hits(range: readonly [number, number, number, number]): boolean {
+    const [x0, y0, x1, y1] = range
+    for (let gy = y0; gy <= y1; gy++) {
+      const off = gy * GW
+      for (let gx = x0; gx <= x1; gx++) if (grid[off + gx]) return true
+    }
+    return false
+  }
+
+  // Dilate each stamped range so the next bird can't pack right up against this
+  // one. collides() stays undilated, so the gap is added once.
+  function fill(range: readonly [number, number, number, number], dilate: number): void {
+    const [x0, y0, x1, y1] = range
+    const gy0 = Math.max(0, y0 - dilate)
+    const gy1 = Math.min(GH - 1, y1 + dilate)
+    const gx0 = Math.max(0, x0 - dilate)
+    const gx1 = Math.min(GW - 1, x1 + dilate)
+    for (let gy = gy0; gy <= gy1; gy++) {
+      const off = gy * GW
+      for (let gx = gx0; gx <= gx1; gx++) grid[off + gx] = 1
+    }
+  }
+
   function collides(tile: T, tx: number, ty: number): boolean {
     const cells = tile.mask.cells
-    for (let i = 0; i < cells.length; i++) {
-      const [x0, y0, x1, y1] = cellRange(tile, tx, ty, cells[i])
-      for (let gy = y0; gy <= y1; gy++) {
-        const off = gy * GW
-        for (let gx = x0; gx <= x1; gx++) if (grid[off + gx]) return true
-      }
-    }
+    for (let i = 0; i < cells.length; i++) if (hits(cellRange(tile, tx, ty, cells[i]))) return true
+    for (const r of tile.labelCells ?? []) if (hits(rectRange(r, tx, ty))) return true
     return false
   }
 
   function stamp(tile: T, tx: number, ty: number): void {
     const cells = tile.mask.cells
-    for (let i = 0; i < cells.length; i++) {
-      const [x0, y0, x1, y1] = cellRange(tile, tx, ty, cells[i])
-      // Dilate the footprint by `pad` cells so the next bird can't pack right
-      // up against this one. collides() stays unpadded, so the gap is added once.
-      let gy0 = y0 - pad
-      let gy1 = y1 + pad
-      let gx0 = x0 - pad
-      let gx1 = x1 + pad
-      if (gy0 < 0) gy0 = 0
-      if (gx0 < 0) gx0 = 0
-      if (gy1 >= GH) gy1 = GH - 1
-      if (gx1 >= GW) gx1 = GW - 1
-      for (let gy = gy0; gy <= gy1; gy++) {
-        const off = gy * GW
-        for (let gx = gx0; gx <= gx1; gx++) grid[off + gx] = 1
-      }
-    }
+    for (let i = 0; i < cells.length; i++) fill(cellRange(tile, tx, ty, cells[i]), pad)
+    for (const r of tile.labelCells ?? []) fill(rectRange(r, tx, ty), LABEL_PAD)
   }
 
-  const offGrid = (tile: T, tx: number, ty: number): boolean =>
-    tx < 0 || ty < 0 || tx + tile.fullW > W || ty + tile.fullH > H
+  const offGrid = (tile: T, tx: number, ty: number): boolean => {
+    const b = tileExtent(tile)
+    return tx + b.x0 < 0 || ty + b.y0 < 0 || tx + b.x1 > W || ty + b.y1 > H
+  }
 
   const cx = W / 2
   const cy = H / 2
