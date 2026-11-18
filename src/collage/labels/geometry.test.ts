@@ -39,6 +39,25 @@ describe('centredSpan', () => {
     // Slack is 10 each side, so the start can move from -10 to 0 and no further.
     expect(span[0][0]).toBeCloseTo(0, 6)
   })
+
+  it('smooths a kink out of the run it follows', () => {
+    const kinked: Pt[] = [
+      [0, 0],
+      [20, 0],
+      [23, -3],
+      [26, 4],
+      [46, 4],
+    ]
+    const span = centredSpan(kinked, 46)
+    let worst = 0
+    for (let i = 2; i < span.length; i++) {
+      const a = Math.atan2(span[i - 1][1] - span[i - 2][1], span[i - 1][0] - span[i - 2][0])
+      const b = Math.atan2(span[i][1] - span[i - 1][1], span[i][0] - span[i - 1][0])
+      worst = Math.max(worst, Math.abs(((b - a) * 180) / Math.PI))
+    }
+    expect(worst).toBeLessThan(30)
+    expect(arcLen(span)).toBeGreaterThanOrEqual(46 - 1e-6)
+  })
 })
 
 describe('stack', () => {

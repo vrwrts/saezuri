@@ -120,6 +120,8 @@ export const TANGENT_REACH = 1.15
 
 /** Baseline sample spacing in px, about one letter at these sizes. */
 export const BASELINE_STEP_PX = 6
+/** Smoothing passes over each finished baseline (see smoothBaseline). */
+export const BASELINE_SMOOTH_PASSES = 3
 /** Extra px on each baseline. A textPath even a fraction of a pixel shorter than
  *  its string silently drops the last glyph. */
 export const BASELINE_SLACK_PX = 4

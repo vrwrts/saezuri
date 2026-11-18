@@ -1,4 +1,4 @@
-import { BASELINE_STEP_PX, MAX_LEAN_DEG } from './constants.ts'
+import { BASELINE_SMOOTH_PASSES, BASELINE_STEP_PX, MAX_LEAN_DEG } from './constants.ts'
 
 /** A point in tile-local px. */
 export type Pt = [number, number]
@@ -29,6 +29,26 @@ function padToLength(pts: Pt[], want: number): Pt[] {
     pts[pts.length - 1] = nudge(pts[pts.length - 1], pts[pts.length - 2], pad)
   }
   return pts
+}
+
+/** Ease every interior point toward its neighbours' midpoint, ends fixed. Where a
+ *  straight overrun meets the offset outline, or an offset tightens a bend, the
+ *  polyline kinks by a few degrees over a few px; under-limit for any one letter,
+ *  but on a textPath it crunches the glyphs either side together. */
+function smoothBaseline(pts: Pt[]): Pt[] {
+  let cur = pts
+  for (let pass = 0; pass < BASELINE_SMOOTH_PASSES; pass++) {
+    const next: Pt[] = [cur[0]]
+    for (let i = 1; i < cur.length - 1; i++) {
+      next.push([
+        (cur[i - 1][0] + 2 * cur[i][0] + cur[i + 1][0]) / 4,
+        (cur[i - 1][1] + 2 * cur[i][1] + cur[i + 1][1]) / 4,
+      ])
+    }
+    if (cur.length > 1) next.push(cur[cur.length - 1])
+    cur = next
+  }
+  return cur
 }
 
 /**
@@ -87,7 +107,7 @@ export function centredSpan(pts: readonly Pt[], want: number, toward?: Pt): Pt[]
   const steps = Math.max(2, Math.round(want / BASELINE_STEP_PX))
   const out: Pt[] = []
   for (let i = 0; i <= steps; i++) out.push(at(mid - want / 2 + (want * i) / steps))
-  return padToLength(out, want)
+  return padToLength(smoothBaseline(out), want)
 }
 
 /**
