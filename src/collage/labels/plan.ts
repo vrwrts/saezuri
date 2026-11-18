@@ -1,4 +1,4 @@
-import type { DecodedMask } from '../pack.ts'
+import type { DecodedMask, LocalRect } from '../pack.ts'
 import {
   ADHERE_REACH_EM,
   ADHERE_SHARE,
@@ -45,13 +45,7 @@ export interface LabelRow {
   text: string
 }
 
-/** A tile-local rectangle. */
-export interface LabelBox {
-  x0: number
-  y0: number
-  x1: number
-  y1: number
-}
+export type LabelBox = LocalRect
 
 export interface TileLabel {
   px: number

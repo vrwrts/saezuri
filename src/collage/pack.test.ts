@@ -49,6 +49,35 @@ describe('maskPack', () => {
     expect(a.map((t) => [t.x, t.y])).toEqual(b.map((t) => [t.x, t.y]))
   })
 
+  it('keeps every other tile off a label it reserves', () => {
+    // A strip under the first bird, reaching well past its sides.
+    const label = { x0: -40, y0: 104, x1: 140, y1: 130 }
+    const named: PlaceableTile = { ...tile(100, 100), labelCells: [label], labelBox: label }
+    const others = Array.from({ length: 8 }, () => tile(70, 70))
+    const placed = maskPack([named, ...others], 800, 600, 2.1, 1, 3)
+    const strip = { x: named.x + label.x0, y: named.y + label.y0 }
+    for (const t of placed) {
+      if (t === named || isParked(t)) continue
+      const clear =
+        t.x + t.fullW <= strip.x ||
+        t.x >= strip.x + (label.x1 - label.x0) ||
+        t.y + t.fullH <= strip.y ||
+        t.y >= strip.y + (label.y1 - label.y0)
+      expect(clear).toBe(true)
+    }
+  })
+
+  it('keeps a label inside the viewport, not just its bird', () => {
+    // The anchor (largest tile) is centred unconditionally; the named tile is placed
+    // by the search, which must keep its wide label on-screen too.
+    const label = { x0: -120, y0: 0, x1: 170, y1: 20 }
+    const named: PlaceableTile = { ...tile(50, 50), labelCells: [label], labelBox: label }
+    maskPack([tile(150, 150), named], 500, 400, 2.1, 1, 3)
+    expect(isParked(named)).toBe(false)
+    expect(named.x + label.x0).toBeGreaterThanOrEqual(0)
+    expect(named.x + label.x1).toBeLessThanOrEqual(500)
+  })
+
   it('parks a tile that cannot fit rather than overlapping', () => {
     // First tile fills the viewport; the second has nowhere to go.
     const placed = maskPack([tile(780, 580), tile(400, 400)], 800, 600, 2.1, 1, 3)
