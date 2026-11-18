@@ -256,3 +256,56 @@ describe('Collage load-in', () => {
     expect(onReadyChange).toHaveBeenLastCalledWith(true)
   })
 })
+
+describe('Collage bird names', () => {
+  // A solid 30x30 silhouette: big enough to have an outline to letter along.
+  const SOLID = { w: 30, h: 30, bits: btoa('\xff'.repeat(Math.ceil((30 * 30) / 8))) }
+  // Species of their own: decoded masks are cached by art key for the session, so
+  // reusing the birds above would hand these tests their 1x1 masks.
+  const NAMED_SPECIES: Species[] = [
+    { sci: 'Turdus philomelos', com: 'Song Thrush', n: 12, firstSeenMs: 1, lastSeenMs: 2 },
+    { sci: 'Cyanistes caeruleus', com: 'Blue Tit', n: 5, firstSeenMs: 1, lastSeenMs: 2 },
+  ]
+  const NAMED_MANIFEST: LayoutManifest = {
+    dims: { 'turdus-philomelos': [10, 10], 'cyanistes-caeruleus': [10, 10], _fallback: [10, 10] },
+    masks: { 'turdus-philomelos': SOLID, 'cyanistes-caeruleus': SOLID, _fallback: SOLID },
+    fallbackKey: '_fallback',
+  }
+
+  async function renderNamed(birdNames: boolean) {
+    const view = render(
+      <Collage
+        species={NAMED_SPECIES}
+        manifest={NAMED_MANIFEST}
+        animate={false}
+        birdNames={birdNames}
+      />,
+    )
+    const container = view.container.querySelector('.gcollage') as HTMLDivElement
+    await waitFor(() => expect(container.querySelector('.gtile')).not.toBeNull())
+    return container
+  }
+
+  it('letters each bird’s name along a path, hidden from assistive tech', async () => {
+    const container = await renderNamed(true)
+    const labels = container.querySelectorAll('svg.gtile-label')
+    expect(labels).toHaveLength(2)
+    for (const svg of labels) expect(svg).toHaveAttribute('aria-hidden', 'true')
+    const written = [...container.querySelectorAll('textPath')].map((t) => t.textContent).join(' ')
+    expect(written.replace(/\s+/g, ' ')).toContain('Song Thrush')
+    expect(written.replace(/\s+/g, ' ')).toContain('Blue Tit')
+    // Each textPath points at a path that exists in the document.
+    for (const tp of container.querySelectorAll('textPath')) {
+      const href = tp.getAttribute('href') ?? ''
+      expect(container.ownerDocument.getElementById(href.slice(1))).not.toBeNull()
+    }
+    // The button keeps its own accessible name; the lettering doesn't add to it.
+    expect(screen.getByRole('button', { name: 'Song Thrush' })).toBeInTheDocument()
+  })
+
+  it('draws no names when they are turned off', async () => {
+    const container = await renderNamed(false)
+    expect(container.querySelector('.gtile-label')).toBeNull()
+    expect(container.querySelector('.gtile-label-defs')).toBeNull()
+  })
+})

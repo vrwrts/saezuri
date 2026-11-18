@@ -9,7 +9,13 @@ import App from '../App.tsx'
 // is stubbed because it uses ResizeObserver (absent in jsdom) and is irrelevant
 // to routing — the active tab reflects the resolved window.
 vi.mock('../hooks/useRecentSpecies.ts', () => ({
-  useRecentSpecies: () => ({ species: [], truncated: false, error: null, loading: false }),
+  useRecentSpecies: () => ({
+    species: [],
+    truncated: false,
+    error: null,
+    loading: false,
+    display: { birdNames: true },
+  }),
 }))
 vi.mock('../hooks/useLayoutManifest.ts', () => ({
   useLayoutManifest: () => ({ dims: {}, masks: {}, fallbackKey: '_fallback' }),

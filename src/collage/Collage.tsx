@@ -10,6 +10,8 @@ import { imagePath, resolveArt, rollFlight } from '../domain/asset.ts'
 import { type CallManifest, callFor, EMPTY_CALL_MANIFEST } from '../domain/calls.ts'
 import type { LayoutManifest } from '../domain/manifest.ts'
 import type { Species } from '../domain/species.ts'
+import { useLabelFont, WEB_LABEL_MIN_PX } from '../hooks/useLabelFont.ts'
+import { LabelInkDefs } from './BirdLabel.tsx'
 import { BirdTile } from './BirdTile.tsx'
 import { hitTest } from './hitTest.ts'
 import {
@@ -41,6 +43,8 @@ interface Props {
    *  state, or at least one bird whose image has loaded. Re-arms on a window
    *  switch, since the new window's art may not be cached. */
   onReadyChange?: (ready: boolean) => void
+  /** Letter each bird's name along its silhouette (the operator's BIRD_NAMES). */
+  birdNames?: boolean
 }
 
 const RESIZE_DEBOUNCE_MS = 120
@@ -64,6 +68,7 @@ export function Collage({
   blossomKey = '',
   emptyState,
   onReadyChange,
+  birdNames = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [vp, setVp] = useState<Viewport>({ width: 0, height: 0 })
@@ -145,7 +150,12 @@ export function Collage({
   // Recompute the layout when the species set, viewport, or manifest changes.
   // computeLayout is deterministic (seeded PRNG), so an identical-content poll
   // yields an identical layout — recomputing it is cheap and churn-free.
+  const font = useLabelFont(birdNames)
+  // Nothing is laid out until the face is in, so the plate doesn't pack on fallback
+  // metrics and then jump; the loading indicator covers the wait.
+  const holdForFont = birdNames && !font.ready
   const tiles = useMemo(() => {
+    if (holdForFont) return []
     const pose = poseRef.current
     const present = new Set(species.map((s) => s.sci))
     for (const key of pose.keys()) if (!present.has(key)) pose.delete(key)
@@ -172,8 +182,12 @@ export function Collage({
         ar,
       }
     })
-    return computeLayout(inputs, vp)
-  }, [species, manifest, vp])
+    return computeLayout(
+      inputs,
+      vp,
+      birdNames ? { labels: { measureEm: font.measureEm, minPx: WEB_LABEL_MIN_PX } } : {},
+    )
+  }, [species, manifest, vp, birdNames, holdForFont, font.measureEm])
 
   // Fingerprint the arrangement (species / counts / art slots, not pixel coords)
   // so the tile keys below change — and the bloom replays — exactly when a poll or
@@ -235,6 +249,7 @@ export function Collage({
       onMouseLeave={() => setHoveredSci(null)}
       onClick={onClick}
     >
+      {birdNames && <LabelInkDefs />}
       {species.length === 0
         ? emptyState
         : visible.map((t) => {

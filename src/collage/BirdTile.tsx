@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { BirdLabel } from './BirdLabel.tsx'
 import type { LaidTile } from './layout.ts'
 
 interface Props {
@@ -72,6 +73,7 @@ export function BirdTile({
         // the tile (and the loading indicator) back.
         onError={() => (errored ? onLoad() : setErrored(true))}
       />
+      {tile.label && <BirdLabel label={tile.label} tileW={tile.w} tileH={tile.h} />}
     </button>
   )
 }
