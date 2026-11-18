@@ -512,6 +512,10 @@ into the Docker image.
   shown with its source; Commons recordings also show their individual licence (CC0 / CC BY /
   CC BY-SA) and recordist. These recordings are **not**
   redistributed by this repo or bundled into the image — each deployment fetches its own.
+- Bird names are lettered in **[Caveat](https://github.com/googlefonts/caveat)** by The Caveat
+  Project Authors, bundled as `public/fonts/Caveat.ttf` under the
+  [SIL Open Font License 1.1](public/fonts/OFL-Caveat.txt). The OFL covers the font file only;
+  it does not change the licence of the code or of frames rendered with it.
 
 The reused illustrations and pipeline carry the **CC-BY-NC-SA-4.0** license inherited from
 BirdNET-Pi — **non-commercial use only**. In this repo that covers the empty-state nest

@@ -222,6 +222,8 @@ repository derived from them, carries obligations worth reading first: see
 Cached station recordings are shown as coming from BirdNET-Go. Commons recordings carry
 their own CC licence and are shown with their recordist credited.
 
+Bird names are lettered in Caveat, a font under the SIL Open Font License 1.1.
+
 ## Support
 
 Issues and questions: <https://github.com/vrwrts/saezuri/issues>.

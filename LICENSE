@@ -29,3 +29,7 @@ restriction. The built Docker image additionally bundles, under the same
 CC-BY-NC-SA-4.0 terms, the generation pipeline vendored from the
 saezuri-illustrations repo and any bird illustrations it downloads at runtime —
 so the published image is likewise non-commercial.
+
+The bundled font `public/fonts/Caveat.ttf` (Copyright 2014 The Caveat Project
+Authors) is licensed separately under the SIL Open Font License 1.1; its full
+text is in `public/fonts/OFL-Caveat.txt`.
